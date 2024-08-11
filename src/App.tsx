@@ -420,16 +420,17 @@ const App: React.FC = () => {
 
         {clicks.map((click) => (
           <div
-          key={click.id}
-          className="clicked-number"
-          style={{ top: click.y, left: click.x }}
-        >
-          +{click.profit}
-        </div>
-      ))}
-    </div>
+            key={click.id}
+            className="clicked-number"
+            style={{ top: click.y, left: click.x }}
+          >
+            +{click.profit}
+          </div>
+        ))}
+      </div>
     </div>
   );
+
 
 
   
