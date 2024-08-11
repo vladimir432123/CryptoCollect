@@ -6,6 +6,7 @@ import Mine from './icons/Mine';
 import Friends from './icons/Friends';
 import MineContent from './MineContent'; // Adjust the path as necessary
 import { FaTasks } from 'react-icons/fa'; // Импортируем иконку задач
+import { useGlobalState, useGlobalDispatch } from './GlobalState';
 
 const Farm: React.FC<{ className?: string }> = ({ className }) => (
   <svg className={className} viewBox="0 0 24 24" fill="currentColor">
@@ -22,6 +23,7 @@ const App: React.FC = () => {
   const [tapIncreaseLevel, setTapIncreaseLevel] = useState(1);
   const [remainingClicks, setRemainingClicks] = useState(maxClicks);
   const [points, setPoints] = useState(100000000);
+  
   const [clicks, setClicks] = useState<{ id: number, x: number, y: number, profit: number }[]>([]);
   const [isBoostMenuOpen, setIsBoostMenuOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState('farm');
@@ -226,75 +228,71 @@ const App: React.FC = () => {
 
   const renderBoostMenu = () => {
     const closeUpgradeMenu = () => setSelectedUpgrade(null);
-
+  
     const renderUpgradeMenu = (type: 'multitap' | 'tapIncrease') => {
       const isMultitap = type === 'multitap';
       const currentLevel = isMultitap ? tapProfitLevel : tapIncreaseLevel;
       const maxLevel = 10;
       const nextLevel = isMultitap ? tapProfitLevels[currentLevel] : tapIncreaseLevels[currentLevel];
-
+  
       const upgradeFunction = isMultitap ? upgradeTapProfit : upgradeTapIncrease;
-
+  
       const description = isMultitap
         ? 'Increases the profit for each tap, allowing you to accumulate coins faster. This improvement will help you reach new levels faster and earn more points.'
         : 'Increases the maximum number of taps that can be made at a time. This improvement will allow you to play longer without having to wait for clicks to be restored.';
-
+  
       return (
         <div
-          className={`fixed bottom-0 left-0 right-0 bg-gray-800 rounded-t-2xl p-4 z-[60] transition-transform duration-1000 ease-out ${
-            selectedUpgrade ? 'translate-y-0' : 'translate-y-full'
-          }`}
-          style={{ height: 'calc(50% - 80px)' }} // Adjusted height to be above the navigation bar
+          className={`fixed inset-0 bg-black bg-opacity-50 flex items-end justify-center z-50`}
+          onClick={closeUpgradeMenu}
         >
-          
-          <div className="flex flex-col items-center">
-            <div className="w-10 h-12 bg-gray-700 mb-2"></div>
-            <h2 className="text-xl font-bold text-yellow-400 mb-1">
+          <div className="bg-gray-800 w-full max-w-md p-9 rounded-t-lg animate-slide-up mb-0">
+            <div className="flex justify-center mb-4">
+              <div className="w-10 h-10 bg-gray-600 rounded-full"></div>
+            </div>
+            <h2 className="text-center text-xl text-white mb-2">
               {isMultitap ? 'Multitap' : 'Tap increase'}
             </h2>
-            <p className="text-sm text-gray-400 mb-2">Level {currentLevel}</p>
-            <p className="text-sm text-gray-300 text-center mb-4">
-              {description}
-            </p>
-            {currentLevel < maxLevel ? (
+            <p className="text-center text-gray-300 mb-4">Level: {currentLevel}</p>
+            <p className="text-center text-gray-400 mb-4">{description}</p>
+            {currentLevel === maxLevel ? (
+              <p className="text-center text-yellow-400 mb-4">Max level</p>
+            ) : (
               <button
+                className="w-full py-3 bg-yellow-500 text-black rounded-lg"
                 onClick={upgradeFunction}
                 disabled={points < nextLevel.cost}
-                className={`w-full py-3 rounded-lg font-bold text-center transition-colors ${
-                  points >= nextLevel.cost
-                    ? 'bg-yellow-400 text-gray-900 hover:bg-yellow-500'
-                    : 'bg-gray-600 text-gray-400 cursor-not-allowed'
-                }`}
               >
                 Upgrade ({nextLevel.cost} coins)
               </button>
-            ) : (
-              <div className="text-yellow-400 font-bold text-center">MAX LEVEL</div>
             )}
+            <button className="w-full py-2 mt-2 bg-gray-700 text-white rounded-lg" onClick={closeUpgradeMenu}>
+              Close
+            </button>
           </div>
         </div>
       );
     };
-
+  
     return (
       <div className="absolute inset-0 bg-gray-800 z-50 flex flex-col">
         {renderUserInfo()}
         <div className="w-full h-px bg-gray-600 mt-4"></div>
-
+  
         <div className="flex-grow flex flex-col items-center justify-start p-4 space-y-5">
           <div
             className="w-full bg-gray-700 rounded-lg p-4"
             onClick={() => setSelectedUpgrade('multitap')}
           >
             <div className="flex justify-between items-center">
-            <span className="text-gray-300 font-semibold">Multitap</span>
+              <span className="text-gray-300 font-semibold">Multitap</span>
               <span className="text-yellow-400 font-bold">Level {tapProfitLevel}</span>
             </div>
             <p className="text-sm text-gray-400 mt-2">
-            Increases the profit for each tap, allowing you to accumulate coins faster.
+              Increases the profit for each tap, allowing you to accumulate coins faster.
             </p>
           </div>
-
+  
           <div
             className="w-full bg-gray-700 rounded-lg p-4"
             onClick={() => setSelectedUpgrade('tapIncrease')}
@@ -304,21 +302,20 @@ const App: React.FC = () => {
               <span className="text-yellow-400 font-bold">Level {tapIncreaseLevel}</span>
             </div>
             <p className="text-sm text-gray-400 mt-2">
-            Increases the maximum number of taps that can be made at a time.
+              Increases the maximum number of taps that can be made at a time.
             </p>
           </div>
         </div>
         {selectedUpgrade && renderUpgradeMenu(selectedUpgrade as 'multitap' | 'tapIncrease')}
         {selectedUpgrade && (
           <div
-            className="fixed inset-0 bg-black bg-opacity-50 z-[55]"
+            className="fixed inset-0 bg-black bg-opacity-50 z-40"
             onClick={closeUpgradeMenu}
           ></div>
         )}
       </div>
     );
   };
-
   const renderUpgradeMenu = (type: 'multitap' | 'tapIncrease') => {
     const isMultitap = type === 'multitap';
     const currentLevel = isMultitap ? tapProfitLevel : tapIncreaseLevel;
