@@ -1,0 +1,38 @@
+@keyframes slide-up {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+
+
+.animate-slide-up {
+  animation: slide-up 0.2s ease-out;
+}
+
+
+
+.fixed {
+  bottom: 0; /* Растягиваем меню до самого низа */
+}
+  .upgrade-notification {
+    position: fixed;
+    top: -50px;
+    left: 50%;
+    transform: translateX(-50%);
+    color: #00ff6a; /* Светло-желтый цвет текста */
+    padding: 1px;
+    font-size: 14px; /* Увеличенный размер текста */
+    transition: top 0.2s ease-out, opacity 2s ease-out;
+    opacity: 0;
+    white-space: nowrap; /* Предотвращаем перенос текста на новую строку */
+
+  }
+  
+  .upgrade-notification.visible {
+    top: 15px;
+    opacity: 1;
+  }
