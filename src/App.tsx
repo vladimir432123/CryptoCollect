@@ -5,6 +5,7 @@ import { dollarCoin } from './images';
 import Mine from './icons/Mine';
 import Friends from './icons/Friends';
 import MineContent from './MineContent'; // Adjust the path as necessary
+import { FaTasks } from 'react-icons/fa'; // Импортируем иконку задач
 
 const Farm: React.FC<{ className?: string }> = ({ className }) => (
   <svg className={className} viewBox="0 0 24 24" fill="currentColor">
@@ -416,6 +417,10 @@ const App: React.FC = () => {
             <Friends className="w-6 h-6 mb-1" />
             Friends
           </button>
+          <div className="text-center text-gray-300 flex flex-col items-center">
+            <FaTasks className="w-6 h-6 mb-1" />
+            Tasks
+          </div>
         </div>
 
         {clicks.map((click) => (
