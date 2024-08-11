@@ -121,3 +121,18 @@
 .main-button.clicked {
   transform: scale(0.97);
 }
+.clicked-number {
+  position: absolute;
+  color: yellow;
+  font-size: 20px; /* Увеличенный размер текста */
+  animation: fadeOut 1s forwards;
+}
+
+@keyframes fadeOut {
+  0% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
