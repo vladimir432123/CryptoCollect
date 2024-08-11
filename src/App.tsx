@@ -59,14 +59,23 @@ const App: React.FC = () => {
     return () => clearInterval(recoveryInterval);
   }, [maxClicks]);
 
-  const handleMainButtonClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    if (remainingClicks > 0) {
-      setRemainingClicks((prevClicks: number) => prevClicks - 1);
-      setPoints(prevPoints => prevPoints + tapProfit);
-      const newClick = { id: Date.now(), x: e.clientX, y: e.clientY, profit: tapProfit };
-      setClicks(prevClicks => [...prevClicks, newClick]);
+  const handleMainButtonClick = useCallback((e: React.TouchEvent<HTMLDivElement>) => {
+    const touches = e.touches;
+    if (remainingClicks > 0 && touches.length <= 5) {
+      setRemainingClicks((prevClicks: number) => prevClicks - touches.length);
+      setPoints(prevPoints => prevPoints + tapProfit * touches.length);
+
+      const newClicks = Array.from(touches).map(touch => ({
+        id: Date.now() + touch.identifier,
+        x: touch.clientX,
+        y: touch.clientY,
+        profit: tapProfit
+      }));
+
+      setClicks(prevClicks => [...prevClicks, ...newClicks]);
+
       setTimeout(() => {
-        setClicks(prevClicks => prevClicks.filter(click => click.id !== newClick.id));
+        setClicks(prevClicks => prevClicks.filter(click => !newClicks.some(newClick => newClick.id === click.id)));
       }, 1000);
 
       // Добавляем класс анимации
@@ -177,7 +186,7 @@ const App: React.FC = () => {
         <div className="px-4 mt-4 flex justify-center">
           <div
             className="w-80 h-80 p-4 rounded-full bg-gray-700 shadow-lg main-button"
-            onClick={handleMainButtonClick}
+            onTouchStart={handleMainButtonClick}
           >
             <div className="w-full h-full rounded-full bg-gray-600 flex items-center justify-center">
               {/* Главная кнопка без изображения */}
@@ -411,18 +420,14 @@ const App: React.FC = () => {
 
         {clicks.map((click) => (
           <div
-            key={click.id}
-            className="absolute pointer-events-none text-yellow-400"
-            style={{
-              left: click.x,
-              top: click.y,
-              animation: 'float-up 1s ease-out',
-            }}
-          >
-            +{click.profit}
-          </div>
-        ))}
-      </div>
+          key={click.id}
+          className="clicked-number"
+          style={{ top: click.y, left: click.x }}
+        >
+          +{click.profit}
+        </div>
+      ))}
+    </div>
     </div>
   );
 
