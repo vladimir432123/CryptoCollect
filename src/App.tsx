@@ -6,7 +6,6 @@ import Mine from './icons/Mine';
 import Friends from './icons/Friends';
 import MineContent from './MineContent'; // Adjust the path as necessary
 import { FaTasks } from 'react-icons/fa'; // Импортируем иконку задач
-import { useGlobalState, useGlobalDispatch } from './GlobalState';
 
 const Farm: React.FC<{ className?: string }> = ({ className }) => (
   <svg className={className} viewBox="0 0 24 24" fill="currentColor">
