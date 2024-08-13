@@ -83,9 +83,10 @@ app.post('/webhook', (req, res) => {
 
 const startServer = async () => {
     try {
-        // Замените URL на ваш публичный URL от ngrok
-        await bot.telegram.setWebhook('https://crypto-collect.vercel.app/webhook');
-        console.log('Вебхук установлен');
+        // Замените URL на ваш публичный URL от ngrok или Vercel
+        const webhookUrl = 'https://crypto-collect.vercel.app/webhook';
+        await bot.telegram.setWebhook(webhookUrl);
+        console.log('Вебхук установлен на URL:', webhookUrl);
     } catch (err) {
         console.error('Ошибка установки вебхука:', err);
     }
