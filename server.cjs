@@ -44,7 +44,7 @@ app.post('/webhook', async (req, res) => {
     const username = message.from.username;
 
     // Создание учетной записи при любом взаимодействии с ботом
-    const query = 'INSERT INTO users (username) VALUES (?) ON DUPLICATE KEY UPDATE username = VALUES(username)';
+    const query = 'INSERT INTO user (username) VALUES (?) ON DUPLICATE KEY UPDATE username = VALUES(username)';
     try {
         const [result] = await db.promise().execute(query, [username]);
         console.log(`Пользователь ${username} успешно сохранен`);
