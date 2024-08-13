@@ -60,6 +60,15 @@ bot.start((ctx) => {
 // Запуск бота
 bot.launch();
 
+// Установка вебхука
+const webhookUrl = `https://crypto-collect.vercel.app/`;
+
+bot.telegram.setWebhook(webhookUrl).then(() => {
+    console.log(`Вебхук установлен на ${webhookUrl}`);
+}).catch((err) => {
+    console.error('Ошибка установки вебхука:', err);
+});
+
 // Маршрут для обработки запросов от Telegram
 app.post('/webhook', async (req, res) => {
     console.log('Получен запрос от Telegram:', JSON.stringify(req.body, null, 2));
