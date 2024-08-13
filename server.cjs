@@ -2,6 +2,7 @@ require('dotenv').config();
 const mysql = require('mysql2');
 const express = require('express');
 const bodyParser = require('body-parser');
+const { Telegraf } = require('telegraf');
 
 const app = express();
 const port = process.env.PORT || 3002; // Используем переменную окружения для порта
@@ -23,16 +24,40 @@ db.connect((err) => {
         return;
     }
     console.log('Подключено к базе данных MySQL');
-  
-    // Выполнение простого запроса для проверки подключения
-    db.query('SELECT 1', (err, results) => {
+});
+
+// Настройка Telegram бота
+const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN);
+
+// Обработка команды /start
+bot.start((ctx) => {
+    const username = ctx.message.from.username;
+
+    // Проверка, существует ли пользователь в базе данных
+    db.query('SELECT * FROM user WHERE username = ?', [username], (err, results) => {
         if (err) {
-            console.error('Ошибка выполнения тестового запроса:', err);
+            console.error('Ошибка выполнения запроса:', err);
             return;
         }
-        console.log('Тестовый запрос выполнен успешно:', results);
+
+        if (results.length === 0) {
+            // Если пользователь не существует, создаем новый аккаунт
+            db.query('INSERT INTO user (username) VALUES (?)', [username], (err) => {
+                if (err) {
+                    console.error('Ошибка вставки данных:', err);
+                    return;
+                }
+                ctx.reply(`Привет, ${username}! Твой аккаунт был создан.`);
+            });
+        } else {
+            // Если пользователь уже существует
+            ctx.reply(`Привет снова, ${username}!`);
+        }
     });
 });
+
+// Запуск бота
+bot.launch();
 
 // Маршрут для обработки запросов от Telegram
 app.post('/webhook', async (req, res) => {
