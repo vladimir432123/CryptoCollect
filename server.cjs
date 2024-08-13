@@ -32,6 +32,7 @@ const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN);
 // Обработка команды /start
 bot.start((ctx) => {
     const username = ctx.message.from.username;
+    console.log(`Получена команда /start от пользователя: ${username}`);
 
     // Проверка, существует ли пользователь в базе данных
     db.query('SELECT * FROM user WHERE username = ?', [username], (err, results) => {
