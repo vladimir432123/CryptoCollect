@@ -20,13 +20,16 @@ const db = mysql.createConnection({
     port: process.env.DB_PORT || 3306, // Используем переменную окружения для порта
 });
 
-db.connect((err) => {
-    if (err) {
+const connectToDatabase = async () => {
+    try {
+        await db.promise().connect();
+        console.log('Подключено к базе данных MySQL');
+    } catch (err) {
         console.error('Ошибка подключения к базе данных:', err);
-        return;
     }
-    console.log('Подключено к базе данных MySQL');
-});
+};
+
+connectToDatabase();
 
 console.log('Настройка Telegram бота...');
 
