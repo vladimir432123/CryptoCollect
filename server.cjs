@@ -48,6 +48,8 @@ bot.start((ctx) => {
             return;
         }
 
+        console.log('Результаты запроса:', results);
+
         if (results.length === 0) {
             // Если пользователь не существует, создаем новый аккаунт
             db.query('INSERT INTO user (username) VALUES (?)', [username], (err) => {
@@ -55,10 +57,12 @@ bot.start((ctx) => {
                     console.error('Ошибка вставки данных:', err);
                     return;
                 }
+                console.log(`Аккаунт для пользователя ${username} был создан.`);
                 ctx.reply(`Привет, ${username}! Твой аккаунт был создан.`);
             });
         } else {
             // Если пользователь уже существует
+            console.log(`Пользователь ${username} уже существует.`);
             ctx.reply(`Привет снова, ${username}!`);
         }
     });
