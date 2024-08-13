@@ -35,13 +35,16 @@ db.connect((err) => {
 
 // Маршрут для обработки запросов от Telegram
 app.post('/webhook', async (req, res) => {
+    console.log('Получен запрос от Telegram:', JSON.stringify(req.body, null, 2));
     const { message } = req.body;
 
     if (!message || !message.from || !message.from.username) {
+        console.error('Неверный запрос:', req.body);
         return res.status(400).send('Invalid request');
     }
 
     const username = message.from.username;
+    console.log('Имя пользователя:', username);
 
     // Создание учетной записи при любом взаимодействии с ботом
     const query = 'INSERT INTO user (username) VALUES (?) ON DUPLICATE KEY UPDATE username = VALUES(username)';
