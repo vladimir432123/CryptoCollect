@@ -9,6 +9,8 @@ const port = process.env.PORT || 3002; // Используем переменн�
 
 app.use(bodyParser.json());
 
+console.log('Инициализация сервера...');
+
 // Настройка соединения с базой данных
 const db = mysql.createConnection({
     host: process.env.DB_HOST, // Используем переменную окружения для хоста
@@ -25,6 +27,8 @@ db.connect((err) => {
     }
     console.log('Подключено к базе данных MySQL');
 });
+
+console.log('Настройка Telegram бота...');
 
 // Настройка Telegram бота
 const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN);
@@ -59,6 +63,8 @@ bot.start((ctx) => {
 
 // Запуск бота
 bot.launch();
+
+console.log('Бот запущен...');
 
 // Установка вебхука
 const webhookUrl = `https://crypto-collect.vercel.app/`;
