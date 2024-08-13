@@ -1,47 +1,40 @@
 require('dotenv').config();
-const mysql = require('mysql2');
 const express = require('express');
+const mysql = require('mysql2');
 const bodyParser = require('body-parser');
 const { Telegraf } = require('telegraf');
 
 const app = express();
-const port = process.env.PORT || 3002; // Используем переменную окружения для порта
+const port = process.env.PORT || 3002;
 
 app.use(bodyParser.json());
 
 console.log('Инициализация сервера...');
 
-// Настройка соединения с базой данных
 const db = mysql.createConnection({
-    host: process.env.DB_HOST, // Используем переменную окружения для хоста
-    user: process.env.DB_USER, // Используем переменную окружения для пользователя
-    password: process.env.DB_PASSWORD, // Используем переменную окружения для пароля
-    database: process.env.DB_NAME, // Используем переменную окружения для имени базы данных
-    port: process.env.DB_PORT || 3306, // Используем переменную окружения для порта
+    host: process.env.DB_HOST,
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+    database: process.env.DB_NAME,
+    port: process.env.DB_PORT || 3306,
 });
 
-const connectToDatabase = async () => {
-    try {
-        await db.promise().connect();
-        console.log('Подключено к базе данных MySQL');
-    } catch (err) {
+db.connect((err) => {
+    if (err) {
         console.error('Ошибка подключения к базе данных:', err);
+    } else {
+        console.log('Подключено к базе данных MySQL');
     }
-};
-
-connectToDatabase();
+});
 
 console.log('Настройка Telegram бота...');
 
-// Настройка Telegram бота
 const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN);
 
-// Обработка команды /start
 bot.start((ctx) => {
     const username = ctx.message.from.username;
     console.log(`Получена команда /start от пользователя: ${username}`);
 
-    // Проверка, существует ли пользователь в базе данных
     db.query('SELECT * FROM user WHERE username = ?', [username], (err, results) => {
         if (err) {
             console.error('Ошибка выполнения запроса:', err);
@@ -51,7 +44,6 @@ bot.start((ctx) => {
         console.log('Результаты запроса:', results);
 
         if (results.length === 0) {
-            // Если пользователь не существует, создаем новый аккаунт
             db.query('INSERT INTO user (username) VALUES (?)', [username], (err) => {
                 if (err) {
                     console.error('Ошибка вставки данных:', err);
@@ -61,29 +53,12 @@ bot.start((ctx) => {
                 ctx.reply(`Привет, ${username}! Твой аккаунт был создан.`);
             });
         } else {
-            // Если пользователь уже существует
-            console.log(`Пользователь ${username} уже существует.`);
-            ctx.reply(`Привет снова, ${username}!`);
+            ctx.reply(`Привет, ${username}! Твой аккаунт уже существует.`);
         }
     });
 });
 
-// Запуск бота
-bot.launch();
-
-console.log('Бот запущен...');
-
-// Установка вебхука
-const webhookUrl = `https://crypto-collect.vercel.app/`;
-
-bot.telegram.setWebhook(webhookUrl).then(() => {
-    console.log(`Вебхук установлен на ${webhookUrl}`);
-}).catch((err) => {
-    console.error('Ошибка установки вебхука:', err);
-});
-
-// Маршрут для обработки запросов от Telegram
-app.post('/webhook', async (req, res) => {
+app.post('/webhook', (req, res) => {
     console.log('Получен запрос от Telegram:', JSON.stringify(req.body, null, 2));
     const { message } = req.body;
 
@@ -95,22 +70,40 @@ app.post('/webhook', async (req, res) => {
     const username = message.from.username;
     console.log('Имя пользователя:', username);
 
-    // Создание учетной записи при любом взаимодействии с ботом
     const query = 'INSERT INTO user (username) VALUES (?) ON DUPLICATE KEY UPDATE username = VALUES(username)';
-    try {
-        const [result] = await db.promise().execute(query, [username]);
+    db.query(query, [username], (err, result) => {
+        if (err) {
+            console.error('Ошибка при сохранении пользователя:', err);
+            return res.status(500).send('Ошибка при сохранении пользователя');
+        }
         console.log(`Пользователь ${username} успешно сохранен`);
         res.send('OK');
+    });
+});
+
+const startServer = async () => {
+    try {
+        // Замените URL на ваш публичный URL от ngrok
+        await bot.telegram.setWebhook('https://crypto-collect.vercel.app/webhook');
+        console.log('Вебхук установлен');
     } catch (err) {
-        console.error('Ошибка при сохранении пользователя:', err);
-        res.status(500).send('Ошибка при сохранении пользователя');
+        console.error('Ошибка установки вебхука:', err);
     }
-});
 
-app.listen(port, () => {
-    console.log(`Сервер запущен на порту ${port}`);
-});
+    app.listen(port, () => {
+        console.log(`Сервер запущен на порту ${port}`);
+    });
+};
 
-app.get('/', (req, res) => {
-    res.send('Hello World!');
-});
+startServer();
+
+const checkWebhook = async () => {
+    try {
+        const webhookInfo = await bot.telegram.getWebhookInfo();
+        console.log('Информация о вебхуке:', webhookInfo);
+    } catch (err) {
+        console.error('Ошибка получения информации о вебхуке:', err);
+    }
+};
+
+checkWebhook();
