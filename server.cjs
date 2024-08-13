@@ -1,19 +1,20 @@
+require('dotenv').config();
 const mysql = require('mysql2');
 const express = require('express');
 const bodyParser = require('body-parser');
 
 const app = express();
-const port = 3002; // Установите порт для Node.js сервера
+const port = process.env.PORT || 3002; // Используем переменную окружения для порта
 
 app.use(bodyParser.json());
 
 // Настройка соединения с базой данных
 const db = mysql.createConnection({
-    host: '127.0.0.1', // Установите внешний хост базы данных
-    user: 'cj00508_tgapp', // Установите пользователя базы данных
-    password: 'sjY3z5GE', // Установите пароль базы данных
-    database: 'cj00508_tgapp', // Установите имя базы данных
-    port: 3306, // Установите порт для подключения к базе данных
+    host: process.env.DB_HOST, // Используем переменную окружения для хоста
+    user: process.env.DB_USER, // Используем переменную окружения для пользователя
+    password: process.env.DB_PASSWORD, // Используем переменную окружения для пароля
+    database: process.env.DB_NAME, // Используем переменную окружения для имени базы данных
+    port: process.env.DB_PORT || 3306, // Используем переменную окружения для порта
 });
 
 db.connect((err) => {
@@ -60,4 +61,8 @@ app.post('/webhook', async (req, res) => {
 
 app.listen(port, () => {
     console.log(`Сервер запущен на порту ${port}`);
+});
+
+app.get('/', (req, res) => {
+    res.send('Hello World!');
 });
