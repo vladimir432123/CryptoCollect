@@ -80,7 +80,7 @@ const startServer = async () => {
         await bot.telegram.deleteWebhook({ drop_pending_updates: true });
 
         // Замените URL на ваш публичный URL от Vercel
-        const webhookUrl = 'https://your-vercel-project-url.vercel.app/webhook';
+        const webhookUrl = 'https://api.vercel.com/v1/integrations/deploy/prj_zS4O6TbbBuyxbTprjjQQYZ7jzCfl/w4PjkVdWCN';
         await bot.telegram.setWebhook(webhookUrl);
         console.log('Вебхук установлен на URL:', webhookUrl);
     } catch (err) {
