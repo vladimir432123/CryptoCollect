@@ -9,13 +9,7 @@
   "routes": [
     {
       "src": "/(.*)",
-      "dest": "/server.cjs"
-    }
-  ],
-  "rewrites": [
-    {
-      "source": "/webhook",
-      "destination": "/api/webhook"
+      "dest": "server.cjs"
     }
   ]
 }
