@@ -2,6 +2,7 @@ const express = require('express');
 const path = require('path');
 const bodyParser = require('body-parser');
 const mysql = require('mysql2');
+const { Telegraf } = require('telegraf');
 require('dotenv').config();
 
 const app = express();
@@ -34,10 +35,6 @@ app.use(express.static(path.join(__dirname, 'public')));
 // Обработка всех маршрутов и отправка основного HTML-файла
 app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
-
-app.listen(port, () => {
-    console.log(`Сервер запущен на порту ${port}`);
 });
 
 console.log('Настройка Telegram бота...');
@@ -115,13 +112,5 @@ const checkWebhook = async () => {
         console.error('Ошибка получения информации о вебхуке:', err);
     }
 };
-
-// Указываем Express обслуживать статические файлы из директории 'public'
-app.use(express.static(path.join(__dirname, 'public')));
-
-// Обслуживаем index.html для всех маршрутов
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'index.html')); // Измените путь здесь, если файл в корне
-});
 
 checkWebhook();
