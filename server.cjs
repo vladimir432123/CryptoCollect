@@ -104,9 +104,6 @@ const checkWebhook = async () => {
     }
 };
 
-app.get('/', (req, res) => {
-    console.error('Received a request');
-    res.send('Hello World!');
-});
+
 
 checkWebhook();
