@@ -34,7 +34,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 // Обработка всех маршрутов и отправка основного HTML-файла
 app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+    res.sendFile(path.join(__dirname,'index.html'));
 });
 
 console.log('Настройка Telegram бота...');
