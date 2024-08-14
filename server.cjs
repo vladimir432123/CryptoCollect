@@ -3,6 +3,7 @@ const express = require('express');
 const mysql = require('mysql2');
 const bodyParser = require('body-parser');
 const { Telegraf } = require('telegraf');
+const path = require('path');
 
 const app = express();
 const port = process.env.PORT || 8080;
@@ -12,6 +13,7 @@ app.use(bodyParser.json());
 console.log('Инициализация сервера...');
 console.log('Сервер запускается...');
 console.log('Переменные окружения:', process.env);
+
 const db = mysql.createConnection({
     host: process.env.DB_HOST,
     user: process.env.DB_USER,
@@ -104,14 +106,12 @@ const checkWebhook = async () => {
     }
 };
 
-const path = require('path');
-
 // Указываем Express обслуживать статические файлы из директории 'public'
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Обслуживаем index.html для всех маршрутов
 app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+  res.sendFile(path.join(__dirname, 'index.html')); // Измените путь здесь, если файл в корне
 });
 
 checkWebhook();
