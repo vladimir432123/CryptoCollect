@@ -7,9 +7,6 @@ const { Telegraf } = require('telegraf');
 const app = express();
 const port = process.env.PORT || 8080;
 
-app.listen(port, () => {
-    console.log(`Сервер запущен на порту ${port}`);
-});
 app.use(bodyParser.json());
 
 console.log('Инициализация сервера...');
@@ -106,8 +103,10 @@ const checkWebhook = async () => {
         console.error('Ошибка получения информации о вебхуке:', err);
     }
 };
+
 app.get('/', (req, res) => {
     console.error('Received a request');
     res.send('Hello World!');
-  });
+});
+
 checkWebhook();
