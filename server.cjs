@@ -102,5 +102,9 @@ const checkWebhook = async () => {
         console.error('Ошибка получения информации о вебхуке:', err);
     }
 };
-
+app.get('/', (req, res) => {
+    console.error('Received a request');
+    res.send('Hello World!');
+  });
+checkWebhook();
 checkWebhook();
