@@ -35,26 +35,19 @@ bot.start((ctx) => {
     const username = ctx.message.from.username;
     console.log(`Получена команда /start от пользователя: ${username}`);
 
-    db.query('SELECT * FROM user WHERE username = ?', [username], (err, results) => {
+    db.query('INSERT INTO user (username) VALUES (?)', [username], (err) => {
         if (err) {
-            console.error('Ошибка выполнения запроса:', err);
+            if (err.code === 'ER_DUP_ENTRY') {
+                console.log(`Пользователь ${username} уже существует.`);
+                ctx.reply(`Привет, ${username}! Твой аккаунт уже существует.`);
+            } else {
+                console.error('Ошибка вставки данных:', err);
+                ctx.reply('Произошла ошибка при создании вашего аккаунта. Пожалуйста, попробуйте позже.');
+            }
             return;
         }
-
-        console.log('Результаты запроса:', results);
-
-        if (results.length === 0) {
-            db.query('INSERT INTO user (username) VALUES (?)', [username], (err) => {
-                if (err) {
-                    console.error('Ошибка вставки данных:', err);
-                    return;
-                }
-                console.log(`Аккаунт для пользователя ${username} был создан.`);
-                ctx.reply(`Привет, ${username}! Твой аккаунт был создан.`);
-            });
-        } else {
-            ctx.reply(`Привет, ${username}! Твой аккаунт уже существует.`);
-        }
+        console.log(`Аккаунт для пользователя ${username} был создан.`);
+        ctx.reply(`Привет, ${username}! Твой аккаунт был создан.`);
     });
 });
 
@@ -83,8 +76,11 @@ app.post('/webhook', (req, res) => {
 
 const startServer = async () => {
     try {
-        // Замените URL на ваш публичный URL от ngrok или Vercel
-        const webhookUrl = 'https://crypto-collect.vercel.app/webhook';
+        // Очистка отложенных обновлений
+        await bot.telegram.deleteWebhook({ drop_pending_updates: true });
+
+        // Замените URL на ваш публичный URL от Vercel
+        const webhookUrl = 'https://your-vercel-project-url.vercel.app/webhook';
         await bot.telegram.setWebhook(webhookUrl);
         console.log('Вебхук установлен на URL:', webhookUrl);
     } catch (err) {
