@@ -1,33 +1,43 @@
-require('dotenv').config();
 const express = require('express');
-const mysql = require('mysql2');
-const bodyParser = require('body-parser');
-const { Telegraf } = require('telegraf');
 const path = require('path');
+const bodyParser = require('body-parser');
+const mysql = require('mysql2');
+require('dotenv').config();
 
 const app = express();
 const port = process.env.PORT || 8080;
 
 app.use(bodyParser.json());
 
-console.log('Инициализация сервера...');
-console.log('Сервер запускается...');
-console.log('Переменные окружения:', process.env);
-
-const db = mysql.createConnection({
+// Настройка подключения к базе данных
+const dbConfig = {
     host: process.env.DB_HOST,
     user: process.env.DB_USER,
     password: process.env.DB_PASSWORD,
     database: process.env.DB_NAME,
     port: process.env.DB_PORT || 3306,
-});
+};
+
+const db = mysql.createConnection(dbConfig);
 
 db.connect((err) => {
     if (err) {
         console.error('Ошибка подключения к базе данных:', err);
-    } else {
-        console.log('Подключено к базе данных MySQL');
+        return;
     }
+    console.log('Успешное подключение к базе данных');
+});
+
+// Обслуживание статических файлов
+app.use(express.static(path.join(__dirname, 'public')));
+
+// Обработка всех маршрутов и отправка основного HTML-файла
+app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+app.listen(port, () => {
+    console.log(`Сервер запущен на порту ${port}`);
 });
 
 console.log('Настройка Telegram бота...');
@@ -106,6 +116,12 @@ const checkWebhook = async () => {
     }
 };
 
+// Указываем Express обслуживать статические файлы из директории 'public'
+app.use(express.static(path.join(__dirname, 'public')));
 
+// Обслуживаем index.html для всех маршрутов
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'index.html')); // Измените путь здесь, если файл в корне
+});
 
 checkWebhook();
