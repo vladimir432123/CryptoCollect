@@ -103,7 +103,13 @@ const checkWebhook = async () => {
         console.error('Ошибка получения информации о вебхуке:', err);
     }
 };
+// Указываем Express обслуживать статические файлы из директории 'public'
+app.use(express.static(path.join(__dirname, 'public')));
 
+// Обслуживаем index.html для всех маршрутов
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
 
 
 checkWebhook();
