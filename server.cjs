@@ -10,7 +10,7 @@ const port = process.env.PORT || 8080;
 
 app.use(bodyParser.json());
 
-// Настройка подключения к базе данных
+console.log('Настройка подключения к базе данных...');
 const dbConfig = {
     host: process.env.DB_HOST,
     user: process.env.DB_USER,
@@ -29,16 +29,14 @@ db.connect((err) => {
     console.log('Успешное подключение к базе данных');
 });
 
-// Обслуживание статических файлов из папки src
 app.use('/src', express.static(path.join(__dirname, 'src')));
 
-// Обработка всех маршрутов и отправка основного HTML-файла
 app.get('*', (req, res) => {
+    console.log('Обработка запроса к основному HTML-файлу');
     res.sendFile(path.join(__dirname, 'index.html'));
 });
 
 console.log('Настройка Telegram бота...');
-
 const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN);
 
 bot.start((ctx) => {
@@ -86,10 +84,8 @@ app.post('/webhook', (req, res) => {
 
 const startServer = async () => {
     try {
-        // Очистка отложенных обновлений
         await bot.telegram.deleteWebhook({ drop_pending_updates: true });
 
-        // Замените URL на ваш публичный URL от Vercel
         const webhookUrl = 'https://crypto-collect.vercel.app/webhook';
         await bot.telegram.setWebhook(webhookUrl);
         console.log('Вебхук установлен на URL:', webhookUrl);
