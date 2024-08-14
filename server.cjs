@@ -106,12 +106,6 @@ const checkWebhook = async () => {
     }
 };
 
-// Указываем Express обслуживать статические файлы из директории 'public'
-app.use(express.static(path.join(__dirname, 'public')));
 
-// Обслуживаем index.html для всех маршрутов
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'index.html')); // Измените путь здесь, если файл в корне
-});
 
 checkWebhook();
