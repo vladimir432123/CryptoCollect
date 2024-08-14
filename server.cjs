@@ -5,12 +5,16 @@ const bodyParser = require('body-parser');
 const { Telegraf } = require('telegraf');
 
 const app = express();
-const port = process.env.PORT || 3002;
+const port = process.env.PORT || 8080;
 
+app.listen(port, () => {
+    console.log(`Сервер запущен на порту ${port}`);
+});
 app.use(bodyParser.json());
 
 console.log('Инициализация сервера...');
-
+console.log('Сервер запускается...');
+console.log('Переменные окружения:', process.env);
 const db = mysql.createConnection({
     host: process.env.DB_HOST,
     user: process.env.DB_USER,
@@ -80,7 +84,7 @@ const startServer = async () => {
         await bot.telegram.deleteWebhook({ drop_pending_updates: true });
 
         // Замените URL на ваш публичный URL от Vercel
-        const webhookUrl = 'https://crypto-collect.vercel.app';
+        const webhookUrl = 'https://crypto-collect.vercel.app/webhook';
         await bot.telegram.setWebhook(webhookUrl);
         console.log('Вебхук установлен на URL:', webhookUrl);
     } catch (err) {
@@ -106,5 +110,4 @@ app.get('/', (req, res) => {
     console.error('Received a request');
     res.send('Hello World!');
   });
-checkWebhook();
 checkWebhook();
