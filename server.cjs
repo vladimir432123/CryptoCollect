@@ -1,42 +1,37 @@
-const express = require('express');
-const path = require('path');
-const bodyParser = require('body-parser');
-const mysql = require('mysql2');
-const { Telegraf } = require('telegraf');
 require('dotenv').config();
+const express = require('express');
+const mysql = require('mysql2');
+const bodyParser = require('body-parser');
+const { Telegraf } = require('telegraf');
+const path = require('path');
 
 const app = express();
 const port = process.env.PORT || 8080;
 
 app.use(bodyParser.json());
 
-console.log('Настройка подключения к базе данных...');
-const dbConfig = {
+console.log('Инициализация сервера...');
+console.log('Сервер запускается...');
+console.log('Переменные окружения:', process.env);
+
+const db = mysql.createConnection({
     host: process.env.DB_HOST,
     user: process.env.DB_USER,
     password: process.env.DB_PASSWORD,
     database: process.env.DB_NAME,
     port: process.env.DB_PORT || 3306,
-};
-
-const db = mysql.createConnection(dbConfig);
+});
 
 db.connect((err) => {
     if (err) {
         console.error('Ошибка подключения к базе данных:', err);
-        return;
+    } else {
+        console.log('Подключено к базе данных MySQL');
     }
-    console.log('Успешное подключение к базе данных');
-});
-
-app.use('/src', express.static(path.join(__dirname, 'src')));
-
-app.get('*', (req, res) => {
-    console.log('Обработка запроса к основному HTML-файлу');
-    res.sendFile(path.join(__dirname, 'index.html'));
 });
 
 console.log('Настройка Telegram бота...');
+
 const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN);
 
 bot.start((ctx) => {
@@ -84,8 +79,10 @@ app.post('/webhook', (req, res) => {
 
 const startServer = async () => {
     try {
+        // Очистка отложенных обновлений
         await bot.telegram.deleteWebhook({ drop_pending_updates: true });
 
+        // Замените URL на ваш публичный URL от Vercel
         const webhookUrl = 'https://crypto-collect.vercel.app/webhook';
         await bot.telegram.setWebhook(webhookUrl);
         console.log('Вебхук установлен на URL:', webhookUrl);
@@ -108,5 +105,13 @@ const checkWebhook = async () => {
         console.error('Ошибка получения информации о вебхуке:', err);
     }
 };
+
+// Указываем Express обслуживать статические файлы из директории 'public'
+app.use(express.static(path.join(__dirname, 'public')));
+
+// Обслуживаем index.html для всех маршрутов
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'index.html')); // Измените путь здесь, если файл в корне
+});
 
 checkWebhook();
