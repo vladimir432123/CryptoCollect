@@ -15,9 +15,3 @@
       "src": "/api/(.*)",
       "dest": "/server.cjs"
     },
-    {
-      "src": "/(.*)",
-      "dest": "index.html"
-    }
-  ]
-}
