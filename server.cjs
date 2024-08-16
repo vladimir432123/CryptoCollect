@@ -29,13 +29,11 @@ db.connect((err) => {
     console.log('Успешное подключение к базе данных');
 });
 
-// Обслуживание статических файлов из корневой папки
-app.use(express.static(path.join(__dirname, 'public')));
 
 // Обслуживание index.html из корневой папки
 app.get('*', (req, res) => {
     console.log('Обработка запроса к основному HTML-файлу');
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+    res.sendFile(path.join(__dirname, 'index.html'));
 });
 
 console.log('Настройка Telegram бота...');
