@@ -86,7 +86,8 @@ const startServer = async () => {
     try {
         await bot.telegram.deleteWebhook({ drop_pending_updates: true });
 
-        const webhookUrl = 'https://crypto-collect.vercel.app/webhook';
+        // Используйте URL вашего приложения на Render
+        const webhookUrl = 'https://cryptocollect.onrender.com/webhook';
         await bot.telegram.setWebhook(webhookUrl);
         console.log('Вебхук установлен на URL:', webhookUrl);
     } catch (err) {
