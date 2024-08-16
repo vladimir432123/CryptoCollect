@@ -1,14 +1,18 @@
-import React from 'react';
-import ReactDOM from 'react-dom';
-import './index.css';
-import App from './App';
+import { GlobalStateProvider } from './GlobalState';
 import { ProgressProvider } from './ProgressContext';
+import ReactDOM from 'react-dom/client'; // Импортируем createRoot из react-dom/client
+import React from 'react';
+import App from './App';
 
-ReactDOM.render(
+const rootElement = document.getElementById('root');
+const root = ReactDOM.createRoot(rootElement!); // Используем createRoot
+
+root.render(
   <React.StrictMode>
-    <ProgressProvider>
-      <App />
-    </ProgressProvider>
-  </React.StrictMode>,
-  document.getElementById('root')
+    <GlobalStateProvider>
+      <ProgressProvider>
+        <App />
+      </ProgressProvider>
+    </GlobalStateProvider>
+  </React.StrictMode>
 );
