@@ -55,9 +55,15 @@ bot.start((ctx) => {
             }
             return;
         }
-        ctx.reply(`Привет, ${username}! Твой аккаунт был создан.`);
+        ctx.replyWithHTML(
+            `Привет, ${username}! Добро пожаловать в Crypto Collect.\n\nLorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.`,
+            Markup.inlineKeyboard([
+                Markup.button.url('Play', 'https://t.me/your_bot?start=miniapp')
+            ])
+        );
     });
 });
+
 
 app.post('/webhook', (req, res) => {
     const { message } = req.body;
