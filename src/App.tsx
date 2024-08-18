@@ -232,12 +232,10 @@ const App: React.FC = () => {
               style={{ width: `${(remainingClicks / maxClicks) * 100}%` }}
             ></div>
           </div>
-          <div className="text-gray-300 text-sm w-[40px] text-right">{remainingClicks}</div>
         </div>
       </div>
     </>
   );
-
 
 
 
