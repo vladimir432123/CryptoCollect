@@ -2,7 +2,7 @@ const express = require('express');
 const path = require('path');
 const bodyParser = require('body-parser');
 const mysql = require('mysql2');
-const { Telegraf } = require('telegraf');
+const { Telegraf, Markup } = require('telegraf');
 require('dotenv').config();
 
 const app = express();
@@ -18,12 +18,12 @@ app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, 'dist', 'index.html'));
 });
 
-
 app.post('/webhook', (req, res) => {
     console.log('Received webhook request:', req.body);
     bot.handleUpdate(req.body);
     res.sendStatus(200);
 });
+
 const dbConfig = {
     host: process.env.DB_HOST,
     user: process.env.DB_USER,
@@ -49,13 +49,23 @@ bot.start((ctx) => {
     db.query('INSERT INTO user (username) VALUES (?)', [username], (err) => {
         if (err) {
             if (err.code === 'ER_DUP_ENTRY') {
-                ctx.reply(`Привет, ${username}! Твой аккаунт уже существует.`);
+                ctx.replyWithMarkup(
+                    `Привет, ${username}! Добро пожаловать в Crypto Collect. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.`,
+                    Markup.inlineKeyboard([
+                        Markup.button.url('Play', 'https://t.me/your_bot?start=miniapp')
+                    ])
+                );
             } else {
                 ctx.reply('Произошла ошибка при создании вашего аккаунта. Пожалуйста, попробуйте позже.');
             }
             return;
         }
-        ctx.reply(`Привет, ${username}! Твой аккаунт был создан.`);
+        ctx.replyWithMarkup(
+            `Привет, ${username}! Добро пожаловать в Crypto Collect. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.`,
+            Markup.inlineKeyboard([
+                Markup.button.url('Play', 'https://t.me/your_bot?start=miniapp')
+            ])
+        );
     });
 });
 
