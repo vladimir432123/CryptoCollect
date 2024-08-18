@@ -49,7 +49,7 @@ bot.start((ctx) => {
     db.query('INSERT INTO user (username) VALUES (?)', [username], (err) => {
         if (err) {
             if (err.code === 'ER_DUP_ENTRY') {
-                ctx.replyWithMarkup(
+                ctx.reply(
                     `Привет, ${username}! Добро пожаловать в Crypto Collect. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.`,
                     Markup.inlineKeyboard([
                         Markup.button.url('Play', 'https://t.me/your_bot?start=miniapp')
@@ -60,7 +60,7 @@ bot.start((ctx) => {
             }
             return;
         }
-        ctx.replyWithMarkup(
+        ctx.reply(
             `Привет, ${username}! Добро пожаловать в Crypto Collect. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.`,
             Markup.inlineKeyboard([
                 Markup.button.url('Play', 'https://t.me/your_bot?start=miniapp')
