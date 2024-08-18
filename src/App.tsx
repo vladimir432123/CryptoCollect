@@ -64,17 +64,20 @@ const App: React.FC = () => {
   }, [maxClicks]);
 
   useEffect(() => {
-    // Получаем ID пользователя (например, из URL или из состояния)
-    const userId = 'some_user_id'; // Замените на реальный ID пользователя
+    // Получаем ID пользователя из URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const userId = urlParams.get('userId');
 
-    // Делаем запрос к серверу для получения имени пользователя
-    axios.get(`/api/user/${userId}`)
-      .then(response => {
-        setUsername(response.data.username);
-      })
-      .catch(error => {
-        console.error('Ошибка при получении имени пользователя:', error);
-      });
+    if (userId) {
+      // Делаем запрос к серверу для получения имени пользователя
+      axios.get(`/api/user/${userId}`)
+        .then(response => {
+          setUsername(response.data.username);
+        })
+        .catch(error => {
+          console.error('Ошибка при получении имени пользователя:', error);
+        });
+    }
   }, []);
 
   const handleMainButtonClick = useCallback((e: React.TouchEvent<HTMLDivElement>) => {
@@ -234,7 +237,6 @@ const App: React.FC = () => {
       </div>
     </>
   );
-
 
 
 
