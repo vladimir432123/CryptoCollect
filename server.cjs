@@ -2,7 +2,7 @@ const express = require('express');
 const path = require('path');
 const bodyParser = require('body-parser');
 const mysql = require('mysql2');
-const { Telegraf, Markup } = require('telegraf');
+const { Telegraf } = require('telegraf');
 require('dotenv').config();
 
 const app = express();
@@ -18,6 +18,12 @@ app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, 'dist', 'index.html'));
 });
 
+
+app.post('/webhook', (req, res) => {
+    console.log('Received webhook request:', req.body);
+    bot.handleUpdate(req.body);
+    res.sendStatus(200);
+});
 const dbConfig = {
     host: process.env.DB_HOST,
     user: process.env.DB_USER,
@@ -49,12 +55,7 @@ bot.start((ctx) => {
             }
             return;
         }
-        ctx.replyWithHTML(
-            `Привет, ${username}! Добро пожаловать в Crypto Collect.\n\nLorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.`,
-            Markup.inlineKeyboard([
-                Markup.button.url('Play', 'https://t.me/your_bot?start=miniapp')
-            ])
-        );
+        ctx.reply(`Привет, ${username}! Твой аккаунт был создан.`);
     });
 });
 
