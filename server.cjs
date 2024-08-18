@@ -18,6 +18,12 @@ app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, 'dist', 'index.html'));
 });
 
+
+app.post('/webhook', (req, res) => {
+    console.log('Received webhook request:', req.body);
+    bot.handleUpdate(req.body);
+    res.sendStatus(200);
+});
 const dbConfig = {
     host: process.env.DB_HOST,
     user: process.env.DB_USER,
@@ -74,10 +80,9 @@ app.post('/webhook', (req, res) => {
 const startServer = async () => {
     try {
         await bot.telegram.deleteWebhook({ drop_pending_updates: true });
-
-        // Обновите URL вебхука на URL вашего приложения на Clever Cloud
         const webhookUrl = 'https://app-21c4d0cd-2996-4394-bf8a-a453b9f7e396.cleverapps.io/webhook';
         await bot.telegram.setWebhook(webhookUrl);
+        console.log('Webhook set successfully:', webhookUrl);
     } catch (err) {
         console.error('Ошибка установки вебхука:', err);
     }
