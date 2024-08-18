@@ -14,10 +14,21 @@ app.use(bodyParser.json());
 app.use(express.static(path.join(__dirname, 'dist')));
 
 // Обслуживание index.html для всех маршрутов
-app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, 'dist', 'index.html'));
+app.get('/api/user/:id', (req, res) => {
+    const userId = req.params.id;
+    db.query('SELECT username FROM user WHERE id = ?', [userId], (err, results) => {
+        if (err) {
+            console.error('Ошибка выполнения запроса:', err);
+            res.status(500).send('Ошибка сервера');
+            return;
+        }
+        if (results.length > 0) {
+            res.json({ username: results[0].username });
+        } else {
+            res.status(404).send('Пользователь не найден');
+        }
+    });
 });
-
 app.post('/webhook', (req, res) => {
     console.log('Received webhook request:', req.body);
     bot.handleUpdate(req.body);
