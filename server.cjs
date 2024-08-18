@@ -46,13 +46,15 @@ const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN);
 
 bot.start((ctx) => {
     const username = ctx.message.from.username;
+    console.log(`Received start command from ${username}`);
     db.query('INSERT INTO user (username) VALUES (?)', [username], (err) => {
         if (err) {
+            console.error('Database error:', err);
             if (err.code === 'ER_DUP_ENTRY') {
                 ctx.reply(
                     `Привет, ${username}! Добро пожаловать в Crypto Collect. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.`,
                     Markup.inlineKeyboard([
-                        Markup.button.url('Play', 'https://app-21c4d0cd-2996-4394-bf8a-a453b9f7e396.cleverapps.io/')
+                        Markup.button.url('Play', 'https://t.me/cryptocollect_bot?start=miniapp')
                     ])
                 );
             } else {
@@ -63,27 +65,9 @@ bot.start((ctx) => {
         ctx.reply(
             `Привет, ${username}! Добро пожаловать в Crypto Collect. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.`,
             Markup.inlineKeyboard([
-                Markup.button.url('Play', 'https://app-21c4d0cd-2996-4394-bf8a-a453b9f7e396.cleverapps.io/')
+                Markup.button.url('Play', 'https://t.me/cryptocollect_bot?start=miniapp')
             ])
         );
-    });
-});
-
-app.post('/webhook', (req, res) => {
-    const { message } = req.body;
-
-    if (!message || !message.from || !message.from.username) {
-        return res.status(400).send('Invalid request');
-    }
-
-    const username = message.from.username;
-
-    const query = 'INSERT INTO user (username) VALUES (?) ON DUPLICATE KEY UPDATE username = VALUES(username)';
-    db.query(query, [username], (err) => {
-        if (err) {
-            return res.status(500).send('Ошибка при сохранении пользователя');
-        }
-        res.send('OK');
     });
 });
 
