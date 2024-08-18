@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import axios from 'axios';
 import './App.css';
 import Hamster from './icons/Hamster';
 import { dollarCoin } from './images';
@@ -22,6 +23,7 @@ const App: React.FC = () => {
   const [tapIncreaseLevel, setTapIncreaseLevel] = useState(1);
   const [remainingClicks, setRemainingClicks] = useState(maxClicks);
   const [points, setPoints] = useState(100000000);
+  const [username, setUsername] = useState(''); // Добавляем состояние для имени пользователя
   
   const [clicks, setClicks] = useState<{ id: number, x: number, y: number, profit: number }[]>([]);
   const [isBoostMenuOpen, setIsBoostMenuOpen] = useState(false);
@@ -60,6 +62,20 @@ const App: React.FC = () => {
 
     return () => clearInterval(recoveryInterval);
   }, [maxClicks]);
+
+  useEffect(() => {
+    // Получаем ID пользователя (например, из URL или из состояния)
+    const userId = 'some_user_id'; // Замените на реальный ID пользователя
+
+    // Делаем запрос к серверу для получения имени пользователя
+    axios.get(`/api/user/${userId}`)
+      .then(response => {
+        setUsername(response.data.username);
+      })
+      .catch(error => {
+        console.error('Ошибка при получении имени пользователя:', error);
+      });
+  }, []);
 
   const handleMainButtonClick = useCallback((e: React.TouchEvent<HTMLDivElement>) => {
     const touches = e.touches;
@@ -152,7 +168,7 @@ const App: React.FC = () => {
           <Hamster size={24} className="text-yellow-400" />
         </div>
         <div>
-          <p className="text-sm text-gray-300">Vova</p>
+          <p className="text-sm text-gray-300">{username}</p> {/* Используем состояние username */}
         </div>
       </div>
       <div className="flex items-center justify-between space-x-4 mt-1">
