@@ -31,6 +31,7 @@ app.get('/api/user/:id', (req, res) => {
         }
     });
 });
+
 app.post('/webhook', (req, res) => {
     console.log('Received webhook request:', req.body);
     bot.handleUpdate(req.body);
