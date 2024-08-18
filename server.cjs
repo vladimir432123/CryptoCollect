@@ -52,7 +52,7 @@ bot.start((ctx) => {
                 ctx.reply(
                     `Привет, ${username}! Добро пожаловать в Crypto Collect. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.`,
                     Markup.inlineKeyboard([
-                        Markup.button.url('Play', 'https://t.me/your_bot?start=miniapp')
+                        Markup.button.url('Play', 'https://t.me/cryptocollect_bot?start=miniapp')
                     ])
                 );
             } else {
