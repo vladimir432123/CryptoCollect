@@ -13,9 +13,9 @@ app.use(bodyParser.json());
 // Обслуживание статических файлов из папки dist
 app.use(express.static(path.join(__dirname, 'dist')));
 
-// Обслуживание index.html для всех маршрутов
 app.get('/api/user/:id', (req, res) => {
     const userId = req.params.id;
+    console.log(`Получен запрос для пользователя с ID: ${userId}`); // Логирование ID пользователя
     db.query('SELECT username FROM user WHERE id = ?', [userId], (err, results) => {
         if (err) {
             console.error('Ошибка выполнения запроса:', err);
@@ -23,8 +23,10 @@ app.get('/api/user/:id', (req, res) => {
             return;
         }
         if (results.length > 0) {
+            console.log(`Найдено имя пользователя: ${results[0].username}`); // Логирование имени пользователя
             res.json({ username: results[0].username });
         } else {
+            console.log('Пользователь не найден');
             res.status(404).send('Пользователь не найден');
         }
     });
