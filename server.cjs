@@ -114,3 +114,14 @@ const checkWebhook = async () => {
 };
 
 checkWebhook();
+
+
+const handleStartCommand = async (username) => {
+    try {
+        // Вставляем нового пользователя или обновляем данные, если пользователь уже существует
+        await db.query('INSERT INTO user (username) VALUES (?) ON DUPLICATE KEY UPDATE last_seen = NOW()', [username]);
+        console.log(`User ${username} inserted or updated successfully.`);
+    } catch (error) {
+        console.error('Database error:', error);
+    }
+};
