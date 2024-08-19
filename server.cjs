@@ -128,12 +128,13 @@ const handleStartCommand = async (username) => {
 // Обработчик команды /openapp
 bot.command('openapp', (ctx) => {
     ctx.reply(
-        'Нажмите на кнопку ниже, чтобы открыть веб-приложение:',
+        'Нажмите на кнопку ниже, чтобы открыть мини-приложение в Telegram:',
         Markup.inlineKeyboard([
-            Markup.button.url('Open Web App', 'https://t.me/cryptocollect_bot')
+            Markup.button.url('Open Mini App', 'https://t.me/cryptocollect_bot')
         ])
     );
 });
+
 
 // Запуск бота
 bot.launch();
