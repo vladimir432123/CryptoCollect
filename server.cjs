@@ -3,6 +3,7 @@ const path = require('path');
 const bodyParser = require('body-parser');
 const mysql = require('mysql2');
 const { Telegraf, Markup } = require('telegraf');
+const axios = require('axios');
 require('dotenv').config();
 
 const app = express();
@@ -41,23 +42,12 @@ bot.start((ctx) => {
         if (err) {
             console.error('Database error:', err);
             if (err.code === 'ER_DUP_ENTRY') {
-                ctx.reply(
-                    `Привет, ${username}! Добро пожаловать в Crypto Collect. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.`,
-                    Markup.inlineKeyboard([
-                        Markup.button.url('Play', 'https://t.me/cryptocollect_bot')
-                    ])
-                );
+                // Handle duplicate entry error
             } else {
                 ctx.reply('Произошла ошибка при создании вашего аккаунта. Пожалуйста, попробуйте позже.');
             }
             return;
         }
-        ctx.reply(
-            `Привет, ${username}! Добро пожаловать в Crypto Collect. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.`,
-            Markup.inlineKeyboard([
-                Markup.button.url('Play', 'https://t.me/cryptocollect_bot')
-            ])
-        );
     });
 });
 
@@ -100,6 +90,42 @@ app.get('/webapp', (req, res) => {
     });
 });
 
+// Маршрут для обработки данных, отправленных ботом
+app.post('/api/userdata', (req, res) => {
+    const { username, ip, deviceInfo } = req.body;
+
+    // Проверка наличия пользователя в базе данных
+    db.query('SELECT * FROM user WHERE username = ?', [username], (err, results) => {
+        if (err) {
+            console.error('Database error:', err);
+            res.status(500).send('Server error');
+            return;
+        }
+
+        if (results.length > 0) {
+            // Пользователь найден, обновляем данные
+            db.query('UPDATE user SET ip = ?, device_info = ? WHERE username = ?', [ip, deviceInfo, username], (err) => {
+                if (err) {
+                    console.error('Database error:', err);
+                    res.status(500).send('Server error');
+                    return;
+                }
+                res.send('User data updated successfully');
+            });
+        } else {
+            // Пользователь не найден, создаем нового
+            db.query('INSERT INTO user (username, ip, device_info) VALUES (?, ?, ?)', [username, ip, deviceInfo], (err) => {
+                if (err) {
+                    console.error('Database error:', err);
+                    res.status(500).send('Server error');
+                    return;
+                }
+                res.send('User data saved successfully');
+            });
+        }
+    });
+});
+
 const startServer = async () => {
     try {
         await bot.telegram.deleteWebhook({ drop_pending_updates: true });
@@ -139,8 +165,22 @@ const handleStartCommand = async (username) => {
 };
 
 // Обработчик команды /openapp
-bot.command('openapp', (ctx) => {
+bot.command('openapp', async (ctx) => {
     const username = ctx.message.from.username;
+    const ip = ctx.message.from.ip; // Получение IP адреса
+    const deviceInfo = ctx.message.from.device; // Получение информации об устройстве
+
+    // Отправка данных на сервер
+    try {
+        await axios.post('https://your-server-url.com/api/userdata', {
+            username,
+            ip,
+            deviceInfo
+        });
+    } catch (error) {
+        console.error('Error sending data to server:', error);
+    }
+
     const miniAppUrl = `https://t.me/cryptocollect_bot?startapp=${username}&tgWebApp=true`;
     
     ctx.reply(
