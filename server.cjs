@@ -14,25 +14,6 @@ app.use(bodyParser.urlencoded({ extended: true }));
 // Обслуживание статических файлов из папки dist
 app.use(express.static(path.join(__dirname, 'dist')));
 
-app.get('/api/user/:id', (req, res) => {
-    const userId = req.params.id;
-    console.log(`Получен запрос для пользователя с ID: ${userId}`); // Логирование ID пользователя
-    db.query('SELECT username FROM user WHERE id = ?', [userId], (err, results) => {
-        if (err) {
-            console.error('Ошибка выполнения запроса:', err);
-            res.status(500).send('Ошибка сервера');
-            return;
-        }
-        if (results.length > 0) {
-            console.log(`Найдено имя пользователя: ${results[0].username}`); // Логирование имени пользователя
-            res.json({ username: results[0].username });
-        } else {
-            console.log('Пользователь не найден');
-            res.status(404).send('Пользователь не найден');
-        }
-    });
-});
-
 app.post('/webhook', (req, res) => {
     console.log('Received webhook request:', req.body);
     bot.handleUpdate(req.body);
@@ -83,6 +64,26 @@ bot.start((ctx) => {
                 Markup.button.url('Play', 'https://t.me/cryptocollect_bot?start=miniapp')
             ])
         );
+    });
+});
+
+// Маршрут для получения данных пользователя по его ID
+app.get('/api/user/:userId', (req, res) => {
+    const userId = req.params.userId;
+    const query = 'SELECT username FROM user WHERE id = ?';
+
+    db.query(query, [userId], (err, results) => {
+        if (err) {
+            console.error('Error fetching user data:', err);
+            res.status(500).send('Server error');
+            return;
+        }
+
+        if (results.length > 0) {
+            res.json({ username: results[0].username });
+        } else {
+            res.status(404).send('User not found');
+        }
     });
 });
 
