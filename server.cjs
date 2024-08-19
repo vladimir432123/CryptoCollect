@@ -71,6 +71,23 @@ app.get('/api/user/:userId', (req, res) => {
   });
 });
 
+// Маршрут для обновления данных пользователя
+app.put('/api/user/:userId', (req, res) => {
+  const userId = req.params.userId;
+  const { points } = req.body;
+  const query = 'UPDATE user SET points = ? WHERE id = ?';
+
+  db.query(query, [points, userId], (err, results) => {
+    if (err) {
+      console.error('Error updating user data:', err);
+      res.status(500).send('Server error');
+      return;
+    }
+
+    res.send('User data updated successfully');
+  });
+});
+
 // Маршрут для обработки данных авторизации
 app.get('/webapp', (req, res) => {
   const { username, user_id } = req.query;
