@@ -50,7 +50,7 @@ bot.start((ctx) => {
                 ctx.reply(
                     `Привет, ${username}! Добро пожаловать в Crypto Collect. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.`,
                     Markup.inlineKeyboard([
-                        Markup.button.url('Play', 'https://t.me/cryptocollect_bot?start=miniapp')
+                        Markup.button.url('Play', 'https://app-21c4d0cd-2996-4394-bf8a-a453b9f7e396.cleverapps.io/')
                     ])
                 );
             } else {
@@ -61,7 +61,7 @@ bot.start((ctx) => {
         ctx.reply(
             `Привет, ${username}! Добро пожаловать в Crypto Collect. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.`,
             Markup.inlineKeyboard([
-                Markup.button.url('Play', 'https://t.me/cryptocollect_bot?start=miniapp')
+                Markup.button.url('Play', 'https://app-21c4d0cd-2996-4394-bf8a-a453b9f7e396.cleverapps.io/')
             ])
         );
     });
@@ -115,7 +115,6 @@ const checkWebhook = async () => {
 
 checkWebhook();
 
-
 const handleStartCommand = async (username) => {
     try {
         // Вставляем нового пользователя или обновляем данные, если пользователь уже существует
@@ -131,7 +130,7 @@ bot.command('openapp', (ctx) => {
     ctx.reply(
         'Нажмите на кнопку ниже, чтобы открыть веб-приложение:',
         Markup.inlineKeyboard([
-            Markup.button.url('Open Web App', 'https://your-web-app-url.com')
+            Markup.button.url('Open Web App', 'https://app-21c4d0cd-2996-4394-bf8a-a453b9f7e396.cleverapps.io/')
         ])
     );
 });
