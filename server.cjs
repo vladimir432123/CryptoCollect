@@ -14,12 +14,6 @@ app.use(bodyParser.urlencoded({ extended: true }));
 // Обслуживание статических файлов из папки dist
 app.use(express.static(path.join(__dirname, 'dist')));
 
-app.post('/webhook', (req, res) => {
-    console.log('Received webhook request:', req.body);
-    bot.handleUpdate(req.body);
-    res.sendStatus(200);
-});
-
 const dbConfig = {
     host: process.env.DB_HOST,
     user: process.env.DB_USER,
@@ -87,6 +81,25 @@ app.get('/api/user/:userId', (req, res) => {
     });
 });
 
+// Маршрут для обработки данных авторизации
+app.get('/webapp', (req, res) => {
+    const { username, user_id } = req.query;
+    if (!username || !user_id) {
+        res.status(400).send('Invalid request');
+        return;
+    }
+
+    // Сохранение данных пользователя в базе данных
+    db.query('INSERT INTO user (username, telegram_id) VALUES (?, ?) ON DUPLICATE KEY UPDATE last_seen = NOW()', [username, user_id], (err) => {
+        if (err) {
+            console.error('Database error:', err);
+            res.status(500).send('Server error');
+            return;
+        }
+        res.send('User data saved successfully');
+    });
+});
+
 const startServer = async () => {
     try {
         await bot.telegram.deleteWebhook({ drop_pending_updates: true });
@@ -128,7 +141,7 @@ const handleStartCommand = async (username) => {
 // Обработчик команды /openapp
 bot.command('openapp', (ctx) => {
     const username = ctx.message.from.username;
-    const miniAppUrl = `https://t.me/cryptocollect_bot?startapp=${username}`;
+    const miniAppUrl = `https://t.me/cryptocollect_bot?startapp=${username}&tgWebApp=true`;
     
     ctx.reply(
         'Нажмите на кнопку ниже, чтобы открыть мини-приложение в Telegram:',
@@ -137,7 +150,6 @@ bot.command('openapp', (ctx) => {
         ])
     );
 });
-
 
 // Запуск бота
 bot.launch();
