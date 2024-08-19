@@ -110,6 +110,7 @@ app.post('/api/userdata', (req, res) => {
                     res.status(500).send('Server error');
                     return;
                 }
+                console.log(`User ${username} opened the web app. IP: ${ip}, Device Info: ${deviceInfo}`);
                 res.send('User data updated successfully');
             });
         } else {
@@ -120,6 +121,7 @@ app.post('/api/userdata', (req, res) => {
                     res.status(500).send('Server error');
                     return;
                 }
+                console.log(`User ${username} opened the web app. IP: ${ip}, Device Info: ${deviceInfo}`);
                 res.send('User data saved successfully');
             });
         }
