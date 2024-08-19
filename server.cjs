@@ -127,10 +127,13 @@ const handleStartCommand = async (username) => {
 
 // Обработчик команды /openapp
 bot.command('openapp', (ctx) => {
+    const username = ctx.message.from.username;
+    const miniAppUrl = `https://t.me/cryptocollect_bot?startapp=${username}`;
+    
     ctx.reply(
         'Нажмите на кнопку ниже, чтобы открыть мини-приложение в Telegram:',
         Markup.inlineKeyboard([
-            Markup.button.url('Open Mini App', 'https://t.me/cryptocollect_bot')
+            Markup.button.url('Open Mini App', miniAppUrl)
         ])
     );
 });
