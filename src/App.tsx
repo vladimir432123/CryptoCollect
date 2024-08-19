@@ -73,6 +73,7 @@ const App: React.FC = () => {
       axios.get(`/api/user/${userId}`)
         .then(response => {
           setUsername(response.data.username);
+          setPoints(response.data.points); // Предполагаем, что сервер возвращает очки пользователя
         })
         .catch(error => {
           console.error('Ошибка при получении имени пользователя:', error);
@@ -80,11 +81,21 @@ const App: React.FC = () => {
     }
   }, []);
 
+  const updateUserData = async (userId: string, newUserData: { username?: string, points?: number }) => {
+    try {
+      const response = await axios.put(`/api/user/${userId}`, newUserData);
+      console.log('User data updated successfully:', response.data);
+    } catch (error) {
+      console.error('Error updating user data:', error);
+    }
+  };
+
   const handleMainButtonClick = useCallback((e: React.TouchEvent<HTMLDivElement>) => {
     const touches = e.touches;
     if (remainingClicks > 0 && touches.length <= 5) {
       setRemainingClicks((prevClicks: number) => prevClicks - touches.length);
-      setPoints(prevPoints => prevPoints + tapProfit * touches.length);
+      const newPoints = points + tapProfit * touches.length;
+      setPoints(newPoints);
 
       const newClicks = Array.from(touches).map(touch => ({
         id: Date.now() + touch.identifier,
@@ -105,8 +116,15 @@ const App: React.FC = () => {
       setTimeout(() => {
         button.classList.remove('clicked');
       }, 200); // Убираем класс через 200 мс
+
+      // Обновляем данные пользователя на сервере
+      const urlParams = new URLSearchParams(window.location.search);
+      const userId = urlParams.get('userId');
+      if (userId) {
+        updateUserData(userId, { points: newPoints });
+      }
     }
-  }, [remainingClicks, tapProfit]);
+  }, [remainingClicks, tapProfit, points]);
 
   const calculateProgress = useMemo(() => {
     if (levelIndex >= levelNames.length - 1) {
@@ -163,6 +181,7 @@ const App: React.FC = () => {
       setRemainingClicks(nextLevel.taps);
     }
   };
+
 
   const renderUserInfo = () => (
     <div className="px-4 z-10 pt-4">
