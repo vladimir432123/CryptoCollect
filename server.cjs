@@ -125,3 +125,16 @@ const handleStartCommand = async (username) => {
         console.error('Database error:', error);
     }
 };
+
+// Обработчик команды /openapp
+bot.command('openapp', (ctx) => {
+    ctx.reply(
+        'Нажмите на кнопку ниже, чтобы открыть веб-приложение:',
+        Markup.inlineKeyboard([
+            Markup.button.url('Open Web App', 'https://your-web-app-url.com')
+        ])
+    );
+});
+
+// Запуск бота
+bot.launch();
