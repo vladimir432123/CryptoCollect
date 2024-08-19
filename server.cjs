@@ -94,6 +94,8 @@ app.get('/webapp', (req, res) => {
 app.post('/api/userdata', (req, res) => {
     const { username, ip, deviceInfo } = req.body;
 
+    console.log(`Received POST request with data: ${JSON.stringify(req.body)}`);
+
     // Проверка наличия пользователя в базе данных
     db.query('SELECT * FROM user WHERE username = ?', [username], (err, results) => {
         if (err) {
