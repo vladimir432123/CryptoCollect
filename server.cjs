@@ -140,3 +140,5 @@ bot.command('openapp', (ctx) => {
         ])
     );
 });
+
+bot.launch();
