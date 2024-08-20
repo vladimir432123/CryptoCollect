@@ -41,14 +41,13 @@ bot.start((ctx) => {
         if (err) {
             console.error('Database error:', err);
             if (err.code === 'ER_DUP_ENTRY') {
-
+                // Handle duplicate entry error
             } else {
                 ctx.reply('Произошла ошибка при создании вашего аккаунта. Пожалуйста, попробуйте позже.');
             }
             return;
         }
-
-        
+        // Additional logic if needed
     });
 });
 
@@ -141,4 +140,3 @@ bot.command('openapp', (ctx) => {
         ])
     );
 });
-
