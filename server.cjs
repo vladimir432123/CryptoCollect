@@ -52,25 +52,7 @@ bot.start((ctx) => {
     });
 });
 
-// Маршрут для получения данных пользователя по его ID
-app.get('/api/user/:userId', (req, res) => {
-    const userId = req.params.userId;
-    const query = 'SELECT username FROM user WHERE id = ?';
 
-    db.query(query, [userId], (err, results) => {
-        if (err) {
-            console.error('Error fetching user data:', err);
-            res.status(500).send('Server error');
-            return;
-        }
-
-        if (results.length > 0) {
-            res.json({ username: results[0].username });
-        } else {
-            res.status(404).send('User not found');
-        }
-    });
-});
 
 // Маршрут для обработки данных авторизации
 app.get('/webapp', (req, res) => {
