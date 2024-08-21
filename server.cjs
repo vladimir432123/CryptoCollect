@@ -124,8 +124,6 @@ const startServer = async () => {
     });
 };
 
-startServer();
-
 const checkWebhook = async () => {
     try {
         const webhookInfo = await bot.telegram.getWebhookInfo();
@@ -134,8 +132,6 @@ const checkWebhook = async () => {
         console.error('Ошибка получения информации о вебхуке:', err);
     }
 };
-
-checkWebhook();
 
 const handleStartCommand = async (username) => {
     try {
@@ -160,5 +156,16 @@ bot.command('openapp', (ctx) => {
     );
 });
 
-// Запуск бота
-bot.launch();
+const launchBot = async () => {
+    try {
+        await bot.telegram.deleteWebhook({ drop_pending_updates: true });
+        await bot.launch();
+        console.log('Bot launched successfully');
+    } catch (err) {
+        console.error('Ошибка запуска бота:', err);
+    }
+};
+
+startServer();
+checkWebhook();
+launchBot();
