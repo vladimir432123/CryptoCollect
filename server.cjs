@@ -47,7 +47,6 @@ bot.start((ctx) => {
             }
             return;
         }
-        // Additional logic if needed
     });
 });
 
@@ -79,6 +78,8 @@ app.get('/webapp', (req, res) => {
         return;
     }
 
+    console.log(`User ${username} with ID ${user_id} opened the Mini App`);
+
     // Сохранение данных пользователя в базе данных
     db.query('INSERT INTO user (username, telegram_id) VALUES (?, ?) ON DUPLICATE KEY UPDATE last_seen = NOW()', [username, user_id], (err) => {
         if (err) {
@@ -87,6 +88,30 @@ app.get('/webapp', (req, res) => {
             return;
         }
         res.send('User data saved successfully');
+    });
+});
+
+// Новый маршрут для получения данных пользователя по username
+app.get('/api/user', (req, res) => {
+    const { username } = req.query;
+    if (!username) {
+        res.status(400).send('Invalid request');
+        return;
+    }
+
+    const query = 'SELECT * FROM user WHERE username = ?';
+    db.query(query, [username], (err, results) => {
+        if (err) {
+            console.error('Error fetching user data:', err);
+            res.status(500).send('Server error');
+            return;
+        }
+
+        if (results.length > 0) {
+            res.json(results[0]);
+        } else {
+            res.status(404).send('User not found');
+        }
     });
 });
 
@@ -131,7 +156,8 @@ const handleStartCommand = async (username) => {
 // Обработчик команды /openapp
 bot.command('openapp', (ctx) => {
     const username = ctx.message.from.username;
-    const miniAppUrl = `https://t.me/cryptocollect_bot?startapp=${username}&tgWebApp=true`;
+    const userId = ctx.message.from.id; // Получаем ID пользователя
+    const miniAppUrl = `https://t.me/cryptocollect_bot?startapp=${username}&user_id=${userId}&tgWebApp=true`;
     
     ctx.reply(
         'Нажмите на кнопку ниже, чтобы открыть мини-приложение в Telegram:',
@@ -141,4 +167,5 @@ bot.command('openapp', (ctx) => {
     );
 });
 
+// Запуск бота
 bot.launch();
