@@ -238,8 +238,6 @@ const App: React.FC = () => {
   );
 
 
-
-
   const renderBoostMenu = () => {
     const closeUpgradeMenu = () => setSelectedUpgrade(null);
   
