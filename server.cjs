@@ -143,7 +143,6 @@ bot.command('openapp', (ctx) => {
     const userId = ctx.message.from.id; // Получаем ID пользователя
     const miniAppUrl = `https://t.me/cryptocollect_bot?startapp=${username}&userId=${userId}&tgWebApp=true`;
 
-    console.log(`Open app command received from ${username} with userId ${userId}`); // Логирование команды
 
     ctx.reply(
         'Нажмите на кнопку ниже, чтобы открыть мини-приложение в Telegram:',
