@@ -41,14 +41,12 @@ bot.start((ctx) => {
         if (err) {
             console.error('Database error:', err);
             if (err.code === 'ER_DUP_ENTRY') {
-
+                // Handle duplicate entry error if needed
             } else {
                 ctx.reply('Произошла ошибка при создании вашего аккаунта. Пожалуйста, попробуйте позже.');
             }
             return;
         }
-
-        
     });
 });
 
@@ -82,6 +80,26 @@ app.get('/webapp', (req, res) => {
 
     // Сохранение данных пользователя в базе данных
     db.query('INSERT INTO user (username, telegram_id) VALUES (?, ?) ON DUPLICATE KEY UPDATE last_seen = NOW()', [username, user_id], (err) => {
+        if (err) {
+            console.error('Database error:', err);
+            res.status(500).send('Server error');
+            return;
+        }
+        res.send('User data saved successfully');
+    });
+});
+
+// Маршрут для обработки POST-запроса с данными пользователя
+app.post('/api/user', (req, res) => {
+    const { username } = req.body;
+
+    if (!username) {
+        res.status(400).send('Invalid request');
+        return;
+    }
+
+    // Сохранение данных пользователя в базе данных
+    db.query('INSERT INTO user (username) VALUES (?) ON DUPLICATE KEY UPDATE last_seen = NOW()', [username], (err) => {
         if (err) {
             console.error('Database error:', err);
             res.status(500).send('Server error');
