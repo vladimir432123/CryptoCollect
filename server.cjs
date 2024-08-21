@@ -42,6 +42,8 @@ bot.start((ctx) => {
             console.error('Database error:', err);
             if (err.code === 'ER_DUP_ENTRY') {
                 // Handle duplicate entry error if needed
+                ctx.reply('Norm.');
+
             } else {
                 ctx.reply('Произошла ошибка при создании вашего аккаунта. Пожалуйста, попробуйте позже.');
             }
