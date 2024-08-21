@@ -141,7 +141,7 @@ const handleStartCommand = async (username) => {
 bot.command('openapp', (ctx) => {
     const username = ctx.message.from.username;
     const userId = ctx.message.from.id; // Получаем ID пользователя
-    const miniAppUrl = `https://t.me/cryptocollect_bot?startapp=${username}&userId=${userId}&tgWebApp=true`;
+    const miniAppUrl = `https://t.me/cryptocollect_bot?startapp=username&userId=12345&tgWebApp=true`;
 
 
     ctx.reply(
