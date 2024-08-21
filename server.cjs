@@ -129,19 +129,18 @@ const checkWebhook = async () => {
 
 const handleStartCommand = async (username) => {
     try {
-        // Вставляем нового пользователя или обновляем данные, если пользователь уже существует
-        await db.query('INSERT INTO user (username) VALUES (?) ON DUPLICATE KEY UPDATE last_seen = NOW()', [username]);
-        console.log(`User ${username} inserted or updated successfully.`);
-    } catch (error) {
-        console.error('Database error:', error);
+        // Your logic here
+    } catch (err) {
+        console.error('Error handling start command:', err);
     }
 };
 
-// Обработчик команды /openapp
 bot.command('openapp', (ctx) => {
     const username = ctx.message.from.username;
     const miniAppUrl = `https://t.me/cryptocollect_bot?startapp=${username}&tgWebApp=true`;
-    
+
+    console.log(`Open app command received from ${username}`); // Логирование команды
+
     ctx.reply(
         'Нажмите на кнопку ниже, чтобы открыть мини-приложение в Telegram:',
         Markup.inlineKeyboard([
@@ -150,21 +149,6 @@ bot.command('openapp', (ctx) => {
     );
 });
 
-const launchBot = async () => {
-    try {
-        await bot.telegram.deleteWebhook({ drop_pending_updates: true });
-        await bot.launch();
-        console.log('Bot launched successfully');
-    } catch (err) {
-        console.error('Ошибка запуска бота:', err);
-    }
-};
-
-const initialize = async () => {
-    await bot.telegram.deleteWebhook({ drop_pending_updates: true });
-    await startServer();
-    await checkWebhook();
-    await launchBot();
-};
-
-initialize();
+startServer();
+checkWebhook();
+bot.launch();
