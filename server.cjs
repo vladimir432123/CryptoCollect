@@ -42,7 +42,6 @@ bot.start((ctx) => {
             console.error('Database error:', err);
             if (err.code === 'ER_DUP_ENTRY') {
                 // Handle duplicate entry error if needed
-                ctx.reply('Norm.');
             } else {
                 ctx.reply('Произошла ошибка при создании вашего аккаунта. Пожалуйста, попробуйте позже.');
             }
@@ -54,7 +53,6 @@ bot.start((ctx) => {
 // Маршрут для получения данных пользователя по его ID
 app.get('/api/user/:userId', (req, res) => {
     const userId = req.params.userId;
-    console.log(`Received request for user ID: ${userId}`); // Логирование ID пользователя
     const query = 'SELECT username FROM user WHERE id = ?';
 
     db.query(query, [userId], (err, results) => {
@@ -65,10 +63,8 @@ app.get('/api/user/:userId', (req, res) => {
         }
 
         if (results.length > 0) {
-            console.log(`User data found: ${results[0].username}`); // Логирование данных пользователя
             res.json({ username: results[0].username });
         } else {
-            console.log('User not found'); // Логирование отсутствия пользователя
             res.status(404).send('User not found');
         }
     });
@@ -77,8 +73,6 @@ app.get('/api/user/:userId', (req, res) => {
 // Маршрут для обработки данных авторизации
 app.get('/webapp', (req, res) => {
     const { username, user_id } = req.query;
-    console.log(`Received request with username: ${username}, user_id: ${user_id}`); // Логирование данных
-
     if (!username || !user_id) {
         res.status(400).send('Invalid request');
         return;
@@ -116,6 +110,15 @@ app.post('/api/user', (req, res) => {
 });
 
 const startServer = async () => {
+    try {
+        await bot.telegram.deleteWebhook({ drop_pending_updates: true });
+        const webhookUrl = 'https://app-21c4d0cd-2996-4394-bf8a-a453b9f7e396.cleverapps.io/webhook';
+        await bot.telegram.setWebhook(webhookUrl);
+        console.log('Webhook set successfully:', webhookUrl);
+    } catch (err) {
+        console.error('Ошибка установки вебхука:', err);
+    }
+
     app.listen(port, () => {
         console.log(`Сервер запущен на порту ${port}`);
     });
@@ -132,18 +135,19 @@ const checkWebhook = async () => {
 
 const handleStartCommand = async (username) => {
     try {
-        // Your logic here
-    } catch (err) {
-        console.error('Error handling start command:', err);
+        // Вставляем нового пользователя или обновляем данные, если пользователь уже существует
+        await db.query('INSERT INTO user (username) VALUES (?) ON DUPLICATE KEY UPDATE last_seen = NOW()', [username]);
+        console.log(`User ${username} inserted or updated successfully.`);
+    } catch (error) {
+        console.error('Database error:', error);
     }
 };
 
+// Обработчик команды /openapp
 bot.command('openapp', (ctx) => {
     const username = ctx.message.from.username;
-    const userId = ctx.message.from.id; // Получаем ID пользователя
-    const miniAppUrl = `https://t.me/cryptocollect_bot?startapp=${username}&userId=${userId}&tgWebApp=true`;
-
-
+    const miniAppUrl = `https://t.me/cryptocollect_bot?startapp=${username}&tgWebApp=true`;
+    
     ctx.reply(
         'Нажмите на кнопку ниже, чтобы открыть мини-приложение в Telegram:',
         Markup.inlineKeyboard([
@@ -152,6 +156,16 @@ bot.command('openapp', (ctx) => {
     );
 });
 
+const launchBot = async () => {
+    try {
+        await bot.telegram.deleteWebhook({ drop_pending_updates: true });
+        await bot.launch();
+        console.log('Bot launched successfully');
+    } catch (err) {
+        console.error('Ошибка запуска бота:', err);
+    }
+};
+
 startServer();
 checkWebhook();
-bot.launch();
+launchBot();
