@@ -24,7 +24,8 @@ const App: React.FC = () => {
   const [remainingClicks, setRemainingClicks] = useState(maxClicks);
   const [points, setPoints] = useState(100000000);
   const [username, setUsername] = useState(''); // Добавляем состояние для имени пользователя
-  
+  const [userId, setUserId] = useState('');
+
   const [clicks, setClicks] = useState<{ id: number, x: number, y: number, profit: number }[]>([]);
   const [isBoostMenuOpen, setIsBoostMenuOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState('farm');
@@ -64,13 +65,16 @@ const App: React.FC = () => {
   }, [maxClicks]);
 
   useEffect(() => {
-    // Получаем ID пользователя из URL
     const urlParams = new URLSearchParams(window.location.search);
-    const userId = urlParams.get('userId');
+    const usernameParam = urlParams.get('username');
+    const userIdParam = urlParams.get('userId');
 
-    if (userId) {
-      // Делаем запрос к серверу для получения имени пользователя
-      axios.get(`/api/user/${userId}`)
+    if (usernameParam && userIdParam) {
+      setUsername(usernameParam);
+      setUserId(userIdParam);
+
+      // Делаем запрос к серверу для получения дополнительной информации о пользователе, если необходимо
+      axios.get(`/api/user/${userIdParam}`)
         .then(response => {
           setUsername(response.data.username);
         })
