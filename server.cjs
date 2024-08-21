@@ -34,14 +34,15 @@ db.connect((err) => {
 
 const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN);
 
+// Обработка команды /start в боте
 bot.start((ctx) => {
     const username = ctx.message.from.username;
     console.log(`Received start command from ${username}`);
-    db.query('INSERT INTO user (username) VALUES (?)', [username], (err) => {
+    db.query('INSERT INTO user (username) VALUES (?) ON DUPLICATE KEY UPDATE last_seen = NOW()', [username], (err) => {
         if (err) {
             console.error('Database error:', err);
             if (err.code === 'ER_DUP_ENTRY') {
-                // Handle duplicate entry error if needed
+                // Обработка ошибки дублирующегося имени пользователя, если нужно
             } else {
                 ctx.reply('Произошла ошибка при создании вашего аккаунта. Пожалуйста, попробуйте позже.');
             }
@@ -70,41 +71,21 @@ app.get('/api/user/:userId', (req, res) => {
     });
 });
 
-// Маршрут для обработки данных авторизации
-app.get('/webapp', (req, res) => {
-    const { username, user_id } = req.query;
-    if (!username || !user_id) {
-        res.status(400).send('Invalid request');
-        return;
-    }
-
-    // Сохранение данных пользователя в базе данных
-    db.query('INSERT INTO user (username, telegram_id) VALUES (?, ?) ON DUPLICATE KEY UPDATE last_seen = NOW()', [username, user_id], (err) => {
-        if (err) {
-            console.error('Database error:', err);
-            res.status(500).send('Server error');
-            return;
-        }
-        res.send('User data saved successfully');
-    });
-});
-
-// Маршрут для обработки POST-запроса с данными пользователя
+// Маршрут для сохранения данных пользователя при запуске мини-приложения
 app.post('/api/user', (req, res) => {
     const { username } = req.body;
 
     if (!username) {
-        res.status(400).send('Invalid request');
-        return;
+        return res.status(400).send('Username is required');
     }
 
-    // Сохранение данных пользователя в базе данных
-    db.query('INSERT INTO user (username) VALUES (?) ON DUPLICATE KEY UPDATE last_seen = NOW()', [username], (err) => {
+    db.query('INSERT INTO user (username) VALUES (?) ON DUPLICATE KEY UPDATE last_seen = NOW()', [username], (err, results) => {
         if (err) {
             console.error('Database error:', err);
-            res.status(500).send('Server error');
-            return;
+            return res.status(500).send('Server error');
         }
+
+        console.log(`User ${username} logged in via mini-app`);
         res.send('User data saved successfully');
     });
 });
@@ -112,6 +93,7 @@ app.post('/api/user', (req, res) => {
 const startServer = async () => {
     try {
         await bot.telegram.deleteWebhook({ drop_pending_updates: true });
+        const webhookUrl = 'https://your-server-url.com/webhook'; // Обнови на свой URL
         await bot.telegram.setWebhook(webhookUrl);
         console.log('Webhook set successfully:', webhookUrl);
     } catch (err) {
@@ -123,6 +105,7 @@ const startServer = async () => {
     });
 };
 
+// Дополнительные функции
 const checkWebhook = async () => {
     try {
         const webhookInfo = await bot.telegram.getWebhookInfo();
@@ -132,39 +115,8 @@ const checkWebhook = async () => {
     }
 };
 
-const handleStartCommand = async (username) => {
-    try {
-        // Вставляем нового пользователя или обновляем данные, если пользователь уже существует
-        await db.query('INSERT INTO user (username) VALUES (?) ON DUPLICATE KEY UPDATE last_seen = NOW()', [username]);
-        console.log(`User ${username} inserted or updated successfully.`);
-    } catch (error) {
-        console.error('Database error:', error);
-    }
-};
-
-// Обработчик команды /openapp
-bot.command('openapp', (ctx) => {
-    const username = ctx.message.from.username;
-    const miniAppUrl = `https://t.me/cryptocollect_bot?startapp=${username}&tgWebApp=true`;
-    
-    ctx.reply(
-        'Нажмите на кнопку ниже, чтобы открыть мини-приложение в Telegram:',
-        Markup.inlineKeyboard([
-            Markup.button.url('Open Mini App', miniAppUrl)
-        ])
-    );
-});
-
-const launchBot = async () => {
-    try {
-        await bot.telegram.deleteWebhook({ drop_pending_updates: true });
-        await bot.launch();
-        console.log('Bot launched successfully');
-    } catch (err) {
-        console.error('Ошибка запуска бота:', err);
-    }
-};
-
+// Запуск сервера и бота
 startServer();
 checkWebhook();
-launchBot();
+bot.launch().then(() => console.log('Bot launched successfully')).catch((err) => console.error('Ошибка запуска бота:', err));
+
