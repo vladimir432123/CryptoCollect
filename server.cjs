@@ -43,7 +43,6 @@ bot.start((ctx) => {
             if (err.code === 'ER_DUP_ENTRY') {
                 // Handle duplicate entry error if needed
                 ctx.reply('Norm.');
-
             } else {
                 ctx.reply('Произошла ошибка при создании вашего аккаунта. Пожалуйста, попробуйте позже.');
             }
@@ -75,6 +74,8 @@ app.get('/api/user/:userId', (req, res) => {
 // Маршрут для обработки данных авторизации
 app.get('/webapp', (req, res) => {
     const { username, user_id } = req.query;
+    console.log(`Received request with username: ${username}, user_id: ${user_id}`); // Логирование данных
+
     if (!username || !user_id) {
         res.status(400).send('Invalid request');
         return;
