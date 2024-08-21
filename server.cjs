@@ -112,7 +112,7 @@ app.post('/api/user', (req, res) => {
 const startServer = async () => {
     try {
         await bot.telegram.deleteWebhook({ drop_pending_updates: true });
-        const webhookUrl = 'https://app-21c4d0cd-2996-4394-bf8a-a453b9f7e396.cleverapps.io/webhook';
+        const webhookUrl = 'https://cryptocollect.onrender.com/webhook';
         await bot.telegram.setWebhook(webhookUrl);
         console.log('Webhook set successfully:', webhookUrl);
     } catch (err) {
