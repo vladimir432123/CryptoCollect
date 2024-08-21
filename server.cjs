@@ -112,7 +112,6 @@ app.post('/api/user', (req, res) => {
 const startServer = async () => {
     try {
         await bot.telegram.deleteWebhook({ drop_pending_updates: true });
-        const webhookUrl = 'https://cryptocollect.onrender.com/webhook';
         await bot.telegram.setWebhook(webhookUrl);
         console.log('Webhook set successfully:', webhookUrl);
     } catch (err) {
