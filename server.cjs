@@ -92,18 +92,27 @@ app.post('/api/user', (req, res) => {
 
 const startServer = async () => {
     try {
+        // Удаляем существующий вебхук перед запуском
         await bot.telegram.deleteWebhook({ drop_pending_updates: true });
-        const webhookUrl = 'https://your-server-url.com/webhook'; // Обнови на свой URL
+
+        const webhookUrl = 'https://app-21c4d0cd-2996-4394-bf8a-a453b9f7e396.cleverapps.io/webhook'; // Замените на ваш URL
+
+        // Устанавливаем новый вебхук
         await bot.telegram.setWebhook(webhookUrl);
         console.log('Webhook set successfully:', webhookUrl);
     } catch (err) {
         console.error('Ошибка установки вебхука:', err);
     }
 
+    // Запускаем сервер
     app.listen(port, () => {
         console.log(`Сервер запущен на порту ${port}`);
     });
 };
+
+// Убираем вызов bot.launch(), так как он использует getUpdates
+// Вместо этого используем только вебхуки
+
 
 // Дополнительные функции
 const checkWebhook = async () => {
@@ -118,5 +127,4 @@ const checkWebhook = async () => {
 // Запуск сервера и бота
 startServer();
 checkWebhook();
-bot.launch().then(() => console.log('Bot launched successfully')).catch((err) => console.error('Ошибка запуска бота:', err));
 
