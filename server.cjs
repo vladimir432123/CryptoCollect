@@ -54,6 +54,7 @@ bot.start((ctx) => {
 // Маршрут для получения данных пользователя по его ID
 app.get('/api/user/:userId', (req, res) => {
     const userId = req.params.userId;
+    console.log(`Received request for user ID: ${userId}`); // Логирование ID пользователя
     const query = 'SELECT username FROM user WHERE id = ?';
 
     db.query(query, [userId], (err, results) => {
@@ -64,8 +65,10 @@ app.get('/api/user/:userId', (req, res) => {
         }
 
         if (results.length > 0) {
+            console.log(`User data found: ${results[0].username}`); // Логирование данных пользователя
             res.json({ username: results[0].username });
         } else {
+            console.log('User not found'); // Логирование отсутствия пользователя
             res.status(404).send('User not found');
         }
     });
@@ -137,9 +140,10 @@ const handleStartCommand = async (username) => {
 
 bot.command('openapp', (ctx) => {
     const username = ctx.message.from.username;
-    const miniAppUrl = `https://t.me/cryptocollect_bot?startapp=${username}&tgWebApp=true`;
+    const userId = ctx.message.from.id; // Получаем ID пользователя
+    const miniAppUrl = `https://t.me/cryptocollect_bot?startapp=${username}&userId=${userId}&tgWebApp=true`;
 
-    console.log(`Open app command received from ${username}`); // Логирование команды
+    console.log(`Open app command received from ${username} with userId ${userId}`); // Логирование команды
 
     ctx.reply(
         'Нажмите на кнопку ниже, чтобы открыть мини-приложение в Telegram:',
