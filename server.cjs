@@ -38,6 +38,8 @@ const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN);
 bot.start((ctx) => {
     const username = ctx.message.from.username;
     console.log(`Received start command from ${username}`);
+
+    // Сохраняем или обновляем пользователя в базе данных
     db.query('INSERT INTO user (username) VALUES (?) ON DUPLICATE KEY UPDATE last_seen = NOW()', [username], (err) => {
         if (err) {
             console.error('Database error:', err);
@@ -48,8 +50,19 @@ bot.start((ctx) => {
             }
             return;
         }
+
+        // Отправляем приветственное сообщение с кнопкой для открытия мини-приложения
+        const miniAppUrl = `https://t.me/cryptocollect_bot?startapp=${username}&tgWebApp=true`;
+
+        ctx.reply(
+            'Добро пожаловать! Нажмите на кнопку ниже, чтобы открыть мини-приложение:',
+            Markup.inlineKeyboard([
+                Markup.button.url('Открыть мини-приложение', miniAppUrl)
+            ])
+        );
     });
 });
+
 
 // Маршрут для получения данных пользователя по его ID
 app.get('/api/user/:userId', (req, res) => {
