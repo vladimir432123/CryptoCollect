@@ -138,11 +138,14 @@ const handleStartCommand = async (username) => {
     }
 };
 
+
 bot.command('openapp', (ctx) => {
     const username = ctx.message.from.username;
     const userId = ctx.message.from.id; // Получаем ID пользователя
-    const miniAppUrl = `https://t.me/cryptocollect_bot?startapp=username&userId=12345&tgWebApp=true`;
 
+    // Кодируем параметры в Base64
+    const startParam = Buffer.from(`username=${username}&userId=${userId}`).toString('base64');
+    const miniAppUrl = `https://t.me/cryptocollect_bot?start=${startParam}`;
 
     ctx.reply(
         'Нажмите на кнопку ниже, чтобы открыть мини-приложение в Telegram:',
@@ -151,7 +154,6 @@ bot.command('openapp', (ctx) => {
         ])
     );
 });
-
 startServer();
 checkWebhook();
 bot.launch();
