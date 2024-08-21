@@ -58,7 +58,7 @@ const App: React.FC = () => {
   useEffect(() => {
     const recoveryInterval = setInterval(() => {
       setRemainingClicks((prevClicks: number) => Math.min(prevClicks + 1, maxClicks));
-    }, RECOVERY_RATE);
+    }, 1000); // Установите подходящее значение для RECOVERY_RATE
 
     return () => clearInterval(recoveryInterval);
   }, [maxClicks]);
@@ -191,6 +191,7 @@ const App: React.FC = () => {
       </div>
     </div>
   );
+
 
   const renderMainContent = () => (
     <>
