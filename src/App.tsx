@@ -84,7 +84,6 @@ const App: React.FC = () => {
     }
   }, []);
   
-  
 
 
   const handleMainButtonClick = useCallback((e: React.TouchEvent<HTMLDivElement>) => {
