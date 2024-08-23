@@ -63,25 +63,29 @@ const App: React.FC = () => {
     return () => clearInterval(recoveryInterval);
   }, [maxClicks]);
   useEffect(() => {
-    // Считываем имя пользователя из localStorage
-    const usernameFromStorage = localStorage.getItem('username');
-  
-    if (usernameFromStorage) {
-      setUsername(usernameFromStorage);
-  
-      // Отправляем данные пользователя на сервер
-      axios.post('/api/user', { username: usernameFromStorage })
-        .then(response => {
-          console.log('User data saved:', response.data);
-        })
-        .catch(error => {
-          console.error('Error saving user data:', error);
-        });
+    // Проверяем, если приложение запущено в среде Telegram Web App
+    if (typeof window !== 'undefined' && window.Telegram?.WebApp) {
+      const telegramWebApp = window.Telegram.WebApp;
+      const usernameFromTelegram = telegramWebApp.initDataUnsafe?.user?.username;
+
+      if (usernameFromTelegram) {
+        setUsername(usernameFromTelegram);
+
+        // Отправляем данные пользователя на сервер
+        axios.post('/api/user', { username: usernameFromTelegram })
+          .then(response => {
+            console.log('User data saved:', response.data);
+          })
+          .catch(error => {
+            console.error('Error saving user data:', error);
+          });
+      } else {
+        console.error('Имя пользователя не найдено в Telegram WebApp.');
+      }
     } else {
-      console.error('Имя пользователя не найдено в localStorage.');
+      console.error('Приложение не запущено в среде Telegram WebApp.');
     }
   }, []);
-  
 
 
   const handleMainButtonClick = useCallback((e: React.TouchEvent<HTMLDivElement>) => {
