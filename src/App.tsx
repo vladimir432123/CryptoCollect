@@ -63,29 +63,36 @@ const App: React.FC = () => {
     return () => clearInterval(recoveryInterval);
   }, [maxClicks]);
   useEffect(() => {
-    // Проверяем, если приложение запущено в среде Telegram Web App
+    let usernameToUse = '';
+  
+    // Если приложение запущено в среде Telegram
     if (typeof window !== 'undefined' && window.Telegram?.WebApp) {
       const telegramWebApp = window.Telegram.WebApp;
-      const usernameFromTelegram = telegramWebApp.initDataUnsafe?.user?.username;
-
-      if (usernameFromTelegram) {
-        setUsername(usernameFromTelegram);
-
-        // Отправляем данные пользователя на сервер
-        axios.post('/api/user', { username: usernameFromTelegram })
-          .then(response => {
-            console.log('User data saved:', response.data);
-          })
-          .catch(error => {
-            console.error('Error saving user data:', error);
-          });
-      } else {
-        console.error('Имя пользователя не найдено в Telegram WebApp.');
-      }
+      usernameToUse = telegramWebApp.initDataUnsafe?.user?.username;
+    }
+  
+    // Если приложение запущено в браузере (напрямую)
+    if (!usernameToUse) {
+      const queryParams = new URLSearchParams(window.location.search);
+      usernameToUse = queryParams.get('username') || '';
+    }
+  
+    if (usernameToUse) {
+      setUsername(usernameToUse);
+  
+      // Отправляем данные пользователя на сервер
+      axios.post('/api/user', { username: usernameToUse })
+        .then(response => {
+          console.log('User data saved:', response.data);
+        })
+        .catch(error => {
+          console.error('Error saving user data:', error);
+        });
     } else {
-      console.error('Приложение не запущено в среде Telegram WebApp.');
+      console.error('Имя пользователя не найдено.');
     }
   }, []);
+  
 
 
   const handleMainButtonClick = useCallback((e: React.TouchEvent<HTMLDivElement>) => {
