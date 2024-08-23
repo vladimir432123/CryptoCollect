@@ -39,12 +39,15 @@ bot.start((ctx) => {
     const username = ctx.message.from.username;
     console.log(`Received start command from ${username}`);
 
-    // Сохраняем или обновляем пользователя в базе данных
+    // Логируем данные пользователя
+    console.log('Saving user:', username);
+
     db.query('INSERT INTO user (username) VALUES (?) ON DUPLICATE KEY UPDATE last_seen = NOW()', [username], (err) => {
         if (err) {
             console.error('Database error:', err);
             if (err.code === 'ER_DUP_ENTRY') {
-                // Обработка ошибки дублирующегося имени пользователя, если нужно
+                // Логируем ошибку дублирования
+                console.log('Duplicate entry for user:', username);
             } else {
                 ctx.reply('Произошла ошибка при создании вашего аккаунта. Пожалуйста, попробуйте позже.');
             }
@@ -62,6 +65,7 @@ bot.start((ctx) => {
         );
     });
 });
+
 
 
 // Маршрут для получения данных пользователя по его ID
