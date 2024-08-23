@@ -6,6 +6,7 @@ import Mine from './icons/Mine';
 import Friends from './icons/Friends';
 import MineContent from './MineContent'; // Adjust the path as necessary
 import { FaTasks } from 'react-icons/fa'; // Импортируем иконку задач
+import axios from 'axios';
 
 const Farm: React.FC<{ className?: string }> = ({ className }) => (
   <svg className={className} viewBox="0 0 24 24" fill="currentColor">
@@ -62,19 +63,17 @@ const App: React.FC = () => {
     return () => clearInterval(recoveryInterval);
   }, [maxClicks]);
   useEffect(() => {
-    if (window.Telegram?.WebApp) {
-      const telegramWebApp = window.Telegram.WebApp;
-      const userData = telegramWebApp.initDataUnsafe?.user;
-  
-      if (userData && userData.username) {
-        setUsername(userData.username);
-      } else {
-        console.error('Имя пользователя не найдено в Telegram WebApp.');
-      }
-    } else {
-      console.error('Telegram WebApp SDK не доступен.');
-    }
+    // Загружаем имя пользователя при загрузке приложения
+    axios.get('/api/user/current')
+      .then(response => {
+        const { username } = response.data;
+        setUsername(username);
+      })
+      .catch(error => {
+        console.error('Error loading user data:', error);
+      });
   }, []);
+
   
 
 
