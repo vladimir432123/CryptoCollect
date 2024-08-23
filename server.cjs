@@ -48,8 +48,8 @@ bot.start((ctx) => {
         }
     });
 
-    // Отправляем приветственное сообщение с кнопкой
-    const miniAppUrl = `https://t.me/cryptocollect_bot?startapp=${username}&tgWebApp=true`;
+    // Формируем URL с параметром username
+    const miniAppUrl = `https://app-21c4d0cd-2996-4394-bf8a-a453b9f7e396.cleverapps.io/?username=${encodeURIComponent(username)}`;
 
     ctx.reply(
         'Добро пожаловать! Нажмите на кнопку ниже, чтобы открыть мини-приложение:',
@@ -59,12 +59,11 @@ bot.start((ctx) => {
     );
 });
 
-
 bot.command('openapp', (ctx) => {
     const username = ctx.message.from.username;
     console.log(`Received /openapp command from ${username}`);
 
-    const miniAppUrl = `https://t.me/cryptocollect_bot?startapp=${username}&tgWebApp=true`;
+    const miniAppUrl = `https://app-21c4d0cd-2996-4394-bf8a-a453b9f7e396.cleverapps.io/?username=${encodeURIComponent(username)}`;
 
     ctx.reply(
         'Нажмите на кнопку ниже, чтобы открыть мини-приложение:',
@@ -73,7 +72,6 @@ bot.command('openapp', (ctx) => {
         ])
     );
 });
-
 
 // Маршрут для получения данных пользователя по его ID
 app.get('/api/user/:userId', (req, res) => {
@@ -115,11 +113,9 @@ app.post('/api/user', (req, res) => {
 });
 
 // Обработка запросов, поступающих на вебхук
-// Обработка запросов, поступающих на вебхук
 app.post('/webhook', (req, res) => {
     bot.handleUpdate(req.body, res);
 });
-
 
 const startServer = async () => {
     try {
