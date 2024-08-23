@@ -37,35 +37,32 @@ const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN);
 // Обработка команды /start в боте
 bot.start((ctx) => {
     const username = ctx.message.from.username;
-    console.log(`Received start command from ${username}`);
+    console.log(`Received /start command from ${username}`);
 
     // Сохраняем или обновляем пользователя в базе данных
     db.query('INSERT INTO user (username) VALUES (?) ON DUPLICATE KEY UPDATE last_seen = NOW()', [username], (err) => {
         if (err) {
             console.error('Database error:', err);
-            if (err.code === 'ER_DUP_ENTRY') {
-                // Обработка ошибки дублирующегося имени пользователя, если нужно
-            } else {
-                ctx.reply('Произошла ошибка при создании вашего аккаунта. Пожалуйста, попробуйте позже.');
-            }
-            return;
+        } else {
+            console.log(`User ${username} inserted/updated in database.`);
         }
-
-        // Отправляем приветственное сообщение с кнопкой для открытия мини-приложения
-        const miniAppUrl = `https://t.me/cryptocollect_bot?startapp=${username}&tgWebApp=true`;
-
-        ctx.reply(
-            'Добро пожаловать! Нажмите на кнопку ниже, чтобы открыть мини-приложение:',
-            Markup.inlineKeyboard([
-                Markup.button.url('Открыть мини-приложение', miniAppUrl)
-            ])
-        );
     });
+
+    // Отправляем приветственное сообщение с кнопкой
+    const miniAppUrl = `https://t.me/cryptocollect_bot?startapp=${username}&tgWebApp=true`;
+
+    ctx.reply(
+        'Добро пожаловать! Нажмите на кнопку ниже, чтобы открыть мини-приложение:',
+        Markup.inlineKeyboard([
+            Markup.button.url('Открыть мини-приложение', miniAppUrl)
+        ])
+    );
 });
 
-// Обработка команды /openapp
 bot.command('openapp', (ctx) => {
     const username = ctx.message.from.username;
+    console.log(`Received /openapp command from ${username}`);
+
     const miniAppUrl = `https://t.me/cryptocollect_bot?startapp=${username}&tgWebApp=true`;
 
     ctx.reply(
@@ -75,6 +72,7 @@ bot.command('openapp', (ctx) => {
         ])
     );
 });
+
 
 // Маршрут для получения данных пользователя по его ID
 app.get('/api/user/:userId', (req, res) => {
@@ -116,9 +114,11 @@ app.post('/api/user', (req, res) => {
 });
 
 // Обработка запросов, поступающих на вебхук
+// Обработка запросов, поступающих на вебхук
 app.post('/webhook', (req, res) => {
     bot.handleUpdate(req.body, res);
 });
+
 
 const startServer = async () => {
     try {
