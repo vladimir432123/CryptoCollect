@@ -50,7 +50,7 @@ bot.start((ctx) => {
     });
 
     // Формируем URL для мини-приложения без параметров
-    const miniAppUrl = `https://t.me/cryptocollect_bot?startapp=${username}&tgWebApp=true`;
+    const miniAppUrl = `https://app-21c4d0cd-2996-4394-bf8a-a453b9f7e396.cleverapps.io`;
 
     ctx.reply(
         'Добро пожаловать! Нажмите на кнопку ниже, чтобы открыть мини-приложение:',
