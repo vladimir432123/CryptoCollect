@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import axios from 'axios';
 import './App.css';
 import Hamster from './icons/Hamster';
 import { dollarCoin } from './images';
@@ -63,23 +62,12 @@ const App: React.FC = () => {
     return () => clearInterval(recoveryInterval);
   }, [maxClicks]);
   useEffect(() => {
-    // Проверяем, доступен ли объект Telegram WebApp
     if (window.Telegram?.WebApp) {
       const telegramWebApp = window.Telegram.WebApp;
       const userData = telegramWebApp.initDataUnsafe?.user;
-
-      // Если данные пользователя получены, используем их
+  
       if (userData && userData.username) {
         setUsername(userData.username);
-
-        // Сохраняем данные пользователя на сервере
-        axios.post('/api/user', { username: userData.username })
-          .then(response => {
-            console.log('User data saved:', response.data);
-          })
-          .catch(error => {
-            console.error('Error saving user data:', error);
-          });
       } else {
         console.error('Имя пользователя не найдено в Telegram WebApp.');
       }
@@ -87,6 +75,7 @@ const App: React.FC = () => {
       console.error('Telegram WebApp SDK не доступен.');
     }
   }, []);
+  
 
 
   const handleMainButtonClick = useCallback((e: React.TouchEvent<HTMLDivElement>) => {
