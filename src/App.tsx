@@ -23,7 +23,7 @@ const App: React.FC = () => {
   const [tapIncreaseLevel, setTapIncreaseLevel] = useState(1);
   const [remainingClicks, setRemainingClicks] = useState(maxClicks);
   const [points, setPoints] = useState(100000000);
-  const [username, setUsername] = useState(''); // Добавляем состояние для имени пользователя
+  const [username, setUsername] = useState<string | null>(null);
 
   const [clicks, setClicks] = useState<{ id: number, x: number, y: number, profit: number }[]>([]);
   const [isBoostMenuOpen, setIsBoostMenuOpen] = useState(false);
@@ -63,36 +63,30 @@ const App: React.FC = () => {
     return () => clearInterval(recoveryInterval);
   }, [maxClicks]);
   useEffect(() => {
-    let usernameToUse = '';
-  
-    // Если приложение запущено в среде Telegram
-    if (typeof window !== 'undefined' && window.Telegram?.WebApp) {
+    // Проверяем, доступен ли объект Telegram WebApp
+    if (window.Telegram?.WebApp) {
       const telegramWebApp = window.Telegram.WebApp;
-      usernameToUse = telegramWebApp.initDataUnsafe?.user?.username;
-    }
-  
-    // Если приложение запущено в браузере (напрямую)
-    if (!usernameToUse) {
-      const queryParams = new URLSearchParams(window.location.search);
-      usernameToUse = queryParams.get('username') || '';
-    }
-  
-    if (usernameToUse) {
-      setUsername(usernameToUse);
-  
-      // Отправляем данные пользователя на сервер
-      axios.post('/api/user', { username: usernameToUse })
-        .then(response => {
-          console.log('User data saved:', response.data);
-        })
-        .catch(error => {
-          console.error('Error saving user data:', error);
-        });
+      const userData = telegramWebApp.initDataUnsafe?.user;
+
+      // Если данные пользователя получены, используем их
+      if (userData && userData.username) {
+        setUsername(userData.username);
+
+        // Сохраняем данные пользователя на сервере
+        axios.post('/api/user', { username: userData.username })
+          .then(response => {
+            console.log('User data saved:', response.data);
+          })
+          .catch(error => {
+            console.error('Error saving user data:', error);
+          });
+      } else {
+        console.error('Имя пользователя не найдено в Telegram WebApp.');
+      }
     } else {
-      console.error('Имя пользователя не найдено.');
+      console.error('Telegram WebApp SDK не доступен.');
     }
   }, []);
-  
 
 
   const handleMainButtonClick = useCallback((e: React.TouchEvent<HTMLDivElement>) => {
@@ -186,7 +180,7 @@ const App: React.FC = () => {
           <Hamster size={24} className="text-yellow-400" />
         </div>
         <div>
-          <p className="text-sm text-gray-300">{username}</p> {/* Используем состояние username */}
+        <p className="text-sm text-gray-300">{username ? username : 'Гость'}</p> {/* Используем состояние username */}
         </div>
       </div>
       <div className="flex items-center justify-between space-x-4 mt-1">
