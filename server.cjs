@@ -125,7 +125,7 @@ const startServer = async () => {
         // Удаляем существующий вебхук перед запуском
         await bot.telegram.deleteWebhook({ drop_pending_updates: true });
 
-        const webhookUrl = 'https://app-21c4d0cd-2996-4394-bf8a-a453b9f7e396.cleverapps.io//webhook'; // Обновите на ваш URL
+        const webhookUrl = 'https://app-21c4d0cd-2996-4394-bf8a-a453b9f7e396.cleverapps.io/webhook'; // Обновите на ваш URL
 
         // Устанавливаем новый вебхук
         await bot.telegram.setWebhook(webhookUrl);
