@@ -7,6 +7,7 @@ import Mine from './icons/Mine';
 import Friends from './icons/Friends';
 import MineContent from './MineContent'; // Adjust the path as necessary
 import { FaTasks } from 'react-icons/fa'; // Импортируем иконку задач
+import { useLocation } from 'react-router-dom';
 
 const Farm: React.FC<{ className?: string }> = ({ className }) => (
   <svg className={className} viewBox="0 0 24 24" fill="currentColor">
@@ -24,7 +25,8 @@ const App: React.FC = () => {
   const [remainingClicks, setRemainingClicks] = useState(maxClicks);
   const [points, setPoints] = useState(100000000);
   const [username, setUsername] = useState(''); // Добавляем состояние для имени пользователя
-  
+  const location = useLocation();
+
   const [clicks, setClicks] = useState<{ id: number, x: number, y: number, profit: number }[]>([]);
   const [isBoostMenuOpen, setIsBoostMenuOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState('farm');
@@ -63,27 +65,23 @@ const App: React.FC = () => {
     return () => clearInterval(recoveryInterval);
   }, [maxClicks]);
   useEffect(() => {
-    if (typeof window !== 'undefined' && window.Telegram?.WebApp) {
-      const telegramWebApp = window.Telegram.WebApp;
-      const username = telegramWebApp.initDataUnsafe?.user?.username;
-  
-      if (username) {
-        setUsername(username);
-  
-        // Отправка данных на сервер
-        axios.post('/api/user', { username })
-          .then(response => {
-            console.log('User data saved:', response.data);
-          })
-          .catch(error => {
-            console.error('Error saving user data:', error);
-          });
-      }
-    } else {
-      console.error('Telegram WebApp не доступен или приложение запущено не в среде Telegram.');
+    // Получаем параметры из URL
+    const queryParams = new URLSearchParams(location.search);
+    const usernameFromUrl = queryParams.get('username');
+
+    if (usernameFromUrl) {
+      setUsername(usernameFromUrl);
+
+      // Отправляем данные пользователя на сервер
+      axios.post('/api/user', { username: usernameFromUrl })
+        .then(response => {
+          console.log('User data saved:', response.data);
+        })
+        .catch(error => {
+          console.error('Error saving user data:', error);
+        });
     }
-  }, []);
-  
+  }, [location.search]);
 
 
   const handleMainButtonClick = useCallback((e: React.TouchEvent<HTMLDivElement>) => {
