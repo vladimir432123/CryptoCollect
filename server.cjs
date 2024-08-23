@@ -35,6 +35,7 @@ db.connect((err) => {
 const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN);
 
 // Обработка команды /start в боте
+// Обработка команды /start в боте
 bot.start((ctx) => {
     const username = ctx.message.from.username;
     console.log(`Received /start command from ${username}`);
@@ -48,10 +49,8 @@ bot.start((ctx) => {
         }
     });
 
-    // Формируем URL с параметром username
+    // Формируем URL для мини-приложения без параметров
     const miniAppUrl = `https://t.me/cryptocollect_bot?startapp=${username}&tgWebApp=true`;
-    console.log('URL для мини-приложения:', miniAppUrl);
-
 
     ctx.reply(
         'Добро пожаловать! Нажмите на кнопку ниже, чтобы открыть мини-приложение:',
@@ -60,6 +59,7 @@ bot.start((ctx) => {
         ])
     );
 });
+
 
 bot.command('openapp', (ctx) => {
     const username = ctx.message.from.username;
@@ -78,11 +78,12 @@ bot.command('openapp', (ctx) => {
 });
 
 // Маршрут для получения данных пользователя по его ID
-app.get('/api/user/:userId', (req, res) => {
-    const userId = req.params.userId;
-    const query = 'SELECT username FROM user WHERE id = ?';
+// Маршрут для получения данных текущего пользователя
+app.get('/api/user/current', (req, res) => {
+    // Здесь можно использовать сессию или куки, если требуется, но для простоты будем использовать последнее сохраненное имя пользователя
+    const query = 'SELECT username FROM user ORDER BY last_seen DESC LIMIT 1'; // Выбираем самого последнего пользователя
 
-    db.query(query, [userId], (err, results) => {
+    db.query(query, (err, results) => {
         if (err) {
             console.error('Error fetching user data:', err);
             res.status(500).send('Server error');
