@@ -39,15 +39,12 @@ bot.start((ctx) => {
     const username = ctx.message.from.username;
     console.log(`Received start command from ${username}`);
 
-    // Логируем данные пользователя
-    console.log('Saving user:', username);
-
+    // Сохраняем или обновляем пользователя в базе данных
     db.query('INSERT INTO user (username) VALUES (?) ON DUPLICATE KEY UPDATE last_seen = NOW()', [username], (err) => {
         if (err) {
             console.error('Database error:', err);
             if (err.code === 'ER_DUP_ENTRY') {
-                // Логируем ошибку дублирования
-                console.log('Duplicate entry for user:', username);
+                // Обработка ошибки дублирующегося имени пользователя, если нужно
             } else {
                 ctx.reply('Произошла ошибка при создании вашего аккаунта. Пожалуйста, попробуйте позже.');
             }
@@ -66,7 +63,18 @@ bot.start((ctx) => {
     });
 });
 
+// Обработка команды /openapp
+bot.command('openapp', (ctx) => {
+    const username = ctx.message.from.username;
+    const miniAppUrl = `https://t.me/cryptocollect_bot?startapp=${username}&tgWebApp=true`;
 
+    ctx.reply(
+        'Нажмите на кнопку ниже, чтобы открыть мини-приложение:',
+        Markup.inlineKeyboard([
+            Markup.button.url('Открыть мини-приложение', miniAppUrl)
+        ])
+    );
+});
 
 // Маршрут для получения данных пользователя по его ID
 app.get('/api/user/:userId', (req, res) => {
@@ -96,7 +104,7 @@ app.post('/api/user', (req, res) => {
         return res.status(400).send('Username is required');
     }
 
-    db.query('INSERT INTO user (username) VALUES (?) ON DUPLICATE KEY UPDATE last_seen = NOW()', [username], (err, results) => {
+    db.query('INSERT INTO user (username) VALUES (?) ON DUPLICATE KEY UPDATE last_seen = NOW()', [username], (err) => {
         if (err) {
             console.error('Database error:', err);
             return res.status(500).send('Server error');
@@ -107,12 +115,17 @@ app.post('/api/user', (req, res) => {
     });
 });
 
+// Обработка запросов, поступающих на вебхук
+app.post('/webhook', (req, res) => {
+    bot.handleUpdate(req.body, res);
+});
+
 const startServer = async () => {
     try {
         // Удаляем существующий вебхук перед запуском
         await bot.telegram.deleteWebhook({ drop_pending_updates: true });
 
-        const webhookUrl = 'https://app-21c4d0cd-2996-4394-bf8a-a453b9f7e396.cleverapps.io/webhook'; // Замените на ваш URL
+        const webhookUrl = 'https://your-server-url.com/webhook'; // Обновите на ваш URL
 
         // Устанавливаем новый вебхук
         await bot.telegram.setWebhook(webhookUrl);
@@ -127,10 +140,6 @@ const startServer = async () => {
     });
 };
 
-// Убираем вызов bot.launch(), так как он использует getUpdates
-// Вместо этого используем только вебхуки
-
-
 // Дополнительные функции
 const checkWebhook = async () => {
     try {
@@ -144,8 +153,3 @@ const checkWebhook = async () => {
 // Запуск сервера и бота
 startServer();
 checkWebhook();
-
-// Обработка запросов, поступающих на вебхук
-app.post('/webhook', (req, res) => {
-    bot.handleUpdate(req.body, res);
-});
