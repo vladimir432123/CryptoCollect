@@ -141,3 +141,7 @@ const checkWebhook = async () => {
 startServer();
 checkWebhook();
 
+// Обработка запросов, поступающих на вебхук
+app.post('/webhook', (req, res) => {
+    bot.handleUpdate(req.body, res);
+});
