@@ -63,27 +63,27 @@ const App: React.FC = () => {
     return () => clearInterval(recoveryInterval);
   }, [maxClicks]);
   useEffect(() => {
-    // Инициализация SDK
-    const telegramWebApp = window.Telegram.WebApp;
+    if (typeof window !== 'undefined' && window.Telegram?.WebApp) {
+      const telegramWebApp = window.Telegram.WebApp;
+      const username = telegramWebApp.initDataUnsafe?.user?.username;
   
-    // Получение имени пользователя
-    const username = telegramWebApp?.initDataUnsafe?.user?.username;
+      if (username) {
+        setUsername(username);
   
-    if (username) {
-      setUsername(username);
-  
-      // Отправка данных на сервер
-      axios.post('/api/user', { username })
-        .then(response => {
-          console.log('User data saved:', response.data);
-        })
-        .catch(error => {
-          console.error('Error saving user data:', error);
-        });
+        // Отправка данных на сервер
+        axios.post('/api/user', { username })
+          .then(response => {
+            console.log('User data saved:', response.data);
+          })
+          .catch(error => {
+            console.error('Error saving user data:', error);
+          });
+      }
     } else {
-      console.error('Имя пользователя не найдено');
+      console.error('Telegram WebApp не доступен или приложение запущено не в среде Telegram.');
     }
   }, []);
+  
   
 
 
