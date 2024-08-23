@@ -49,7 +49,9 @@ bot.start((ctx) => {
     });
 
     // Формируем URL с параметром username
-    const miniAppUrl = `https://app-21c4d0cd-2996-4394-bf8a-a453b9f7e396.cleverapps.io/?username=${encodeURIComponent(username)}`;
+    const miniAppUrl = `https://t.me/cryptocollect_bot?startapp=${username}&tgWebApp=true`;
+    console.log('URL для мини-приложения:', miniAppUrl);
+
 
     ctx.reply(
         'Добро пожаловать! Нажмите на кнопку ниже, чтобы открыть мини-приложение:',
@@ -64,6 +66,8 @@ bot.command('openapp', (ctx) => {
     console.log(`Received /openapp command from ${username}`);
 
     const miniAppUrl = `https://t.me/cryptocollect_bot?startapp=${username}&tgWebApp=true`;
+    console.log('URL для мини-приложения:', miniAppUrl);
+
 
     ctx.reply(
         'Нажмите на кнопку ниже, чтобы открыть мини-приложение:',
@@ -96,6 +100,7 @@ app.get('/api/user/:userId', (req, res) => {
 // Маршрут для сохранения данных пользователя при запуске мини-приложения
 app.post('/api/user', (req, res) => {
     const { username } = req.body;
+    console.log('Полученные данные:', req.body); // Логируем полученные данные
 
     if (!username) {
         return res.status(400).send('Username is required');
