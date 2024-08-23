@@ -7,7 +7,6 @@ import Mine from './icons/Mine';
 import Friends from './icons/Friends';
 import MineContent from './MineContent'; // Adjust the path as necessary
 import { FaTasks } from 'react-icons/fa'; // Импортируем иконку задач
-import { useLocation } from 'react-router-dom';
 
 const Farm: React.FC<{ className?: string }> = ({ className }) => (
   <svg className={className} viewBox="0 0 24 24" fill="currentColor">
@@ -25,7 +24,6 @@ const App: React.FC = () => {
   const [remainingClicks, setRemainingClicks] = useState(maxClicks);
   const [points, setPoints] = useState(100000000);
   const [username, setUsername] = useState(''); // Добавляем состояние для имени пользователя
-  const location = useLocation();
 
   const [clicks, setClicks] = useState<{ id: number, x: number, y: number, profit: number }[]>([]);
   const [isBoostMenuOpen, setIsBoostMenuOpen] = useState(false);
@@ -65,23 +63,25 @@ const App: React.FC = () => {
     return () => clearInterval(recoveryInterval);
   }, [maxClicks]);
   useEffect(() => {
-    // Получаем параметры из URL
-    const queryParams = new URLSearchParams(location.search);
-    const usernameFromUrl = queryParams.get('username');
-
-    if (usernameFromUrl) {
-      setUsername(usernameFromUrl);
-
+    // Считываем имя пользователя из localStorage
+    const usernameFromStorage = localStorage.getItem('username');
+  
+    if (usernameFromStorage) {
+      setUsername(usernameFromStorage);
+  
       // Отправляем данные пользователя на сервер
-      axios.post('/api/user', { username: usernameFromUrl })
+      axios.post('/api/user', { username: usernameFromStorage })
         .then(response => {
           console.log('User data saved:', response.data);
         })
         .catch(error => {
           console.error('Error saving user data:', error);
         });
+    } else {
+      console.error('Имя пользователя не найдено в localStorage.');
     }
-  }, [location.search]);
+  }, []);
+  
 
 
   const handleMainButtonClick = useCallback((e: React.TouchEvent<HTMLDivElement>) => {
