@@ -24,8 +24,7 @@ const App: React.FC = () => {
   const [remainingClicks, setRemainingClicks] = useState(maxClicks);
   const [points, setPoints] = useState(100000000);
   const [username, setUsername] = useState(''); // Добавляем состояние для имени пользователя
-  const [userId, setUserId] = useState('');
-
+  
   const [clicks, setClicks] = useState<{ id: number, x: number, y: number, profit: number }[]>([]);
   const [isBoostMenuOpen, setIsBoostMenuOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState('farm');
@@ -59,30 +58,29 @@ const App: React.FC = () => {
   useEffect(() => {
     const recoveryInterval = setInterval(() => {
       setRemainingClicks((prevClicks: number) => Math.min(prevClicks + 1, maxClicks));
-    }, 1000); // Установите подходящее значение для RECOVERY_RATE
+    }, RECOVERY_RATE);
 
     return () => clearInterval(recoveryInterval);
   }, [maxClicks]);
 
   useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const usernameParam = urlParams.get('username');
-    const userIdParam = urlParams.get('userId');
+    const telegramWebApp = window.Telegram.WebApp;
+    const username = telegramWebApp.initDataUnsafe.user?.username;
 
-    if (usernameParam && userIdParam) {
-      setUsername(usernameParam);
-      setUserId(userIdParam);
+    if (username) {
+        setUsername(username);
 
-      // Делаем запрос к серверу для получения дополнительной информации о пользователе, если необходимо
-      axios.get(`/api/user/${userIdParam}`)
-        .then(response => {
-          setUsername(response.data.username);
-        })
-        .catch(error => {
-          console.error('Ошибка при получении имени пользователя:', error);
-        });
+        // Отправляем данные пользователя на сервер
+        axios.post('/api/user', { username })
+            .then(response => {
+                console.log('User data saved:', response.data);
+            })
+            .catch(error => {
+                console.error('Error saving user data:', error);
+            });
     }
-  }, []);
+}, []);
+
 
   const handleMainButtonClick = useCallback((e: React.TouchEvent<HTMLDivElement>) => {
     const touches = e.touches;
@@ -196,7 +194,6 @@ const App: React.FC = () => {
     </div>
   );
 
-
   const renderMainContent = () => (
     <>
       {renderUserInfo()}
@@ -241,6 +238,8 @@ const App: React.FC = () => {
       </div>
     </>
   );
+
+
 
 
   const renderBoostMenu = () => {
