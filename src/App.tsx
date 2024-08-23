@@ -62,24 +62,29 @@ const App: React.FC = () => {
 
     return () => clearInterval(recoveryInterval);
   }, [maxClicks]);
-
   useEffect(() => {
+    // Инициализация SDK
     const telegramWebApp = window.Telegram.WebApp;
-    const username = telegramWebApp.initDataUnsafe.user?.username;
-
+  
+    // Получение имени пользователя
+    const username = telegramWebApp?.initDataUnsafe?.user?.username;
+  
     if (username) {
-        setUsername(username);
-
-        // Отправляем данные пользователя на сервер
-        axios.post('/api/user', { username })
-            .then(response => {
-                console.log('User data saved:', response.data);
-            })
-            .catch(error => {
-                console.error('Error saving user data:', error);
-            });
+      setUsername(username);
+  
+      // Отправка данных на сервер
+      axios.post('/api/user', { username })
+        .then(response => {
+          console.log('User data saved:', response.data);
+        })
+        .catch(error => {
+          console.error('Error saving user data:', error);
+        });
+    } else {
+      console.error('Имя пользователя не найдено');
     }
-}, []);
+  }, []);
+  
 
 
   const handleMainButtonClick = useCallback((e: React.TouchEvent<HTMLDivElement>) => {
