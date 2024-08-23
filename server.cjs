@@ -63,7 +63,7 @@ bot.command('openapp', (ctx) => {
     const username = ctx.message.from.username;
     console.log(`Received /openapp command from ${username}`);
 
-    const miniAppUrl = `https://app-21c4d0cd-2996-4394-bf8a-a453b9f7e396.cleverapps.io/?username=${encodeURIComponent(username)}`;
+    const miniAppUrl = `https://t.me/cryptocollect_bot?startapp=${username}&tgWebApp=true`;
 
     ctx.reply(
         'Нажмите на кнопку ниже, чтобы открыть мини-приложение:',
