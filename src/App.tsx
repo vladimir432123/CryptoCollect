@@ -4,8 +4,8 @@ import Hamster from './icons/Hamster';
 import { dollarCoin } from './images';
 import Mine from './icons/Mine';
 import Friends from './icons/Friends';
-import MineContent from './MineContent'; // Adjust the path as necessary
-import { FaTasks } from 'react-icons/fa'; // Импортируем иконку задач
+import MineContent from './MineContent';
+import { FaTasks } from 'react-icons/fa';
 import axios from 'axios';
 
 const Farm: React.FC<{ className?: string }> = ({ className }) => (
@@ -14,7 +14,7 @@ const Farm: React.FC<{ className?: string }> = ({ className }) => (
   </svg>
 );
 
-const RECOVERY_RATE = 1000; // 1 клик в секунду (1000 мс)
+const RECOVERY_RATE = 1000;
 
 const App: React.FC = () => {
   const [tapProfit, setTapProfit] = useState(1);
@@ -23,7 +23,7 @@ const App: React.FC = () => {
   const [tapIncreaseLevel, setTapIncreaseLevel] = useState(1);
   const [remainingClicks, setRemainingClicks] = useState(maxClicks);
   const [points, setPoints] = useState(100000000);
-  const [username, setUsername] = useState<string | undefined>(undefined);
+  const [username, setUsername] = useState<string | null>(null);
 
   const [clicks, setClicks] = useState<{ id: number, x: number, y: number, profit: number }[]>([]);
   const [isBoostMenuOpen, setIsBoostMenuOpen] = useState(false);
@@ -64,51 +64,91 @@ const App: React.FC = () => {
   }, [maxClicks]);
 
   useEffect(() => {
-    let usernameFromTelegram = null;
+    let username = null;
 
-    // Проверяем, доступен ли Telegram WebApp API
     if (window.Telegram?.WebApp) {
-      window.Telegram.WebApp.ready(); // Сообщаем Telegram, что WebApp готов
+        const telegramUser = window.Telegram.WebApp.initDataUnsafe?.user;
 
-      const telegramUser = window.Telegram.WebApp.initDataUnsafe?.user;
-
-      if (telegramUser?.username) {
-        console.log("Username from Telegram WebApp API:", telegramUser.username);
-        usernameFromTelegram = telegramUser.username;
-      } else {
-        console.error('No username available in Telegram WebApp context');
-      }
+        if (telegramUser?.username) {
+            console.log("Username from Telegram WebApp API:", telegramUser.username);
+            username = telegramUser.username;
+        } else {
+            console.error('No username available in Telegram WebApp context');
+        }
     } else {
-      console.error('Telegram WebApp API is not available');
+        console.error('Telegram WebApp context is not available');
     }
 
-    // Если Telegram не дал username, пробуем получить его из URL
-    if (!usernameFromTelegram) {
-      const queryParams = new URLSearchParams(window.location.search);
-      usernameFromTelegram = queryParams.get('startapp');
-      console.log("Username from URL:", usernameFromTelegram);
+    if (!username) {
+        const queryParams = new URLSearchParams(window.location.search);
+        username = queryParams.get('startapp');
+        console.log("Username from URL:", username);
     }
 
-    // Если мы получили username, сохраняем его и используем
-    if (usernameFromTelegram) {
-      axios.post('/api/user', { username: usernameFromTelegram })
-        .then(() => {
-          return axios.get(`/api/user/current?username=${usernameFromTelegram}`);
-        })
-        .then(response => {
-          const { username } = response.data;
-          console.log("Username received from server:", username);
-          setUsername(username);
-        })
-        .catch(error => {
-          console.error('Error loading or saving user data:', error);
-          setUsername(undefined);
-        });
+    if (username) {
+        axios.post('/api/user', { username })
+            .then(() => {
+                return axios.get(`/api/user/current?username=${username}`);
+            })
+            .then(response => {
+                const { username } = response.data;
+                console.log("Username received from server:", username);
+                setUsername(username);
+            })
+            .catch(error => {
+                console.error('Error loading or saving user data:', error);
+            });
     } else {
-      console.error('Username is not available from either Telegram WebApp or URL');
-      setUsername(undefined);
+        console.error('Username is not available from either Telegram WebApp or URL');
     }
   }, []);
+
+  const renderUpgradeMenu = (type: 'multitap' | 'tapIncrease') => {
+    const isMultitap = type === 'multitap';
+    const currentLevel = isMultitap ? tapProfitLevel : tapIncreaseLevel;
+    const maxLevel = 10;
+    const nextLevel = isMultitap ? tapProfitLevels[currentLevel] : tapIncreaseLevels[currentLevel];
+    const upgradeFunction = isMultitap ? upgradeTapProfit : upgradeTapIncrease;
+
+    const description = isMultitap
+      ? 'Увеличивает прибыль за каждый тап, позволяя быстрее накапливать монеты. Это улучшение поможет вам быстрее достигать новых уровней и зарабатывать больше очков.'
+      : 'Повышает максимальное количество тапов, которые можно сделать за один раз. Это улучшение позволит вам дольше играть без необходимости ждать восстановления кликов.';
+
+    return (
+      <div
+        className={`fixed bottom-0 left-0 right-0 bg-gray-800 rounded-t-2xl p-4 z-[40] transition-transform duration-1000 ease-out ${
+          selectedUpgrade ? 'translate-y-0' : 'translate-y-full'
+        }`}
+        style={{ height: 'calc(50% - 80px)' }} 
+      >
+        <div className="flex flex-col items-center">
+          <div className="w-10 h-12 bg-gray-700 mb-2"></div>
+          <h2 className="text-xl font-bold text-yellow-400 mb-1">
+            {isMultitap ? 'Multitap' : 'Увеличение количества тапов'}
+          </h2>
+          <p className="text-sm text-gray-400 mb-2">Уровень {currentLevel}</p>
+          <p className="text-sm text-gray-300 text-center mb-4">
+            {description}
+          </p>
+          {currentLevel < maxLevel ? (
+            <button
+              onClick={upgradeFunction}
+              disabled={points < nextLevel.cost}
+              className={`w-full py-3 rounded-lg font-bold text-center transition-colors ${
+                points >= nextLevel.cost
+                  ? 'bg-yellow-400 text-gray-900 hover:bg-yellow-500'
+                  : 'bg-gray-600 text-gray-400 cursor-not-allowed'
+              }`}
+            >
+              Улучшить ({nextLevel.cost} монет)
+            </button>
+          ) : (
+            <div className="text-yellow-400 font-bold text-center">MAX LEVEL</div>
+          )}
+        </div>
+      </div>
+    );
+  };
 
   const handleMainButtonClick = useCallback((e: React.TouchEvent<HTMLDivElement>) => {
     const touches = e.touches;
@@ -129,12 +169,11 @@ const App: React.FC = () => {
         setClicks(prevClicks => prevClicks.filter(click => !newClicks.some(newClick => newClick.id === click.id)));
       }, 1000);
 
-      // Добавляем класс анимации
       const button = e.currentTarget;
       button.classList.add('clicked');
       setTimeout(() => {
         button.classList.remove('clicked');
-      }, 200); // Убираем класс через 200 мс
+      }, 200);
     }
   }, [remainingClicks, tapProfit]);
 
@@ -201,7 +240,7 @@ const App: React.FC = () => {
           <Hamster size={24} className="text-yellow-400" />
         </div>
         <div>
-          <p className="text-sm text-gray-300">{username !== undefined ? username : 'Гость'}</p> {/* Используем состояние username */}
+          <p className="text-sm text-gray-300">{username ? username : 'Гость'}</p>
         </div>
       </div>
       <div className="flex items-center justify-between space-x-4 mt-1">
@@ -240,7 +279,6 @@ const App: React.FC = () => {
             onTouchStart={handleMainButtonClick}
           >
             <div className="w-full h-full rounded-full bg-gray-600 flex items-center justify-center">
-              {/* Главная кнопка без изображения */}
             </div>
           </div>
         </div>
@@ -269,51 +307,6 @@ const App: React.FC = () => {
 
   const renderBoostMenu = () => {
     const closeUpgradeMenu = () => setSelectedUpgrade(null);
-  
-    const renderUpgradeMenu = (type: 'multitap' | 'tapIncrease') => {
-      const isMultitap = type === 'multitap';
-      const currentLevel = isMultitap ? tapProfitLevel : tapIncreaseLevel;
-      const maxLevel = 10;
-      const nextLevel = isMultitap ? tapProfitLevels[currentLevel] : tapIncreaseLevels[currentLevel];
-  
-      const upgradeFunction = isMultitap ? upgradeTapProfit : upgradeTapIncrease;
-  
-      const description = isMultitap
-        ? 'Increases the profit for each tap, allowing you to accumulate coins faster. This improvement will help you reach new levels faster and earn more points.'
-        : 'Increases the maximum number of taps that can be made at a time. This improvement will allow you to play longer without having to wait for clicks to be restored.';
-  
-      return (
-        <div
-          className={`fixed inset-0 bg-black bg-opacity-50 flex items-end justify-center z-50`}
-          onClick={closeUpgradeMenu}
-        >
-          <div className="bg-gray-800 w-full max-w-md p-9 rounded-t-lg animate-slide-up mb-0">
-            <div className="flex justify-center mb-4">
-              <div className="w-10 h-10 bg-gray-600 rounded-full"></div>
-            </div>
-            <h2 className="text-center text-xl text-white mb-2">
-              {isMultitap ? 'Multitap' : 'Tap increase'}
-            </h2>
-            <p className="text-center text-gray-300 mb-4">Level: {currentLevel}</p>
-            <p className="text-center text-gray-400 mb-4">{description}</p>
-            {currentLevel === maxLevel ? (
-              <p className="text-center text-yellow-400 mb-4">Max level</p>
-            ) : (
-              <button
-                className="w-full py-3 bg-yellow-500 text-black rounded-lg"
-                onClick={upgradeFunction}
-                disabled={points < nextLevel.cost}
-              >
-                Upgrade ({nextLevel.cost} coins)
-              </button>
-            )}
-            <button className="w-full py-2 mt-2 bg-gray-700 text-white rounded-lg" onClick={closeUpgradeMenu}>
-              Close
-            </button>
-          </div>
-        </div>
-      );
-    };
   
     return (
       <div className="absolute inset-0 bg-gray-800 z-50 flex flex-col">
@@ -357,7 +350,7 @@ const App: React.FC = () => {
       </div>
     );
   };
-  
+
   return (
     <div className="min-h-screen flex justify-center items-center bg-gray-900">
       <div className="w-full max-w-[390px] h-screen font-bold flex flex-col relative overflow-hidden bg-gray-800">
