@@ -41,7 +41,7 @@ bot.start((ctx) => {
     console.log(`Received /start command from ${username}`);
 
     // Сохраняем или обновляем пользователя в базе данных
-    db.query('INSERT INTO user (username) VALUES (?) ON DUPLICATE KEY UPDATE last_seen = NOW()', [username], (err) => {
+    db.query('INSERT INTO user (username) VALUES (?) ON DUPLICATE KEY UPDATE username = VALUES(username)', [username], (err) => {
         if (err) {
             console.error('Database error:', err);
         } else {
@@ -59,6 +59,7 @@ bot.start((ctx) => {
         ])
     );
 });
+
 
 
 bot.command('openapp', (ctx) => {
