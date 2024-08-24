@@ -66,18 +66,15 @@ const App: React.FC = () => {
 
 
   useEffect(() => {
-    const queryParams = new URLSearchParams(window.location.search);
-    let username = queryParams.get('startapp'); // Получаем username из URL параметров
-    console.log("Username from URL:", username);
+    let username = null;
 
-    // Попробуем получить данные из Telegram WebApp, если они доступны
+    // Проверяем, доступен ли Telegram WebApp API
     if (window.Telegram?.WebApp) {
         const telegramUser = window.Telegram.WebApp.initDataUnsafe?.user;
-        console.log("Telegram WebApp Data:", window.Telegram.WebApp.initDataUnsafe);
 
         if (telegramUser?.username) {
-            console.log("Username from Telegram:", telegramUser.username);
-            username = telegramUser.username; // Используем имя пользователя из Telegram, если оно доступно
+            console.log("Username from Telegram WebApp API:", telegramUser.username);
+            username = telegramUser.username;
         } else {
             console.error('No username available in Telegram WebApp context');
         }
@@ -85,7 +82,14 @@ const App: React.FC = () => {
         console.error('Telegram WebApp context is not available');
     }
 
-    // Если мы получили username, используем его для запроса на сервер
+    // Если Telegram не дал username, пробуем получить его из URL
+    if (!username) {
+        const queryParams = new URLSearchParams(window.location.search);
+        username = queryParams.get('startapp');
+        console.log("Username from URL:", username);
+    }
+
+    // Если мы получили username, сохраняем его и используем
     if (username) {
         axios.post('/api/user', { username })
             .then(() => {
@@ -100,9 +104,10 @@ const App: React.FC = () => {
                 console.error('Error loading or saving user data:', error);
             });
     } else {
-        console.error('Username is not available in URL or Telegram WebApp');
+        console.error('Username is not available from either Telegram WebApp or URL');
     }
 }, []);
+
 
 
 
