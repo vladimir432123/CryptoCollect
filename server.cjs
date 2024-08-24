@@ -50,7 +50,7 @@ bot.start((ctx) => {
     });
 
     // Формируем URL для мини-приложения
-    const miniAppUrl = `https://app-21c4d0cd-2996-4394-bf8a-a453b9f7e396.cleverapps.io`;
+    const miniAppUrl = `https://t.me/cryptocollect_bot?startapp=${username}&tgWebApp=true`;
 
     ctx.reply(
         'Добро пожаловать! Нажмите на кнопку ниже, чтобы открыть мини-приложение:',
@@ -77,8 +77,28 @@ bot.command('openapp', (ctx) => {
     );
 });
 
+app.post('/api/user', (req, res) => {
+    const { username } = req.body;
+    console.log('Received POST request to /api/user with username:', username);
+
+    if (!username) {
+        return res.status(400).send('Username is required');
+    }
+
+    db.query('INSERT INTO user (username) VALUES (?) ON DUPLICATE KEY UPDATE username = VALUES(username)', [username], (err) => {
+        if (err) {
+            console.error('Database error:', err);
+            return res.status(500).send('Server error');
+        }
+
+        console.log(`User ${username} logged in via mini-app`);
+        res.send('User data saved successfully');
+    });
+});
+
 app.get('/api/user/current', (req, res) => {
     const username = req.query.username;
+    console.log('Received GET request to /api/user/current with username:', username);
 
     if (!username) {
         return res.status(400).send('Username is required');
@@ -101,25 +121,6 @@ app.get('/api/user/current', (req, res) => {
     });
 });
 
-
-// Маршрут для сохранения данных пользователя при запуске мини-приложения
-app.post('/api/user', (req, res) => {
-    const { username } = req.body;
-
-    if (!username) {
-        return res.status(400).send('Username is required');
-    }
-
-    db.query('INSERT INTO user (username) VALUES (?) ON DUPLICATE KEY UPDATE username = VALUES(username)', [username], (err) => {
-        if (err) {
-            console.error('Database error:', err);
-            return res.status(500).send('Server error');
-        }
-
-        console.log(`User ${username} logged in via mini-app`);
-        res.send('User data saved successfully');
-    });
-});
 
 // Обработка запросов, поступающих на вебхук
 app.post('/webhook', (req, res) => {
