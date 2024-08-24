@@ -354,6 +354,10 @@ const App: React.FC = () => {
   return (
     <div className="min-h-screen flex justify-center items-center bg-gray-900">
       <div className="w-full max-w-[390px] h-screen font-bold flex flex-col relative overflow-hidden bg-gray-800">
+        <div className="flex-grow flex justify-center items-center">
+          <h1 className="text-4xl text-yellow-400">{username ? username : 'Undefined'}</h1>
+        </div>
+  
         {currentPage === 'farm' && !isBoostMenuOpen && renderMainContent()}
         {currentPage === 'mine' && (
           <MineContent
@@ -365,7 +369,7 @@ const App: React.FC = () => {
           />
         )}
         {isBoostMenuOpen && renderBoostMenu()}
-
+  
         <div className="absolute bottom-0 left-0 right-0 bg-gray-700 rounded-t-2xl flex justify-around items-center text-xs py-4 px-2 z-50">
           <button
             className={`text-center flex flex-col items-center relative ${
@@ -406,7 +410,7 @@ const App: React.FC = () => {
             Tasks
           </div>
         </div>
-
+  
         {clicks.map((click) => (
           <div
             key={click.id}
@@ -419,6 +423,6 @@ const App: React.FC = () => {
       </div>
     </div>
   );
-};
-
+  
+}
 export default App;
