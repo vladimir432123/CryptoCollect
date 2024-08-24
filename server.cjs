@@ -80,13 +80,13 @@ bot.command('openapp', (ctx) => {
 // Маршрут для получения данных пользователя по его ID
 // Маршрут для получения данных текущего пользователя
 app.get('/api/user/current', (req, res) => {
-    const username = req.query.username;  // Получаем имя пользователя из запроса
-    
+    const username = req.query.username;
+
     if (!username) {
         return res.status(400).send('Username is required');
     }
 
-    const query = 'SELECT username FROM user WHERE username = ? LIMIT 1'; // Ищем пользователя по имени
+    const query = 'SELECT username FROM user WHERE username = ? LIMIT 1';
 
     db.query(query, [username], (err, results) => {
         if (err) {
@@ -106,7 +106,6 @@ app.get('/api/user/current', (req, res) => {
 // Маршрут для сохранения данных пользователя при запуске мини-приложения
 app.post('/api/user', (req, res) => {
     const { username } = req.body;
-    console.log('Полученные данные:', req.body); // Логируем полученные данные
 
     if (!username) {
         return res.status(400).send('Username is required');
@@ -122,7 +121,6 @@ app.post('/api/user', (req, res) => {
         res.send('User data saved successfully');
     });
 });
-
 // Обработка запросов, поступающих на вебхук
 app.post('/webhook', (req, res) => {
     bot.handleUpdate(req.body, res);
