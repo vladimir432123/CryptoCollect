@@ -67,10 +67,26 @@ const App: React.FC = () => {
 
   useEffect(() => {
     const queryParams = new URLSearchParams(window.location.search);
-    const username = queryParams.get('startapp'); // Получаем username из URL параметров
+    let username = queryParams.get('startapp'); // Получаем username из URL параметров
+    console.log("Username from URL:", username);
 
+    // Попробуем получить данные из Telegram WebApp, если они доступны
+    if (window.Telegram?.WebApp) {
+        const telegramUser = window.Telegram.WebApp.initDataUnsafe?.user;
+        console.log("Telegram WebApp Data:", window.Telegram.WebApp.initDataUnsafe);
+
+        if (telegramUser?.username) {
+            console.log("Username from Telegram:", telegramUser.username);
+            username = telegramUser.username; // Используем имя пользователя из Telegram, если оно доступно
+        } else {
+            console.error('No username available in Telegram WebApp context');
+        }
+    } else {
+        console.error('Telegram WebApp context is not available');
+    }
+
+    // Если мы получили username, используем его для запроса на сервер
     if (username) {
-        // Сохраняем или обновляем пользователя на сервере
         axios.post('/api/user', { username })
             .then(() => {
                 return axios.get(`/api/user/current?username=${username}`);
@@ -84,7 +100,7 @@ const App: React.FC = () => {
                 console.error('Error loading or saving user data:', error);
             });
     } else {
-        console.error('Username is not available in URL');
+        console.error('Username is not available in URL or Telegram WebApp');
     }
 }, []);
 
