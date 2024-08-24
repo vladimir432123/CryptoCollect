@@ -66,27 +66,24 @@ const App: React.FC = () => {
 
 
   useEffect(() => {
-    if (window.Telegram.WebApp) {
+    if (window.Telegram?.WebApp) {
         const telegramUser = window.Telegram.WebApp.initDataUnsafe?.user;
+        console.log("Telegram WebApp Data:", window.Telegram.WebApp.initDataUnsafe); // Отладка данных WebApp
 
         if (telegramUser?.username) {
             const username = telegramUser.username;
 
-            // Сохранение или обновление пользователя на сервере
             axios.post('/api/user', { username })
                 .then(() => {
-                    // Получаем имя пользователя для отображения
-                    axios.get(`/api/user/current?username=${username}`)
-                        .then(response => {
-                            const { username } = response.data;
-                            setUsername(username);
-                        })
-                        .catch(error => {
-                            console.error('Error loading user data:', error);
-                        });
+                    return axios.get(`/api/user/current?username=${username}`);
+                })
+                .then(response => {
+                    const { username } = response.data;
+                    console.log("Username received from server:", username);
+                    setUsername(username);
                 })
                 .catch(error => {
-                    console.error('Error saving user data:', error);
+                    console.error('Error loading or saving user data:', error);
                 });
         } else {
             console.error('No username available in Telegram WebApp context');
@@ -95,6 +92,7 @@ const App: React.FC = () => {
         console.error('Telegram WebApp context is not available');
     }
 }, []);
+
 
 
 
