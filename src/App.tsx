@@ -62,17 +62,26 @@ const App: React.FC = () => {
 
     return () => clearInterval(recoveryInterval);
   }, [maxClicks]);
+
+
+
   useEffect(() => {
     // Загружаем имя пользователя при загрузке приложения
-    axios.get('/api/user/current')
-      .then(response => {
-        const { username } = response.data;
-        setUsername(username);
-      })
-      .catch(error => {
-        console.error('Error loading user data:', error);
-      });
-  }, []);
+    const queryUsername = new URLSearchParams(window.location.search).get('username');
+    
+    if (queryUsername) {
+        axios.get(`/api/user/current?username=${queryUsername}`)
+            .then(response => {
+                const { username } = response.data;
+                setUsername(username);
+            })
+            .catch(error => {
+                console.error('Error loading user data:', error);
+            });
+    } else {
+        console.error('Username not provided in URL');
+    }
+}, []);
 
   
 
