@@ -41,7 +41,7 @@ bot.start((ctx) => {
     console.log(`Received /start command from ${username}`);
 
     // Сохраняем или обновляем пользователя в базе данных
-    db.query('INSERT INTO user (username) VALUES (?) ON DUPLICATE KEY UPDATE username = VALUES(username)', [username], (err) => {
+    db.query('INSERT INTO user (username) VALUES (?) ON DUPLICATE KEY UPDATE last_seen = NOW()', [username], (err) => {
         if (err) {
             console.error('Database error:', err);
         } else {
@@ -61,7 +61,6 @@ bot.start((ctx) => {
 });
 
 
-
 bot.command('openapp', (ctx) => {
     const username = ctx.message.from.username;
     console.log(`Received /openapp command from ${username}`);
@@ -78,8 +77,6 @@ bot.command('openapp', (ctx) => {
     );
 });
 
-// Маршрут для получения данных пользователя по его ID
-// Маршрут для получения данных текущего пользователя
 app.get('/api/user/current', (req, res) => {
     const username = req.query.username;
 
@@ -104,6 +101,7 @@ app.get('/api/user/current', (req, res) => {
     });
 });
 
+
 // Маршрут для сохранения данных пользователя при запуске мини-приложения
 app.post('/api/user', (req, res) => {
     const { username } = req.body;
@@ -112,7 +110,7 @@ app.post('/api/user', (req, res) => {
         return res.status(400).send('Username is required');
     }
 
-    db.query('INSERT INTO user (username) VALUES (?) ON DUPLICATE KEY UPDATE last_seen = NOW()', [username], (err) => {
+    db.query('INSERT INTO user (username) VALUES (?) ON DUPLICATE KEY UPDATE username = VALUES(username)', [username], (err) => {
         if (err) {
             console.error('Database error:', err);
             return res.status(500).send('Server error');
@@ -122,6 +120,7 @@ app.post('/api/user', (req, res) => {
         res.send('User data saved successfully');
     });
 });
+
 // Обработка запросов, поступающих на вебхук
 app.post('/webhook', (req, res) => {
     bot.handleUpdate(req.body, res);
