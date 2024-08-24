@@ -66,24 +66,36 @@ const App: React.FC = () => {
 
 
   useEffect(() => {
-    // Загружаем имя пользователя при загрузке приложения
-    const queryUsername = new URLSearchParams(window.location.search).get('username');
-    
-    if (queryUsername) {
-        axios.get(`/api/user/current?username=${queryUsername}`)
-            .then(response => {
-                const { username } = response.data;
-                setUsername(username);
-            })
-            .catch(error => {
-                console.error('Error loading user data:', error);
-            });
+    if (window.Telegram.WebApp) {
+        const telegramUser = window.Telegram.WebApp.initDataUnsafe?.user;
+
+        if (telegramUser?.username) {
+            const username = telegramUser.username;
+
+            // Сохранение или обновление пользователя на сервере
+            axios.post('/api/user', { username })
+                .then(() => {
+                    // Получаем имя пользователя для отображения
+                    axios.get(`/api/user/current?username=${username}`)
+                        .then(response => {
+                            const { username } = response.data;
+                            setUsername(username);
+                        })
+                        .catch(error => {
+                            console.error('Error loading user data:', error);
+                        });
+                })
+                .catch(error => {
+                    console.error('Error saving user data:', error);
+                });
+        } else {
+            console.error('No username available in Telegram WebApp context');
+        }
     } else {
-        console.error('Username not provided in URL');
+        console.error('Telegram WebApp context is not available');
     }
 }, []);
 
-  
 
 
   const handleMainButtonClick = useCallback((e: React.TouchEvent<HTMLDivElement>) => {
