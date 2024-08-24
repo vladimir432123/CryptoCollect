@@ -49,7 +49,7 @@ bot.start((ctx) => {
         }
     });
 
-    // Формируем URL для мини-приложения без параметров
+    // Формируем URL для мини-приложения
     const miniAppUrl = `https://app-21c4d0cd-2996-4394-bf8a-a453b9f7e396.cleverapps.io`;
 
     ctx.reply(
@@ -80,10 +80,15 @@ bot.command('openapp', (ctx) => {
 // Маршрут для получения данных пользователя по его ID
 // Маршрут для получения данных текущего пользователя
 app.get('/api/user/current', (req, res) => {
-    // Здесь можно использовать сессию или куки, если требуется, но для простоты будем использовать последнее сохраненное имя пользователя
-    const query = 'SELECT username FROM user ORDER BY last_seen DESC LIMIT 1'; // Выбираем самого последнего пользователя
+    const username = req.query.username;  // Получаем имя пользователя из запроса
+    
+    if (!username) {
+        return res.status(400).send('Username is required');
+    }
 
-    db.query(query, (err, results) => {
+    const query = 'SELECT username FROM user WHERE username = ? LIMIT 1'; // Ищем пользователя по имени
+
+    db.query(query, [username], (err, results) => {
         if (err) {
             console.error('Error fetching user data:', err);
             res.status(500).send('Server error');
