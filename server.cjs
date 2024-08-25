@@ -123,6 +123,14 @@ app.post('/api/user', (req, res) => {
 
     console.log('Received initData:', initData);  // Логируем все полученные данные
 
+    const checkString = Object.keys(initData)
+        .filter(key => key !== 'hash')  // Исключаем хеш из строки
+        .sort()  // Сортируем параметры по алфавиту
+        .map(key => `${key}=${initData[key]}`)  // Создаем пару ключ-значение
+        .join('\n');  // Соединяем их в одну строку
+
+    console.log('Check String:', checkString);  // Логируем сформированную строку для проверки
+
     if (!checkTelegramAuth(initData)) {
         console.log('Telegram auth failed');
         return res.status(403).send('Forbidden');
