@@ -6,8 +6,8 @@ import Mine from './icons/Mine';
 import Friends from './icons/Friends';
 import MineContent from './MineContent'; // Adjust the path as necessary
 import { FaTasks } from 'react-icons/fa'; // Импортируем иконку задач
-import axios from 'axios';
-import init from '@twa-dev/sdk';
+import WebApp from '@twa-dev/sdk'; // Правильный импорт WebApp
+
 
 const Farm: React.FC<{ className?: string }> = ({ className }) => (
   <svg className={className} viewBox="0 0 24 24" fill="currentColor">
@@ -65,34 +65,37 @@ const App: React.FC = () => {
   }, [maxClicks]);
 
   useEffect(() => {
-    const webApp = init;
+    // Инициализация WebApp SDK
+    const initData = WebApp.initDataUnsafe;
 
-    const userId = webApp.initDataUnsafe.user?.id;
-    const authDate = webApp.initDataUnsafe.auth_date;
-    const hash = webApp.initDataUnsafe.hash;
+    console.log('InitData:', initData);
 
-    const log = (message: string) => window.Telegram.WebApp.showAlert(message);
+    // Используем либо initData.user.username, либо 'Гость'
+    const userName = initData.user?.username || 'Гость';
+    setUsername(userName);
 
-    log(`Client received: User ID: ${userId}, Auth Date: ${authDate}, Hash: ${hash}`);
-
-    if (userId && authDate && hash) {
-        axios.post('/api/user', { userId, authDate, hash })
-            .then(response => {
-                log(`Server response: ${JSON.stringify(response.data)}`);
-                if (response.data.username) {
-                    setUsername(response.data.username);
-                    log(`Имя пользователя установлено: ${response.data.username}`);
-                } else {
-                    log('Имя пользователя не найдено в ответе сервера');
-                }
-            })
-            .catch(error => {
-                log(`Ошибка получения данных пользователя с сервера: ${error}`);
-            });
-    } else {
-        log('Не удалось получить необходимые параметры из WebApp SDK');
-    }
+    // Отправляем данные на сервер для проверки
+    fetch('/api/user', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            userId: initData.user?.id,
+            authDate: initData.auth_date,
+            hash: initData.hash
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.username) {
+            setUsername(data.username);
+        }
+    })
+    .catch(error => console.error('Error:', error));
 }, []);
+
+
 
 
   const handleMainButtonClick = useCallback((e: React.TouchEvent<HTMLDivElement>) => {
