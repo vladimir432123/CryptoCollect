@@ -90,23 +90,39 @@ bot.command('openapp', (ctx) => {
     );
 });
 
+function checkTelegramAuth(initData) {
+    const token = process.env.TELEGRAM_BOT_TOKEN;
+
+    if (!token) {
+        console.error('TELEGRAM_BOT_TOKEN не установлен');
+        return false;
+    }
+
+    const secretKey = crypto.createHash('sha256').update(token).digest();
+
+    // Формируем строку для проверки подлинности
+    const checkString = `auth_date=${initData.auth_date}\nuser_id=${initData.user_id}`;
+
+    console.log('Check String:', checkString);
+
+    // Рассчитываем хеш с использованием секретного ключа
+    const calculatedHash = crypto.createHmac('sha256', secretKey).update(checkString).digest('hex');
+
+    console.log('Calculated Hash:', calculatedHash);
+    console.log('Received Hash:', initData.hash);
+
+    // Возвращаем результат сравнения
+    return calculatedHash === initData.hash;
+}
+
 app.post('/api/user', (req, res) => {
-    // Преобразуем user_id и auth_date в строки, если это не так
     const initData = {
-        user_id: String(req.body.userId),
-        auth_date: String(req.body.authDate),
+        user_id: req.body.userId,
+        auth_date: req.body.authDate,
         hash: req.body.hash,
     };
 
     console.log('Received initData:', initData);
-
-    const checkString = Object.keys(initData)
-        .filter(key => key !== 'hash')  // Исключаем хеш из строки
-        .sort()  // Сортируем параметры по алфавиту
-        .map(key => `${key}=${initData[key]}`)  // Создаем пару ключ-значение
-        .join('\n');  // Соединяем их в одну строку
-
-    console.log('Check String:', checkString);
 
     if (!checkTelegramAuth(initData)) {
         console.log('Telegram auth failed');
@@ -132,31 +148,6 @@ app.post('/api/user', (req, res) => {
     });
 });
 
-function checkTelegramAuth(initData) {
-    const token = process.env.TELEGRAM_BOT_TOKEN;
-
-    if (!token) {
-        console.error('TELEGRAM_BOT_TOKEN не установлен');
-        return false;
-    }
-
-    const secretKey = crypto.createHash('sha256').update(token).digest();
-
-    const checkString = Object.keys(initData)
-        .filter(key => key !== 'hash')
-        .sort()
-        .map(key => `${key}=${String(initData[key])}`)  // Преобразуем значение в строку
-        .join('\n');
-
-    console.log('Check String:', checkString);
-
-    const calculatedHash = crypto.createHmac('sha256', secretKey).update(checkString).digest('hex');
-
-    console.log('Calculated Hash:', calculatedHash);
-    console.log('Received Hash:', initData.hash);
-
-    return calculatedHash === initData.hash;
-}
 
 
 
