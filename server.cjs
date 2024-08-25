@@ -91,17 +91,25 @@ bot.command('openapp', (ctx) => {
 });
 
 function checkTelegramAuth({ userId, authDate, hash }) {
-    const secret = crypto.createHash('sha256').update(process.env.TELEGRAM_BOT_TOKEN).digest();
+    const token = process.env.TELEGRAM_BOT_TOKEN;
     
-    // Формируем строку, которую будем хешировать
+    if (!token) {
+        console.error('TELEGRAM_BOT_TOKEN не установлен');
+        return false;
+    }
+
+    const secretKey = crypto.createHash('sha256').update(token).digest();
+    
     const checkString = `auth_date=${authDate}\nuser_id=${userId}`;
     
-    // Вычисляем HMAC с использованием секретного ключа и строки для проверки
-    const hmac = crypto.createHmac('sha256', secret).update(checkString).digest('hex');
-
-    // Сравниваем рассчитанный хеш с хешем, переданным в запросе
-    return hmac === hash;
+    const calculatedHash = crypto.createHmac('sha256', secretKey).update(checkString).digest('hex');
+    
+    console.log('Calculated Hash:', calculatedHash);
+    console.log('Received Hash:', hash);
+    
+    return calculatedHash === hash;
 }
+
 
 
 app.post('/api/user', (req, res) => {
