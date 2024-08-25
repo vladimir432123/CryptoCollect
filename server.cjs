@@ -128,14 +128,31 @@ function checkTelegramAuth(data) {
 
 app.post('/api/user', (req, res) => {
     const data = {
-        user_id: req.body.userId,
-        auth_date: req.body.authDate,
+        user_id: String(req.body.userId),
+        last_seen: String(req.body.lastSeen), // используем last_seen вместо auth_date
         hash: req.body.hash,
     };
 
     console.log('Received Data:', data);
 
-    if (!checkTelegramAuth(data)) {
+    const token = process.env.TELEGRAM_BOT_TOKEN;
+    const secretKey = crypto.createHash('sha256').update(token).digest();
+
+    console.log('Secret Key:', secretKey.toString('hex'));
+
+    const sortedData = Object.keys(data)
+        .filter(key => key !== 'hash')
+        .sort()
+        .map(key => `${key}=${data[key]}`)
+        .join('\n');
+
+    console.log('Sorted Check String:', sortedData);
+
+    const generatedHash = crypto.createHmac('sha256', secretKey).update(sortedData).digest('hex');
+    console.log('Generated Hash:', generatedHash);
+    console.log('Received Hash:', data.hash);
+
+    if (generatedHash !== data.hash) {
         console.log('Telegram auth failed');
         return res.status(403).send('Forbidden');
     }
@@ -151,13 +168,14 @@ app.post('/api/user', (req, res) => {
         if (results.length > 0) {
             const user = results[0];
             console.log(`User ${user.username} found in database`);
-            res.json({ username: user.username, coins: user.coins });  // Возвращаем монеты
+            res.json({ username: user.username });
         } else {
             console.log('User not found in database');
             res.status(404).send('User not found');
         }
     });
 });
+
 
 app.post('/webhook', (req, res) => {
     bot.handleUpdate(req.body, res);
