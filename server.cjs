@@ -90,38 +90,15 @@ bot.command('openapp', (ctx) => {
     );
 });
 
-function checkTelegramAuth(initData) {
-    const token = process.env.TELEGRAM_BOT_TOKEN;
-
-    if (!token) {
-        console.error('TELEGRAM_BOT_TOKEN не установлен');
-        return false;
-    }
-
-    const secretKey = crypto.createHash('sha256').update(token).digest();
-
-    // Формируем строку проверки, исключая хеш
-    const checkString = Object.keys(initData)
-        .filter(key => key !== 'hash')  // Исключаем хеш из строки
-        .sort()  // Сортируем параметры по алфавиту
-        .map(key => `${key}=${initData[key]}`)  // Создаем пару ключ-значение
-        .join('\n');  // Соединяем их в одну строку
-
-    // Рассчитываем хеш
-    const calculatedHash = crypto.createHmac('sha256', secretKey).update(checkString).digest('hex');
-
-    console.log('Calculated Hash:', calculatedHash);
-    console.log('Received Hash:', initData.hash);
-
-    return calculatedHash === initData.hash;
-}
-
-
-
 app.post('/api/user', (req, res) => {
-    const initData = req.body;  // Получаем все данные, которые переданы в POST-запросе
+    // Переименовываем ключи для соответствия документам Telegram
+    const initData = {
+        user_id: req.body.userId,
+        auth_date: req.body.authDate,
+        hash: req.body.hash,
+    };
 
-    console.log('Received initData:', initData);  // Логируем все полученные данные
+    console.log('Received initData:', initData);
 
     const checkString = Object.keys(initData)
         .filter(key => key !== 'hash')  // Исключаем хеш из строки
@@ -129,7 +106,7 @@ app.post('/api/user', (req, res) => {
         .map(key => `${key}=${initData[key]}`)  // Создаем пару ключ-значение
         .join('\n');  // Соединяем их в одну строку
 
-    console.log('Check String:', checkString);  // Логируем сформированную строку для проверки
+    console.log('Check String:', checkString);
 
     if (!checkTelegramAuth(initData)) {
         console.log('Telegram auth failed');
@@ -154,6 +131,32 @@ app.post('/api/user', (req, res) => {
         }
     });
 });
+
+function checkTelegramAuth(initData) {
+    const token = process.env.TELEGRAM_BOT_TOKEN;
+
+    if (!token) {
+        console.error('TELEGRAM_BOT_TOKEN не установлен');
+        return false;
+    }
+
+    const secretKey = crypto.createHash('sha256').update(token).digest();
+
+    const checkString = Object.keys(initData)
+        .filter(key => key !== 'hash')
+        .sort()
+        .map(key => `${key}=${initData[key]}`)
+        .join('\n');
+
+    console.log('Check String:', checkString);
+
+    const calculatedHash = crypto.createHmac('sha256', secretKey).update(checkString).digest('hex');
+
+    console.log('Calculated Hash:', calculatedHash);
+    console.log('Received Hash:', initData.hash);
+
+    return calculatedHash === initData.hash;
+}
 
 
 
