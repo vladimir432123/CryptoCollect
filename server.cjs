@@ -104,9 +104,10 @@ function checkTelegramAuth({ authDate, hash, ...userData }) {
 app.post('/api/user', (req, res) => {
     const { userId, authDate, hash } = req.body;
 
-    console.log(`User ID: ${userId}, Auth Date: ${authDate}, Hash: ${hash}`);
+    console.log(`Received request: User ID: ${userId}, Auth Date: ${authDate}, Hash: ${hash}`);
 
     if (!checkTelegramAuth({ userId, authDate, hash })) {
+        console.log('Telegram auth failed');
         return res.status(403).send('Forbidden');
     }
 
@@ -123,10 +124,12 @@ app.post('/api/user', (req, res) => {
             console.log(`User ${user.username} found in database`);
             res.json({ username: user.username });
         } else {
+            console.log('User not found in database');
             res.status(404).send('User not found');
         }
     });
 });
+
 
 
 app.post('/webhook', (req, res) => {
