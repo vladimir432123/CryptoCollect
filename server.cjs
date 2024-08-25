@@ -115,15 +115,13 @@ function checkTelegramAuth(initData) {
 
     return calculatedHash === initData.hash;
 }
-console.log('Received initData:', initData);
-
 
 
 
 app.post('/api/user', (req, res) => {
     const initData = req.body;  // Получаем все данные, которые переданы в POST-запросе
 
-    console.log('Received initData:', initData);
+    console.log('Received initData:', initData);  // Логируем все полученные данные
 
     if (!checkTelegramAuth(initData)) {
         console.log('Telegram auth failed');
@@ -148,6 +146,7 @@ app.post('/api/user', (req, res) => {
         }
     });
 });
+
 
 
 
