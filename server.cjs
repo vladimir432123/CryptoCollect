@@ -39,7 +39,6 @@ db.query(`
         id INT AUTO_INCREMENT PRIMARY KEY,
         telegram_id BIGINT UNIQUE,
         username VARCHAR(255) UNIQUE,
-        coins INT DEFAULT 10000,  // Поле для хранения монет
         last_seen TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
     )
 `, (err) => {
