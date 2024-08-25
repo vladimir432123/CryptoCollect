@@ -80,7 +80,6 @@ bot.start((ctx) => {
     );
 });
 
-
 bot.command('openapp', (ctx) => {
     const username = ctx.message.from.username;
     console.log(`Received /openapp command from ${username}`);
@@ -111,6 +110,8 @@ function checkTelegramAuth(data) {
         auth_date: String(data.auth_date),
     };
 
+    console.log('Formatted Data:', formattedData);
+
     // Формируем строку для хеширования
     const sortedData = Object.keys(formattedData)
         .sort()
@@ -135,24 +136,7 @@ app.post('/api/user', (req, res) => {
 
     console.log('Received Data:', data);
 
-    const token = process.env.TELEGRAM_BOT_TOKEN;
-    const secretKey = crypto.createHash('sha256').update(token).digest();
-
-    console.log('Secret Key:', secretKey.toString('hex'));
-
-    const sortedData = Object.keys(data)
-        .filter(key => key !== 'hash')
-        .sort()
-        .map(key => `${key}=${data[key]}`)
-        .join('\n');
-
-    console.log('Sorted Check String:', sortedData);
-
-    const generatedHash = crypto.createHmac('sha256', secretKey).update(sortedData).digest('hex');
-    console.log('Generated Hash:', generatedHash);
-    console.log('Received Hash:', data.hash);
-
-    if (generatedHash !== data.hash) {
+    if (!checkTelegramAuth(data)) {
         console.log('Telegram auth failed');
         return res.status(403).send('Forbidden');
     }
