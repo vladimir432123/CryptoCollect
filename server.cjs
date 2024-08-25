@@ -106,7 +106,7 @@ function checkTelegramAuth(data) {
     console.log('Secret Key:', secretKey.toString('hex'));
 
     const formattedData = {
-        telegram_id: String(data.user_id),  // Заменил user_id на telegram_id
+        telegram_id: String(data.telegram_id),  // Убедитесь, что используете telegram_id
         auth_date: String(data.auth_date),
     };
 
@@ -128,8 +128,8 @@ function checkTelegramAuth(data) {
 
 app.post('/api/user', (req, res) => {
     const data = {
-        telegram_id: String(req.body.userId),  // Проверяем, что сюда приходит корректное значение
-        auth_date: String(req.body.authDate),  // Используем auth_date
+        telegram_id: String(req.body.telegram_id),  // Убедитесь, что используете telegram_id
+        auth_date: String(req.body.authDate),
         hash: req.body.hash,
     };
 
@@ -158,6 +158,7 @@ app.post('/api/user', (req, res) => {
         }
     });
 });
+
 
 
 app.post('/webhook', (req, res) => {
