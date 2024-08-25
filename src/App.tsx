@@ -65,7 +65,6 @@ const App: React.FC = () => {
   }, [maxClicks]);
 
   useEffect(() => {
-    // Инициализация WebApp SDK
     const initData = WebApp.initDataUnsafe;
 
     console.log('InitData:', initData);
@@ -75,7 +74,7 @@ const App: React.FC = () => {
 
     // Логирование данных, которые отправляются на сервер
     const dataToSend = {
-        userId: initData.user?.id,
+        userId: initData.user?.id,  // Убедитесь, что здесь передается правильное значение
         authDate: initData.auth_date,
         hash: initData.hash
     };
