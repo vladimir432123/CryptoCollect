@@ -23,7 +23,7 @@ const App: React.FC = () => {
   const [maxClicks, setMaxClicks] = useState(1000);
   const [tapIncreaseLevel, setTapIncreaseLevel] = useState(1);
   const [remainingClicks, setRemainingClicks] = useState(maxClicks);
-  const [points, setPoints] = useState(100000000);
+  const [points, setPoints] = useState<number>(10000);  // Изначально 10,000 points
   const [username, setUsername] = useState<string | null>(null);
 
   const [clicks, setClicks] = useState<{ id: number, x: number, y: number, profit: number }[]>([]);
@@ -65,7 +65,6 @@ const App: React.FC = () => {
   }, [maxClicks]);
 
   useEffect(() => {
-    // Инициализация WebApp SDK
     const initData = WebApp.initDataUnsafe;
 
     console.log('InitData:', initData);
@@ -74,7 +73,7 @@ const App: React.FC = () => {
     const userName = initData.user?.username || 'Гость';
     setUsername(userName);
 
-    // Отправляем данные на сервер для проверки
+    // Получаем количество points из базы данных
     fetch('/api/user', {
         method: 'POST',
         headers: {
@@ -91,10 +90,37 @@ const App: React.FC = () => {
         if (data.username) {
             setUsername(data.username);
         }
+        if (data.coins) {
+            setPoints(data.coins);  // Заменяем coins на points
+        }
     })
     .catch(error => console.error('Error:', error));
-}, []);
 
+    // Обновляем количество points каждые 2 секунды
+    const interval = setInterval(() => {
+        setPoints(prevPoints => {
+            const newPoints = prevPoints + 1;  // Здесь можно изменить логику увеличения points
+            // Отправляем обновленное количество points на сервер
+            fetch('/api/user/update-coins', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    userId: initData.user?.id,
+                    coins: newPoints  // Заменяем coins на points
+                })
+            })
+            .then(() => console.log('Points updated on server:', newPoints))
+            .catch(error => console.error('Error updating points:', error));
+
+            return newPoints;
+        });
+    }, 2000);
+
+    // Очистка интервала при размонтировании компонента
+    return () => clearInterval(interval);
+}, []);
 
 
 
