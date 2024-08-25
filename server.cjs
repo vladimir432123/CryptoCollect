@@ -3,6 +3,7 @@ const path = require('path');
 const bodyParser = require('body-parser');
 const mysql = require('mysql2');
 const { Telegraf, Markup } = require('telegraf');
+const crypto = require('crypto');
 require('dotenv').config();
 
 const app = express();
@@ -35,7 +36,6 @@ db.connect((err) => {
 const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN);
 
 // Обработка команды /start в боте
-// Обработка команды /start в боте
 bot.start((ctx) => {
     const username = ctx.message.from.username;
     console.log(`Received /start command from ${username}`);
@@ -49,8 +49,7 @@ bot.start((ctx) => {
         }
     });
 
-    // Формируем URL для мини-приложения
-    const miniAppUrl = `https://t.me/cryptocollect_bot?startapp=${username}&tgWebApp=true`;
+    const miniAppUrl = `https://app-21c4d0cd-2996-4394-bf8a-a453b9f7e396.cleverapps.io`;
 
     ctx.reply(
         'Добро пожаловать! Нажмите на кнопку ниже, чтобы открыть мини-приложение:',
@@ -60,14 +59,12 @@ bot.start((ctx) => {
     );
 });
 
-
 bot.command('openapp', (ctx) => {
     const username = ctx.message.from.username;
     console.log(`Received /openapp command from ${username}`);
 
     const miniAppUrl = `https://t.me/cryptocollect_bot?startapp=${username}&tgWebApp=true`;
     console.log('URL для мини-приложения:', miniAppUrl);
-
 
     ctx.reply(
         'Нажмите на кнопку ниже, чтобы открыть мини-приложение:',
@@ -77,36 +74,48 @@ bot.command('openapp', (ctx) => {
     );
 });
 
-app.post('/api/user', (req, res) => {
-    const { username } = req.body;
-    console.log('Received POST request to /api/user with username:', username);
+function checkTelegramAuth({ authDate, hash, ...userData }) {
+    const secret = crypto.createHash('sha256').update(process.env.TELEGRAM_BOT_TOKEN).digest();
+    const checkString = Object.keys(userData)
+        .map(key => `${key}=${userData[key]}`)
+        .sort()
+        .join('\n');
+    const hmac = crypto.createHmac('sha256', secret).update(checkString).digest('hex');
 
-    if (!username) {
-        return res.status(400).send('Username is required');
+    return hmac === hash;
+}
+
+app.post('/api/user', (req, res) => {
+    const { userId, authDate, hash } = req.body;
+
+    console.log(`User ID: ${userId}, Auth Date: ${authDate}, Hash: ${hash}`);
+
+    if (!checkTelegramAuth({ userId, authDate, hash })) {
+        return res.status(403).send('Forbidden');
     }
 
-    db.query('INSERT INTO user (username) VALUES (?) ON DUPLICATE KEY UPDATE username = VALUES(username)', [username], (err) => {
+    const query = 'SELECT * FROM user WHERE id = ?';
+
+    db.query(query, [userId], (err, results) => {
         if (err) {
-            console.error('Database error:', err);
+            console.error('Error fetching user data:', err);
             return res.status(500).send('Server error');
         }
 
-        console.log(`User ${username} logged in via mini-app`);
-        res.send('User data saved successfully');
+        if (results.length > 0) {
+            const user = results[0];
+            console.log(`User ${user.username} found in database`);
+            res.json({ username: user.username });
+        } else {
+            res.status(404).send('User not found');
+        }
     });
 });
 
 app.get('/api/user/current', (req, res) => {
-    const username = req.query.username;
-    console.log('Received GET request to /api/user/current with username:', username);
+    const query = 'SELECT username FROM user ORDER BY last_seen DESC LIMIT 1';
 
-    if (!username) {
-        return res.status(400).send('Username is required');
-    }
-
-    const query = 'SELECT username FROM user WHERE username = ? LIMIT 1';
-
-    db.query(query, [username], (err, results) => {
+    db.query(query, (err, results) => {
         if (err) {
             console.error('Error fetching user data:', err);
             res.status(500).send('Server error');
@@ -121,33 +130,46 @@ app.get('/api/user/current', (req, res) => {
     });
 });
 
+app.post('/api/user', (req, res) => {
+    const { username } = req.body;
+    console.log('Полученные данные:', req.body);
 
-// Обработка запросов, поступающих на вебхук
+    if (!username) {
+        return res.status(400).send('Username is required');
+    }
+
+    db.query('INSERT INTO user (username) VALUES (?) ON DUPLICATE KEY UPDATE last_seen = NOW()', [username], (err) => {
+        if (err) {
+            console.error('Database error:', err);
+            return res.status(500).send('Server error');
+        }
+
+        console.log(`User ${username} logged in via mini-app`);
+        res.send('User data saved successfully');
+    });
+});
+
 app.post('/webhook', (req, res) => {
     bot.handleUpdate(req.body, res);
 });
 
 const startServer = async () => {
     try {
-        // Удаляем существующий вебхук перед запуском
         await bot.telegram.deleteWebhook({ drop_pending_updates: true });
 
-        const webhookUrl = 'https://app-21c4d0cd-2996-4394-bf8a-a453b9f7e396.cleverapps.io/webhook'; // Обновите на ваш URL
+        const webhookUrl = 'https://app-21c4d0cd-2996-4394-bf8a-a453b9f7e396.cleverapps.io/webhook';
 
-        // Устанавливаем новый вебхук
         await bot.telegram.setWebhook(webhookUrl);
         console.log('Webhook set successfully:', webhookUrl);
     } catch (err) {
         console.error('Ошибка установки вебхука:', err);
     }
 
-    // Запускаем сервер
     app.listen(port, () => {
         console.log(`Сервер запущен на порту ${port}`);
     });
 };
 
-// Дополнительные функции
 const checkWebhook = async () => {
     try {
         const webhookInfo = await bot.telegram.getWebhookInfo();
@@ -157,6 +179,5 @@ const checkWebhook = async () => {
     }
 };
 
-// Запуск сервера и бота
 startServer();
 checkWebhook();
