@@ -90,41 +90,47 @@ bot.command('openapp', (ctx) => {
     );
 });
 
-function checkTelegramAuth({ userId, authDate, hash }) {
+function checkTelegramAuth(initData) {
     const token = process.env.TELEGRAM_BOT_TOKEN;
-    
+
     if (!token) {
         console.error('TELEGRAM_BOT_TOKEN не установлен');
         return false;
     }
 
     const secretKey = crypto.createHash('sha256').update(token).digest();
-    
-    const checkString = `auth_date=${authDate}\nuser_id=${userId}`;
-    
+
+    // Сортируем и формируем строку проверки
+    const checkString = Object.keys(initData)
+        .filter(key => key !== 'hash')
+        .sort()
+        .map(key => `${key}=${initData[key]}`)
+        .join('\n');
+
+    // Рассчитываем хеш
     const calculatedHash = crypto.createHmac('sha256', secretKey).update(checkString).digest('hex');
-    
+
     console.log('Calculated Hash:', calculatedHash);
-    console.log('Received Hash:', hash);
-    
-    return calculatedHash === hash;
+    console.log('Received Hash:', initData.hash);
+
+    return calculatedHash === initData.hash;
 }
 
 
 
 app.post('/api/user', (req, res) => {
-    const { userId, authDate, hash } = req.body;
+    const initData = req.body;  // Получаем все данные, которые переданы в POST-запросе
 
-    console.log(`Received request: User ID: ${userId}, Auth Date: ${authDate}, Hash: ${hash}`);
+    console.log('Received initData:', initData);
 
-    if (!checkTelegramAuth({ userId, authDate, hash })) {
+    if (!checkTelegramAuth(initData)) {
         console.log('Telegram auth failed');
         return res.status(403).send('Forbidden');
     }
 
     const query = 'SELECT * FROM user WHERE telegram_id = ?';
 
-    db.query(query, [userId], (err, results) => {
+    db.query(query, [initData.user_id], (err, results) => {
         if (err) {
             console.error('Error fetching user data:', err);
             return res.status(500).send('Server error');
