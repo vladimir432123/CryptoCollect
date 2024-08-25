@@ -129,7 +129,7 @@ function checkTelegramAuth(data) {
 app.post('/api/user', (req, res) => {
     const data = {
         user_id: String(req.body.userId),
-        last_seen: String(req.body.lastSeen), // используем last_seen вместо auth_date
+        auth_date: String(req.body.authDate), // Используем auth_date
         hash: req.body.hash,
     };
 
@@ -175,6 +175,7 @@ app.post('/api/user', (req, res) => {
         }
     });
 });
+
 
 
 app.post('/webhook', (req, res) => {
