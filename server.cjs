@@ -105,7 +105,6 @@ function checkTelegramAuth(data) {
 
     const secretKey = crypto.createHash('sha256').update(token).digest();
 
-    // Убедимся, что все параметры — строки
     const formattedData = {
         user_id: String(data.user_id),
         auth_date: String(data.auth_date),
