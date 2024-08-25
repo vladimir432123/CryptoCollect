@@ -65,6 +65,7 @@ const App: React.FC = () => {
   }, [maxClicks]);
 
   useEffect(() => {
+    // Инициализация WebApp SDK
     const initData = WebApp.initDataUnsafe;
 
     console.log('InitData:', initData);
@@ -80,8 +81,8 @@ const App: React.FC = () => {
             'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-            userId: initData.user?.id.toString(),
-            authDate: initData.auth_date,
+            userId: initData.user?.id,
+            authDate: initData.auth_date, // Используем authDate
             hash: initData.hash
         })
     })
@@ -93,6 +94,7 @@ const App: React.FC = () => {
     })
     .catch(error => console.error('Error:', error));
 }, []);
+
 
 
 
