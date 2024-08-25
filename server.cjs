@@ -3,11 +3,8 @@ const path = require('path');
 const bodyParser = require('body-parser');
 const mysql = require('mysql2');
 const { Telegraf, Markup } = require('telegraf');
-const crypto = require('crypto');
+const { WebApp } = require('@twa-dev/sdk');
 require('dotenv').config();
-const querystring = require('querystring');
-
-
 
 const app = express();
 const port = process.env.PORT || 8080;
@@ -93,52 +90,24 @@ bot.command('openapp', (ctx) => {
     );
 });
 
-function checkTelegramAuth(data) {
-    const token = process.env.TELEGRAM_BOT_TOKEN;
-    if (!token) {
-        console.error('TELEGRAM_BOT_TOKEN не установлен');
-        return false;
-    }
-
-    const secretKey = crypto.createHash('sha256').update(token).digest();
-
-    // Убедимся, что все параметры — строки
-    const formattedData = {
-        user_id: String(data.user_id),
-        auth_date: String(data.auth_date),
-    };
-
-    // Формируем строку для хеширования
-    const sortedData = Object.keys(formattedData)
-        .sort()
-        .map(key => `${key}=${formattedData[key]}`)
-        .join('\n');
-
-    console.log('Sorted Check String:', sortedData);
-
-    const generatedHash = crypto.createHmac('sha256', secretKey).update(sortedData).digest('hex');
-    console.log('Generated Hash:', generatedHash);
-
-    return generatedHash === data.hash;
-}
-
 app.post('/api/user', (req, res) => {
-    const data = {
-        user_id: req.body.userId,
-        auth_date: req.body.authDate,
-        hash: req.body.hash,
-    };
+    const { userId, authDate, hash } = req.body;
 
-    console.log('Received Data:', data);
+    // Используем WebApp SDK для проверки хеша
+    const isValid = WebApp.isDataValid({
+        userId,
+        authDate,
+        hash
+    });
 
-    if (!checkTelegramAuth(data)) {
+    if (!isValid) {
         console.log('Telegram auth failed');
         return res.status(403).send('Forbidden');
     }
 
     const query = 'SELECT * FROM user WHERE telegram_id = ?';
 
-    db.query(query, [data.user_id], (err, results) => {
+    db.query(query, [userId], (err, results) => {
         if (err) {
             console.error('Error fetching user data:', err);
             return res.status(500).send('Server error');
@@ -154,12 +123,6 @@ app.post('/api/user', (req, res) => {
         }
     });
 });
-
-
-
-
-
-
 
 app.post('/webhook', (req, res) => {
     bot.handleUpdate(req.body, res);
