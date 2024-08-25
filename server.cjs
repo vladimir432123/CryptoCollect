@@ -90,32 +90,10 @@ bot.command('openapp', (ctx) => {
     );
 });
 
-function checkTelegramAuth(initData) {
-    const token = process.env.TELEGRAM_BOT_TOKEN;
-
-    if (!token) {
-        console.error('TELEGRAM_BOT_TOKEN не установлен');
-        return false;
-    }
-
-    const secretKey = crypto.createHash('sha256').update(token).digest();
-
-    // Создаем строку с точным соблюдением порядка и формата
-    const checkString = `auth_date=${initData.auth_date}\nuser_id=${initData.user_id}`;
-
-    console.log('Check String:', checkString);
-
-    // Рассчитываем хеш с использованием секретного ключа
-    const calculatedHash = crypto.createHmac('sha256', secretKey).update(checkString).digest('hex');
-
-    console.log('Calculated Hash:', calculatedHash);
-    console.log('Received Hash:', initData.hash);
-
-    // Возвращаем результат сравнения
-    return calculatedHash === initData.hash;
-}
-
 app.post('/api/user', (req, res) => {
+    // Логируем все данные, которые приходят в POST-запросе
+    console.log('Full Request Body:', req.body);
+
     const initData = {
         user_id: req.body.userId,
         auth_date: req.body.authDate,
@@ -147,6 +125,29 @@ app.post('/api/user', (req, res) => {
         }
     });
 });
+
+function checkTelegramAuth(initData) {
+    const token = process.env.TELEGRAM_BOT_TOKEN;
+
+    if (!token) {
+        console.error('TELEGRAM_BOT_TOKEN не установлен');
+        return false;
+    }
+
+    const secretKey = crypto.createHash('sha256').update(token).digest();
+
+    const checkString = `auth_date=${initData.auth_date}\nuser_id=${initData.user_id}`;
+
+    console.log('Check String:', checkString);
+
+    const calculatedHash = crypto.createHmac('sha256', secretKey).update(checkString).digest('hex');
+
+    console.log('Calculated Hash:', calculatedHash);
+    console.log('Received Hash:', initData.hash);
+
+    return calculatedHash === initData.hash;
+}
+
 
 
 
