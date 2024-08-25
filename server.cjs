@@ -33,6 +33,21 @@ db.connect((err) => {
     console.log('Успешное подключение к базе данных');
 });
 
+// Создание таблицы users, если она не существует
+db.query(`
+    CREATE TABLE IF NOT EXISTS user (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        username VARCHAR(255) UNIQUE,
+        last_seen TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    )
+`, (err) => {
+    if (err) {
+        console.error('Ошибка создания таблицы:', err);
+    } else {
+        console.log('Таблица user проверена/создана');
+    }
+});
+
 const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN);
 
 // Обработка команды /start в боте
@@ -40,7 +55,6 @@ bot.start((ctx) => {
     const username = ctx.message.from.username;
     console.log(`Received /start command from ${username}`);
 
-    // Сохраняем или обновляем пользователя в базе данных
     db.query('INSERT INTO user (username) VALUES (?) ON DUPLICATE KEY UPDATE last_seen = NOW()', [username], (err) => {
         if (err) {
             console.error('Database error:', err);
@@ -109,43 +123,6 @@ app.post('/api/user', (req, res) => {
         } else {
             res.status(404).send('User not found');
         }
-    });
-});
-
-app.get('/api/user/current', (req, res) => {
-    const query = 'SELECT username FROM user ORDER BY last_seen DESC LIMIT 1';
-
-    db.query(query, (err, results) => {
-        if (err) {
-            console.error('Error fetching user data:', err);
-            res.status(500).send('Server error');
-            return;
-        }
-
-        if (results.length > 0) {
-            res.json({ username: results[0].username });
-        } else {
-            res.status(404).send('User not found');
-        }
-    });
-});
-
-app.post('/api/user', (req, res) => {
-    const { username } = req.body;
-    console.log('Полученные данные:', req.body);
-
-    if (!username) {
-        return res.status(400).send('Username is required');
-    }
-
-    db.query('INSERT INTO user (username) VALUES (?) ON DUPLICATE KEY UPDATE last_seen = NOW()', [username], (err) => {
-        if (err) {
-            console.error('Database error:', err);
-            return res.status(500).send('Server error');
-        }
-
-        console.log(`User ${username} logged in via mini-app`);
-        res.send('User data saved successfully');
     });
 });
 
