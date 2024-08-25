@@ -91,10 +91,10 @@ bot.command('openapp', (ctx) => {
 });
 
 app.post('/api/user', (req, res) => {
-    // Переименовываем ключи для соответствия документам Telegram
+    // Преобразуем user_id и auth_date в строки, если это не так
     const initData = {
-        user_id: req.body.userId,
-        auth_date: req.body.authDate,
+        user_id: String(req.body.userId),
+        auth_date: String(req.body.authDate),
         hash: req.body.hash,
     };
 
@@ -145,7 +145,7 @@ function checkTelegramAuth(initData) {
     const checkString = Object.keys(initData)
         .filter(key => key !== 'hash')
         .sort()
-        .map(key => `${key}=${initData[key]}`)
+        .map(key => `${key}=${String(initData[key])}`)  // Преобразуем значение в строку
         .join('\n');
 
     console.log('Check String:', checkString);
@@ -157,6 +157,7 @@ function checkTelegramAuth(initData) {
 
     return calculatedHash === initData.hash;
 }
+
 
 
 
