@@ -73,14 +73,14 @@ const App: React.FC = () => {
     const userName = initData.user?.username || 'Гость';
     setUsername(userName);
 
-    // Получаем количество points из базы данных
+    // Отправляем данные на сервер для проверки
     fetch('/api/user', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-            userId: initData.user?.id,
+            userId: initData.user?.id.toString(),
             authDate: initData.auth_date,
             hash: initData.hash
         })
@@ -90,37 +90,10 @@ const App: React.FC = () => {
         if (data.username) {
             setUsername(data.username);
         }
-        if (data.coins) {
-            setPoints(data.coins);  // Заменяем coins на points
-        }
     })
     .catch(error => console.error('Error:', error));
-
-    // Обновляем количество points каждые 2 секунды
-    const interval = setInterval(() => {
-        setPoints(prevPoints => {
-            const newPoints = prevPoints + 1;  // Здесь можно изменить логику увеличения points
-            // Отправляем обновленное количество points на сервер
-            fetch('/api/user/update-coins', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    userId: initData.user?.id,
-                    coins: newPoints  // Заменяем coins на points
-                })
-            })
-            .then(() => console.log('Points updated on server:', newPoints))
-            .catch(error => console.error('Error updating points:', error));
-
-            return newPoints;
-        });
-    }, 2000);
-
-    // Очистка интервала при размонтировании компонента
-    return () => clearInterval(interval);
 }, []);
+
 
 
 
