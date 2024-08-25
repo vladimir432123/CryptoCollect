@@ -5,6 +5,9 @@ const mysql = require('mysql2');
 const { Telegraf, Markup } = require('telegraf');
 const crypto = require('crypto');
 require('dotenv').config();
+const querystring = require('querystring');
+
+
 
 const app = express();
 const port = process.env.PORT || 8080;
@@ -90,26 +93,43 @@ bot.command('openapp', (ctx) => {
     );
 });
 
-app.post('/api/user', (req, res) => {
-    // Логируем все данные, которые приходят в POST-запросе
-    console.log('Full Request Body:', req.body);
+function checkTelegramAuth(data) {
+    const token = process.env.TELEGRAM_BOT_TOKEN;
 
-    const initData = {
+    const secretKey = crypto.createHash('sha256').update(token).digest();
+
+    // Формируем строку для хеширования в соответствии с официальной документацией
+    const sortedData = Object.keys(data)
+        .filter(key => key !== 'hash')
+        .sort()
+        .map(key => `${key}=${data[key]}`)
+        .join('\n');
+
+    console.log('Sorted Check String:', sortedData);
+
+    const hash = crypto.createHmac('sha256', secretKey).update(sortedData).digest('hex');
+    console.log('Generated Hash:', hash);
+
+    return hash === data.hash;
+}
+
+app.post('/api/user', (req, res) => {
+    const data = {
         user_id: req.body.userId,
         auth_date: req.body.authDate,
         hash: req.body.hash,
     };
 
-    console.log('Received initData:', initData);
+    console.log('Received Data:', data);
 
-    if (!checkTelegramAuth(initData)) {
+    if (!checkTelegramAuth(data)) {
         console.log('Telegram auth failed');
         return res.status(403).send('Forbidden');
     }
 
     const query = 'SELECT * FROM user WHERE telegram_id = ?';
 
-    db.query(query, [initData.user_id], (err, results) => {
+    db.query(query, [data.user_id], (err, results) => {
         if (err) {
             console.error('Error fetching user data:', err);
             return res.status(500).send('Server error');
@@ -125,28 +145,6 @@ app.post('/api/user', (req, res) => {
         }
     });
 });
-
-function checkTelegramAuth(initData) {
-    const token = process.env.TELEGRAM_BOT_TOKEN;
-
-    if (!token) {
-        console.error('TELEGRAM_BOT_TOKEN не установлен');
-        return false;
-    }
-
-    const secretKey = crypto.createHash('sha256').update(token).digest();
-
-    const checkString = `auth_date=${initData.auth_date}\nuser_id=${initData.user_id}`;
-
-    console.log('Check String:', checkString);
-
-    const calculatedHash = crypto.createHmac('sha256', secretKey).update(checkString).digest('hex');
-
-    console.log('Calculated Hash:', calculatedHash);
-    console.log('Received Hash:', initData.hash);
-
-    return calculatedHash === initData.hash;
-}
 
 
 
