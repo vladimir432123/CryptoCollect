@@ -158,21 +158,7 @@ app.post('/api/user', (req, res) => {
     });
 });
 
-// Endpoint для обновления монет
-app.post('/api/user/update-coins', (req, res) => {
-    const { userId, coins } = req.body;
 
-    const query = 'UPDATE user SET coins = ? WHERE telegram_id = ?';
-    db.query(query, [coins, userId], (err) => {
-        if (err) {
-            console.error('Error updating coins:', err);
-            return res.status(500).send('Server error');
-        }
-
-        console.log(`Coins updated for user ${userId}: ${coins}`);
-        res.send('Coins updated successfully');
-    });
-});
 
 app.post('/webhook', (req, res) => {
     bot.handleUpdate(req.body, res);
