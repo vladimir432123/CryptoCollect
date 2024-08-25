@@ -95,22 +95,31 @@ bot.command('openapp', (ctx) => {
 
 function checkTelegramAuth(data) {
     const token = process.env.TELEGRAM_BOT_TOKEN;
+    if (!token) {
+        console.error('TELEGRAM_BOT_TOKEN не установлен');
+        return false;
+    }
 
     const secretKey = crypto.createHash('sha256').update(token).digest();
 
-    // Формируем строку для хеширования в соответствии с официальной документацией
-    const sortedData = Object.keys(data)
-        .filter(key => key !== 'hash')
+    // Убедимся, что все параметры — строки
+    const formattedData = {
+        user_id: String(data.user_id),
+        auth_date: String(data.auth_date),
+    };
+
+    // Формируем строку для хеширования
+    const sortedData = Object.keys(formattedData)
         .sort()
-        .map(key => `${key}=${data[key]}`)
+        .map(key => `${key}=${formattedData[key]}`)
         .join('\n');
 
     console.log('Sorted Check String:', sortedData);
 
-    const hash = crypto.createHmac('sha256', secretKey).update(sortedData).digest('hex');
-    console.log('Generated Hash:', hash);
+    const generatedHash = crypto.createHmac('sha256', secretKey).update(sortedData).digest('hex');
+    console.log('Generated Hash:', generatedHash);
 
-    return hash === data.hash;
+    return generatedHash === data.hash;
 }
 
 app.post('/api/user', (req, res) => {
@@ -145,7 +154,6 @@ app.post('/api/user', (req, res) => {
         }
     });
 });
-
 
 
 
