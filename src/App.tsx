@@ -74,12 +74,17 @@ const App: React.FC = () => {
 
     // Логирование данных, которые отправляются на сервер
     const dataToSend = {
-        userId: initData.user?.id,  // Убедитесь, что здесь передается правильное значение
+        telegram_id: initData.user?.id,  // Проверяем, что используется правильный идентификатор
         authDate: initData.auth_date,
         hash: initData.hash
     };
 
     console.log('Data sent to server:', dataToSend);
+
+    if (!dataToSend.telegram_id) {
+        console.error('Telegram ID is missing!');
+        return;
+    }
 
     fetch('/api/user', {
         method: 'POST',
@@ -96,6 +101,7 @@ const App: React.FC = () => {
     })
     .catch(error => console.error('Error:', error));
 }, []);
+
 
 
 
