@@ -37,6 +37,7 @@ db.connect((err) => {
 db.query(`
     CREATE TABLE IF NOT EXISTS user (
         id INT AUTO_INCREMENT PRIMARY KEY,
+        telegram_id BIGINT UNIQUE,
         username VARCHAR(255) UNIQUE,
         last_seen TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
     )
@@ -52,10 +53,11 @@ const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN);
 
 // Обработка команды /start в боте
 bot.start((ctx) => {
+    const telegramId = ctx.message.from.id;
     const username = ctx.message.from.username;
     console.log(`Received /start command from ${username}`);
 
-    db.query('INSERT INTO user (username) VALUES (?) ON DUPLICATE KEY UPDATE last_seen = NOW()', [username], (err) => {
+    db.query('INSERT INTO user (telegram_id, username) VALUES (?, ?) ON DUPLICATE KEY UPDATE last_seen = NOW()', [telegramId, username], (err) => {
         if (err) {
             console.error('Database error:', err);
         } else {
@@ -108,7 +110,7 @@ app.post('/api/user', (req, res) => {
         return res.status(403).send('Forbidden');
     }
 
-    const query = 'SELECT * FROM user WHERE id = ?';
+    const query = 'SELECT * FROM user WHERE telegram_id = ?';
 
     db.query(query, [userId], (err, results) => {
         if (err) {
