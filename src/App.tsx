@@ -65,8 +65,7 @@ const App: React.FC = () => {
   }, [maxClicks]);
 
   useEffect(() => {
-    // Здесь init уже является объектом, и его не нужно вызывать как функцию
-    const webApp = init; // init уже содержит данные о WebApp
+    const webApp = init;
 
     const userId = webApp.initDataUnsafe.user?.id;
     const authDate = webApp.initDataUnsafe.auth_date;
@@ -80,6 +79,8 @@ const App: React.FC = () => {
                 if (response.data.username) {
                     setUsername(response.data.username);
                     console.log('Имя пользователя:', response.data.username);
+                } else {
+                    console.log('Имя пользователя не найдено в ответе сервера');
                 }
             })
             .catch(error => {
