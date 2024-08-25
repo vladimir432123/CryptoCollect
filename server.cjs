@@ -80,6 +80,7 @@ bot.start((ctx) => {
     );
 });
 
+
 bot.command('openapp', (ctx) => {
     const username = ctx.message.from.username;
     console.log(`Received /openapp command from ${username}`);
@@ -124,6 +125,7 @@ function checkTelegramAuth(data) {
     return generatedHash === data.hash;
 }
 
+
 app.post('/api/user', (req, res) => {
     const data = {
         user_id: req.body.userId,
@@ -149,11 +151,27 @@ app.post('/api/user', (req, res) => {
         if (results.length > 0) {
             const user = results[0];
             console.log(`User ${user.username} found in database`);
-            res.json({ username: user.username });  // Возвращаем только username
+            res.json({ username: user.username, coins: user.coins });  // Возвращаем монеты
         } else {
             console.log('User not found in database');
             res.status(404).send('User not found');
         }
+    });
+});
+
+// Endpoint для обновления монет
+app.post('/api/user/update-coins', (req, res) => {
+    const { userId, coins } = req.body;
+
+    const query = 'UPDATE user SET coins = ? WHERE telegram_id = ?';
+    db.query(query, [coins, userId], (err) => {
+        if (err) {
+            console.error('Error updating coins:', err);
+            return res.status(500).send('Server error');
+        }
+
+        console.log(`Coins updated for user ${userId}: ${coins}`);
+        res.send('Coins updated successfully');
     });
 });
 
