@@ -128,8 +128,8 @@ function checkTelegramAuth(data) {
 
 app.post('/api/user', (req, res) => {
     const data = {
-        telegram_id: String(req.body.userId),  // Заменил user_id на telegram_id
-        auth_date: String(req.body.authDate), // Используем auth_date
+        telegram_id: String(req.body.userId),  // Проверяем, что сюда приходит корректное значение
+        auth_date: String(req.body.authDate),  // Используем auth_date
         hash: req.body.hash,
     };
 
@@ -142,7 +142,7 @@ app.post('/api/user', (req, res) => {
 
     const query = 'SELECT * FROM user WHERE telegram_id = ?';
 
-    db.query(query, [data.telegram_id], (err, results) => {  // Заменил user_id на telegram_id
+    db.query(query, [data.telegram_id], (err, results) => {
         if (err) {
             console.error('Error fetching user data:', err);
             return res.status(500).send('Server error');
@@ -158,6 +158,7 @@ app.post('/api/user', (req, res) => {
         }
     });
 });
+
 
 app.post('/webhook', (req, res) => {
     bot.handleUpdate(req.body, res);
