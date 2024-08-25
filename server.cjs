@@ -106,13 +106,12 @@ function checkTelegramAuth(data) {
     console.log('Secret Key:', secretKey.toString('hex'));
 
     const formattedData = {
-        user_id: String(data.user_id),
+        telegram_id: String(data.user_id),  // Заменил user_id на telegram_id
         auth_date: String(data.auth_date),
     };
 
     console.log('Formatted Data:', formattedData);
 
-    // Формируем строку для хеширования
     const sortedData = Object.keys(formattedData)
         .sort()
         .map(key => `${key}=${formattedData[key]}`)
@@ -129,7 +128,7 @@ function checkTelegramAuth(data) {
 
 app.post('/api/user', (req, res) => {
     const data = {
-        user_id: String(req.body.userId),
+        telegram_id: String(req.body.userId),  // Заменил user_id на telegram_id
         auth_date: String(req.body.authDate), // Используем auth_date
         hash: req.body.hash,
     };
@@ -143,7 +142,7 @@ app.post('/api/user', (req, res) => {
 
     const query = 'SELECT * FROM user WHERE telegram_id = ?';
 
-    db.query(query, [data.user_id], (err, results) => {
+    db.query(query, [data.telegram_id], (err, results) => {  // Заменил user_id на telegram_id
         if (err) {
             console.error('Error fetching user data:', err);
             return res.status(500).send('Server error');
