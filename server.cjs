@@ -39,7 +39,7 @@ db.query(`
         id INT AUTO_INCREMENT PRIMARY KEY,
         telegram_id BIGINT UNIQUE,
         username VARCHAR(255) UNIQUE,
-        last_seen TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        auth_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
     )
 `, (err) => {
     if (err) {
@@ -59,7 +59,7 @@ bot.start((ctx) => {
     console.log(`Received /start command from ${username}`);
 
     db.query(
-        'INSERT INTO user (telegram_id, username) VALUES (?, ?) ON DUPLICATE KEY UPDATE last_seen = NOW()', 
+        'INSERT INTO user (telegram_id, username) VALUES (?, ?) ON DUPLICATE KEY UPDATE auth_date = NOW()', 
         [telegramId, username], 
         (err) => {
             if (err) {
@@ -175,8 +175,6 @@ app.post('/api/user', (req, res) => {
         }
     });
 });
-
-
 
 app.post('/webhook', (req, res) => {
     bot.handleUpdate(req.body, res);
