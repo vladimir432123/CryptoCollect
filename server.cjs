@@ -105,24 +105,16 @@ function checkTelegramAuth(data) {
 
     const secretKey = crypto.createHash('sha256').update(token).digest();
 
-    const formattedData = {
-        user_id: String(data.user_id),
-        auth_date: String(data.auth_date),
-    };
+    // Сортируем ключи в правильном порядке и создаем строку для хеширования
+    const checkString = `auth_date=${data.auth_date}\nuser_id=${data.user_id}`;
+    console.log('Sorted Check String:', checkString);
 
-    // Формируем строку для хеширования
-    const sortedData = Object.keys(formattedData)
-        .sort()
-        .map(key => `${key}=${formattedData[key]}`)
-        .join('\n');
-
-    console.log('Sorted Check String:', sortedData);
-
-    const generatedHash = crypto.createHmac('sha256', secretKey).update(sortedData).digest('hex');
+    const generatedHash = crypto.createHmac('sha256', secretKey).update(checkString).digest('hex');
     console.log('Generated Hash:', generatedHash);
 
     return generatedHash === data.hash;
 }
+
 
 
 app.post('/api/user', (req, res) => {
