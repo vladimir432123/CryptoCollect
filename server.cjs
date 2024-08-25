@@ -39,6 +39,7 @@ db.query(`
         id INT AUTO_INCREMENT PRIMARY KEY,
         telegram_id BIGINT UNIQUE,
         username VARCHAR(255) UNIQUE,
+        coins INT DEFAULT 10000,  // Поле для хранения монет
         last_seen TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
     )
 `, (err) => {
@@ -144,11 +145,27 @@ app.post('/api/user', (req, res) => {
         if (results.length > 0) {
             const user = results[0];
             console.log(`User ${user.username} found in database`);
-            res.json({ username: user.username });
+            res.json({ username: user.username, coins: user.coins });  // Возвращаем монеты
         } else {
             console.log('User not found in database');
             res.status(404).send('User not found');
         }
+    });
+});
+
+// Endpoint для обновления монет
+app.post('/api/user/update-coins', (req, res) => {
+    const { userId, coins } = req.body;
+
+    const query = 'UPDATE user SET coins = ? WHERE telegram_id = ?';
+    db.query(query, [coins, userId], (err) => {
+        if (err) {
+            console.error('Error updating coins:', err);
+            return res.status(500).send('Server error');
+        }
+
+        console.log(`Coins updated for user ${userId}: ${coins}`);
+        res.send('Coins updated successfully');
     });
 });
 
