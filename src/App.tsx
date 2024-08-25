@@ -70,21 +70,24 @@ const App: React.FC = () => {
 
     console.log('InitData:', initData);
 
-    // Используем либо initData.user.username, либо 'Гость'
     const userName = initData.user?.username || 'Гость';
     setUsername(userName);
 
-    // Отправляем данные на сервер для проверки
+    // Логирование данных, которые отправляются на сервер
+    const dataToSend = {
+        userId: initData.user?.id,
+        authDate: initData.auth_date,
+        hash: initData.hash
+    };
+
+    console.log('Data sent to server:', dataToSend);
+
     fetch('/api/user', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-            userId: initData.user?.id,
-            authDate: initData.auth_date, // Используем authDate
-            hash: initData.hash
-        })
+        body: JSON.stringify(dataToSend)
     })
     .then(response => response.json())
     .then(data => {
