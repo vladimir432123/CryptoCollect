@@ -55,16 +55,21 @@ const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN);
 // Обработка команды /start в боте
 bot.start((ctx) => {
     const telegramId = ctx.message.from.id;
-    const username = ctx.message.from.username;
+    const username = ctx.message.from.username || `user_${telegramId}`; // Используем telegramId, если username не задан
+
     console.log(`Received /start command from ${username}`);
 
-    db.query('INSERT INTO user (telegram_id, username) VALUES (?, ?) ON DUPLICATE KEY UPDATE last_seen = NOW()', [telegramId, username], (err) => {
-        if (err) {
-            console.error('Database error:', err);
-        } else {
-            console.log(`User ${username} inserted/updated in database.`);
+    db.query(
+        'INSERT INTO user (telegram_id, username) VALUES (?, ?) ON DUPLICATE KEY UPDATE last_seen = NOW()', 
+        [telegramId, username], 
+        (err) => {
+            if (err) {
+                console.error('Database error:', err);
+            } else {
+                console.log(`User ${username} inserted/updated in database.`);
+            }
         }
-    });
+    );
 
     const miniAppUrl = `https://t.me/cryptocollect_bot?startapp=${username}&tgWebApp=true`;
 
@@ -75,6 +80,7 @@ bot.start((ctx) => {
         ])
     );
 });
+
 
 bot.command('openapp', (ctx) => {
     const username = ctx.message.from.username;
