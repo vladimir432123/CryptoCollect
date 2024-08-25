@@ -100,7 +100,7 @@ function checkTelegramAuth(initData) {
 
     const secretKey = crypto.createHash('sha256').update(token).digest();
 
-    // Формируем строку для проверки подлинности
+    // Создаем строку с точным соблюдением порядка и формата
     const checkString = `auth_date=${initData.auth_date}\nuser_id=${initData.user_id}`;
 
     console.log('Check String:', checkString);
@@ -147,6 +147,7 @@ app.post('/api/user', (req, res) => {
         }
     });
 });
+
 
 
 
