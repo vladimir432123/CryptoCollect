@@ -100,12 +100,12 @@ function checkTelegramAuth(initData) {
 
     const secretKey = crypto.createHash('sha256').update(token).digest();
 
-    // Сортируем и формируем строку проверки
+    // Формируем строку проверки, исключая хеш
     const checkString = Object.keys(initData)
-        .filter(key => key !== 'hash')
-        .sort()
-        .map(key => `${key}=${initData[key]}`)
-        .join('\n');
+        .filter(key => key !== 'hash')  // Исключаем хеш из строки
+        .sort()  // Сортируем параметры по алфавиту
+        .map(key => `${key}=${initData[key]}`)  // Создаем пару ключ-значение
+        .join('\n');  // Соединяем их в одну строку
 
     // Рассчитываем хеш
     const calculatedHash = crypto.createHmac('sha256', secretKey).update(checkString).digest('hex');
@@ -115,6 +115,8 @@ function checkTelegramAuth(initData) {
 
     return calculatedHash === initData.hash;
 }
+console.log('Received initData:', initData);
+
 
 
 
