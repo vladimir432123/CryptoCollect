@@ -71,23 +71,29 @@ const App: React.FC = () => {
     const authDate = webApp.initDataUnsafe.auth_date;
     const hash = webApp.initDataUnsafe.hash;
 
-    console.log({ userId, authDate, hash });
+    const log = (message: string) => window.Telegram.WebApp.showAlert(message);
+
+    log(`Client received: User ID: ${userId}, Auth Date: ${authDate}, Hash: ${hash}`);
 
     if (userId && authDate && hash) {
         axios.post('/api/user', { userId, authDate, hash })
             .then(response => {
+                log(`Server response: ${JSON.stringify(response.data)}`);
                 if (response.data.username) {
                     setUsername(response.data.username);
-                    console.log('Имя пользователя:', response.data.username);
+                    log(`Имя пользователя установлено: ${response.data.username}`);
                 } else {
-                    console.log('Имя пользователя не найдено в ответе сервера');
+                    log('Имя пользователя не найдено в ответе сервера');
                 }
             })
             .catch(error => {
-                console.error('Ошибка получения данных пользователя с сервера:', error);
+                log(`Ошибка получения данных пользователя с сервера: ${error}`);
             });
+    } else {
+        log('Не удалось получить необходимые параметры из WebApp SDK');
     }
 }, []);
+
 
   const handleMainButtonClick = useCallback((e: React.TouchEvent<HTMLDivElement>) => {
     const touches = e.touches;
