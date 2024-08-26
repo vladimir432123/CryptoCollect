@@ -127,34 +127,39 @@ function checkTelegramAuth(telegramData) {
         return false;
     }
 }
-// Логирование времени сервера и Telegram для отладки
-const serverTime = new Date();
-console.log('Current Server Time (UTC):', serverTime.toISOString());
-const telegramTime = new Date(1724695628 * 1000);
-const timeDifference = serverTime - telegramTime; // Разница во времени в миллисекундах
-console.log('Time difference (ms):', timeDifference);
 
-app.get('/time', (req, res) => {
-    const serverTime = new Date();
-    res.json({
-        server_time_utc: serverTime.toISOString(),
-        telegram_auth_date: req.query.auth_date || 'auth_date not provided'
-    });
-});
+function isAuthDateValid(authDate) {
+    const serverTime = Math.floor(Date.now() / 1000); // Время сервера в секундах
+    const timeDifference = serverTime - authDate;
+
+    // Например, допустимая разница во времени 300 секунд (5 минут)
+    const maxAllowedTimeDifference = 600;
+
+    return timeDifference <= maxAllowedTimeDifference;
+}
 
 app.post('/api/user', (req, res) => {
     const data = {
         telegram_id: String(req.body.telegram_id),
-        auth_date: String(req.body.authDate),
+        auth_date: parseInt(req.body.auth_date), // преобразование в целое число
         hash: req.body.hash,
     };
 
     console.log('Received Data:', data);
 
+    if (!isAuthDateValid(data.auth_date)) {
+        console.log('Auth date is too old');
+        return res.status(403).send('Forbidden');
+    }
+
     if (!checkTelegramAuth(data)) {
         console.log('Telegram auth failed');
         return res.status(403).send('Forbidden');
     }
+
+    // Успешная аутентификация
+    res.send('Authentication successful');
+});
 
     const query = 'SELECT * FROM user WHERE telegram_id = ?';
 
@@ -173,7 +178,7 @@ app.post('/api/user', (req, res) => {
             res.status(404).send('User not found');
         }
     });
-});
+
 
 app.post('/webhook', (req, res) => {
     bot.handleUpdate(req.body, res);
