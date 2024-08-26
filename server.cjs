@@ -92,29 +92,28 @@ bot.command('openapp', (ctx) => {
     );
 });
 
-function checkTelegramAuth(data) {
-    const token = process.env.TELEGRAM_BOT_TOKEN;
-    console.log('Your Telegram Bot Token:', token);
-        if (!token) {
-        console.error('TELEGRAM_BOT_TOKEN не установлен');
+function checkTelegramAuth(telegramData) {
+    const { hash, ...data } = telegramData; // Исключаем 'hash' из данных
+    const secret = crypto.createHash('sha256').update(process.env.TELEGRAM_BOT_TOKEN).digest();
+
+    const dataCheckString = Object.keys(data)
+        .sort()
+        .map(key => `${key}=${data[key]}`)
+        .join('\n');
+
+    const hmac = crypto.createHmac('sha256', secret)
+        .update(dataCheckString)
+        .digest('hex');
+
+    if (hmac === hash) {
+        console.log('Authentication successful');
+        return true;
+    } else {
+        console.log('Authentication failed');
+        console.log('Expected hash:', hmac);
+        console.log('Received hash:', hash);
         return false;
     }
-
-    const secretKey = crypto.createHash('sha256').update(token).digest('hex');
-    console.log('Secret Key:', secretKey.toString('hex'));
-    console.log('Generated Secret Key:', secretKey);
-
-
-    const sortedData = `auth_date=${data.auth_date}\ntelegram_id=${data.telegram_id}`;
-    console.log('Formatted Data:', sortedData); // Печать строки перед хешированием
-    console.log('Sorted Data Bytes:', Buffer.from(sortedData, 'utf-8'));
-
-    const generatedHash = crypto.createHmac('sha256', secretKey).update(sortedData).digest('hex');
-    console.log('Generated Hash:', generatedHash);
-    console.log('Received Hash:', data.hash);
-    
-
-
 }
 const serverTime = new Date();
 console.log('Current Server Time (UTC):', serverTime.toISOString());
@@ -163,6 +162,18 @@ app.post('/api/user', (req, res) => {
         }
     });
 });
+const MAX_AUTH_DATE_AGE = 86400; // 24 часа в секундах
+
+function isAuthDateValid(authDate) {
+    const now = Math.floor(Date.now() / 1000);
+    return (now - authDate) < MAX_AUTH_DATE_AGE;
+}
+
+// Внутри функции checkTelegramAuth
+if (!isAuthDateValid(data.auth_date)) {
+    console.log('Auth date is too old');
+    return false;
+}
 
 app.post('/webhook', (req, res) => {
     bot.handleUpdate(req.body, res);
