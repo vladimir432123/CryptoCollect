@@ -103,13 +103,24 @@ function checkTelegramAuth(data) {
     console.log('Secret Key:', secretKey.toString('hex'));
 
     const sortedData = `auth_date=${data.auth_date}\ntelegram_id=${data.telegram_id}`;
-    console.log('Sorted Check String:', sortedData);
-
+    console.log('Formatted Data:', sortedData); // Печать строки перед хешированием
+    
     const generatedHash = crypto.createHmac('sha256', secretKey).update(sortedData).digest('hex');
     console.log('Generated Hash:', generatedHash);
     console.log('Received Hash:', data.hash);
-
-    return generatedHash === data.hash;
+    
+    // Сравнение длины хэшей
+    console.log('Generated Hash Length:', generatedHash.length);
+    console.log('Received Hash Length:', data.hash.length);
+    
+    // Если хэши не совпадают, сравнить их посимвольно
+    if (generatedHash !== data.hash) {
+        for (let i = 0; i < generatedHash.length; i++) {
+            if (generatedHash[i] !== data.hash[i]) {
+                console.log(`Mismatch at position ${i}: generated = ${generatedHash[i]}, received = ${data.hash[i]}`);
+            }
+        }
+    }
 }
 
 app.post('/api/user', (req, res) => {
