@@ -12,7 +12,6 @@ const port = process.env.PORT || 8080;
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
-// Обслуживание статических файлов из папки dist
 app.use(express.static(path.join(__dirname, 'dist')));
 
 const dbConfig = {
@@ -33,7 +32,6 @@ db.connect((err) => {
     console.log('Успешное подключение к базе данных');
 });
 
-// Создание таблицы users, если она не существует
 db.query(`
     CREATE TABLE IF NOT EXISTS user (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -51,10 +49,9 @@ db.query(`
 
 const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN);
 
-// Обработка команды /start в боте
 bot.start((ctx) => {
     const telegramId = ctx.message.from.id;
-    const username = ctx.message.from.username || `user_${telegramId}`; // Используем telegramId, если username не задан
+    const username = ctx.message.from.username || `user_${telegramId}`;
 
     console.log(`Received /start command from ${username}`);
 
@@ -105,7 +102,6 @@ function checkTelegramAuth(data) {
     const secretKey = crypto.createHash('sha256').update(token).digest();
     console.log('Secret Key:', secretKey.toString('hex'));
 
-    // Форматирование строки данных для хеширования
     const sortedData = `auth_date=${data.auth_date}\ntelegram_id=${data.telegram_id}`;
     console.log('Sorted Check String:', sortedData);
 
@@ -116,12 +112,9 @@ function checkTelegramAuth(data) {
     return generatedHash === data.hash;
 }
 
-
-
-
 app.post('/api/user', (req, res) => {
     const data = {
-        telegram_id: String(req.body.telegram_id),  // Убедитесь, что используете telegram_id
+        telegram_id: String(req.body.telegram_id),
         auth_date: String(req.body.authDate),
         hash: req.body.hash,
     };
@@ -151,8 +144,6 @@ app.post('/api/user', (req, res) => {
         }
     });
 });
-
-
 
 app.post('/webhook', (req, res) => {
     bot.handleUpdate(req.body, res);
