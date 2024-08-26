@@ -139,9 +139,16 @@ function isAuthDateValid(authDate) {
 }
 
 app.post('/api/user', (req, res) => {
+    const authDate = parseInt(req.body.auth_date, 10); // Указываем основание для преобразования (десятичное)
+
+    if (isNaN(authDate)) {
+        console.log('Invalid auth_date received:', req.body.auth_date);
+        return res.status(400).send('Invalid auth_date');
+    }
+
     const data = {
         telegram_id: String(req.body.telegram_id),
-        auth_date: parseInt(req.body.auth_date), // преобразование в целое число
+        auth_date: authDate, 
         hash: req.body.hash,
     };
 
@@ -176,6 +183,7 @@ app.post('/api/user', (req, res) => {
         }
     });
 });
+
 
 
 
