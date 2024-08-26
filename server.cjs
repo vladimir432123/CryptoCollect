@@ -94,13 +94,16 @@ bot.command('openapp', (ctx) => {
 
 function checkTelegramAuth(data) {
     const token = process.env.TELEGRAM_BOT_TOKEN;
-    if (!token) {
+    console.log('Your Telegram Bot Token:', token);
+        if (!token) {
         console.error('TELEGRAM_BOT_TOKEN не установлен');
         return false;
     }
 
-    const secretKey = crypto.createHash('sha256').update(token).digest();
+    const secretKey = crypto.createHash('sha256').update(token).digest('hex');
     console.log('Secret Key:', secretKey.toString('hex'));
+    console.log('Generated Secret Key:', secretKey);
+
 
     const sortedData = `auth_date=${data.auth_date}\ntelegram_id=${data.telegram_id}`;
     console.log('Formatted Data:', sortedData); // Печать строки перед хешированием
@@ -110,18 +113,8 @@ function checkTelegramAuth(data) {
     console.log('Generated Hash:', generatedHash);
     console.log('Received Hash:', data.hash);
     
-    // Сравнение длины хэшей
-    console.log('Generated Hash Length:', generatedHash.length);
-    console.log('Received Hash Length:', data.hash.length);
-    
-    // Если хэши не совпадают, сравнить их посимвольно
-    if (generatedHash !== data.hash) {
-        for (let i = 0; i < generatedHash.length; i++) {
-            if (generatedHash[i] !== data.hash[i]) {
-                console.log(`Mismatch at position ${i}: generated = ${generatedHash[i]}, received = ${data.hash[i]}`);
-            }
-        }
-    }
+
+
 }
 app.get('/time', (req, res) => {
     const serverTime = new Date();
