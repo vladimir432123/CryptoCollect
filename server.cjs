@@ -157,10 +157,7 @@ app.post('/api/user', (req, res) => {
         return res.status(403).send('Forbidden');
     }
 
-    // Успешная аутентификация
-    res.send('Authentication successful');
-});
-
+    // Запрос к базе данных для проверки пользователя
     const query = 'SELECT * FROM user WHERE telegram_id = ?';
 
     db.query(query, [data.telegram_id], (err, results) => {
@@ -178,6 +175,8 @@ app.post('/api/user', (req, res) => {
             res.status(404).send('User not found');
         }
     });
+});
+
 
 
 app.post('/webhook', (req, res) => {
