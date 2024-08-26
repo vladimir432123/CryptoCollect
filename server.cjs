@@ -103,33 +103,28 @@ function isAuthDateValid(authDate) {
 // Функция проверки авторизации
 function checkTelegramAuth(telegramData) {
     const { hash, ...data } = telegramData; // Исключаем 'hash' из данных
-    const secret = crypto.createHash('sha256').update(process.env.TELEGRAM_BOT_TOKEN).digest();
-
-    // Сначала проверяем валидность auth_date
-    if (!isAuthDateValid(data.auth_date)) {
-        console.log('Auth date is too old');
-        return false;
-    }
+    const secretKey = crypto.createHash('sha256').update(process.env.TELEGRAM_BOT_TOKEN).digest(); // Генерация секретного ключа
 
     const dataCheckString = Object.keys(data)
         .sort()
         .map(key => `${key}=${data[key]}`)
-        .join('\n');
+        .join('\n'); // Форматирование строки данных
 
-    const hmac = crypto.createHmac('sha256', secret)
+    const generatedHash = crypto.createHmac('sha256', secretKey)
         .update(dataCheckString)
-        .digest('hex');
+        .digest('hex'); // Генерация хэша
 
-    if (hmac === hash) {
+    if (generatedHash === hash) {
         console.log('Authentication successful');
         return true;
     } else {
         console.log('Authentication failed');
-        console.log('Expected hash:', hmac);
+        console.log('Expected hash:', generatedHash);
         console.log('Received hash:', hash);
         return false;
     }
 }
+
 
 // Логирование времени сервера и Telegram для отладки
 const serverTime = new Date();
