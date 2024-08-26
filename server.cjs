@@ -106,16 +106,13 @@ function checkTelegramAuth(data) {
     console.log('Secret Key:', secretKey.toString('hex'));
 
     const formattedData = {
-        telegram_id: String(data.telegram_id),  // Убедитесь, что используете telegram_id
+        telegram_id: String(data.telegram_id),  // Используем telegram_id
         auth_date: String(data.auth_date),
     };
 
     console.log('Formatted Data:', formattedData);
 
-    const sortedData = Object.keys(formattedData)
-        .sort()
-        .map(key => `${key}=${formattedData[key]}`)
-        .join('\n');
+    const sortedData = `auth_date=${formattedData.auth_date}\ntelegram_id=${formattedData.telegram_id}`;
 
     console.log('Sorted Check String:', sortedData);
 
@@ -125,6 +122,7 @@ function checkTelegramAuth(data) {
 
     return generatedHash === data.hash;
 }
+
 
 app.post('/api/user', (req, res) => {
     const data = {
