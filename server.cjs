@@ -102,34 +102,31 @@ function isAuthDateValid(authDate) {
 
 // Функция проверки авторизации
 function checkTelegramAuth(telegramData) {
-    const { hash, ...data } = telegramData; // Исключаем 'hash' из данных
-    const secretKey = crypto.createHash('sha256').update(process.env.TELEGRAM_BOT_TOKEN).digest(); // Генерация секретного ключа
+    const { hash, ...data } = telegramData; // Извлекаем hash, остальные данные сохраняем
+    const secret = crypto.createHash('sha256').update(process.env.TELEGRAM_BOT_TOKEN).digest(); // Генерация секретного ключа
 
+    // Форматирование данных в строку
     const dataCheckString = Object.keys(data)
-        .sort()
+        .sort() // Сортировка по ключу
         .map(key => `${key}=${data[key]}`)
-        .join('\n'); // Форматирование строки данных
+        .join('\n');
 
-    console.log('Data Check String:', dataCheckString); // Проверьте строку
-
-    const generatedHash = crypto.createHmac('sha256', secretKey)
+    // Генерация хэша с использованием HMAC-SHA256
+    const hmac = crypto.createHmac('sha256', secret)
         .update(dataCheckString)
-        .digest('hex'); // Генерация хэша
+        .digest('hex');
 
-    console.log('Generated Hash:', generatedHash);
-    console.log('Received Hash:', hash);
-
-    if (generatedHash === hash) {
+    // Сравнение с полученным хэшем
+    if (hmac === hash) {
         console.log('Authentication successful');
         return true;
     } else {
         console.log('Authentication failed');
+        console.log('Expected hash:', hmac);
+        console.log('Received hash:', hash);
         return false;
     }
 }
-
-
-
 // Логирование времени сервера и Telegram для отладки
 const serverTime = new Date();
 console.log('Current Server Time (UTC):', serverTime.toISOString());
@@ -186,7 +183,7 @@ const startServer = async () => {
     try {
         await bot.telegram.deleteWebhook({ drop_pending_updates: true });
 
-        const webhookUrl = 'https://cryptocollect.onrender.com/webhook';
+        const webhookUrl = 'https://app-21c4d0cd-2996-4394-bf8a-a453b9f7e396.cleverapps.io/webhook';
 
         await bot.telegram.setWebhook(webhookUrl);
         console.log('Webhook set successfully:', webhookUrl);
