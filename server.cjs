@@ -123,6 +123,13 @@ function checkTelegramAuth(data) {
         }
     }
 }
+app.get('/time', (req, res) => {
+    const serverTime = new Date();
+    res.json({
+        server_time_utc: serverTime.toISOString(),
+        telegram_auth_date: req.query.auth_date || 'auth_date not provided'
+    });
+});
 
 app.post('/api/user', (req, res) => {
     const data = {
