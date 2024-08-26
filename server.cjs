@@ -116,6 +116,13 @@ function checkTelegramAuth(data) {
 
 
 }
+const serverTime = new Date();
+console.log('Current Server Time (UTC):', serverTime.toISOString());
+const telegramTime = new Date(1724695628 * 1000);
+const timeDifference = serverTime - telegramTime; // Разница во времени в миллисекундах
+console.log('Time difference (ms):', timeDifference);
+
+
 app.get('/time', (req, res) => {
     const serverTime = new Date();
     res.json({
