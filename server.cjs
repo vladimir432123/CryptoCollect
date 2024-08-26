@@ -104,7 +104,8 @@ function checkTelegramAuth(data) {
 
     const sortedData = `auth_date=${data.auth_date}\ntelegram_id=${data.telegram_id}`;
     console.log('Formatted Data:', sortedData); // Печать строки перед хешированием
-    
+    console.log('Sorted Data Bytes:', Buffer.from(sortedData, 'utf-8'));
+
     const generatedHash = crypto.createHmac('sha256', secretKey).update(sortedData).digest('hex');
     console.log('Generated Hash:', generatedHash);
     console.log('Received Hash:', data.hash);
