@@ -105,15 +105,8 @@ function checkTelegramAuth(data) {
     const secretKey = crypto.createHash('sha256').update(token).digest();
     console.log('Secret Key:', secretKey.toString('hex'));
 
-    const formattedData = {
-        telegram_id: String(data.telegram_id),  // Используем telegram_id
-        auth_date: String(data.auth_date),
-    };
-
-    console.log('Formatted Data:', formattedData);
-
-    const sortedData = `auth_date=${formattedData.auth_date}\ntelegram_id=${formattedData.telegram_id}`;
-
+    // Форматирование строки данных для хеширования
+    const sortedData = `auth_date=${data.auth_date}\ntelegram_id=${data.telegram_id}`;
     console.log('Sorted Check String:', sortedData);
 
     const generatedHash = crypto.createHmac('sha256', secretKey).update(sortedData).digest('hex');
@@ -122,6 +115,7 @@ function checkTelegramAuth(data) {
 
     return generatedHash === data.hash;
 }
+
 
 
 app.post('/api/user', (req, res) => {
