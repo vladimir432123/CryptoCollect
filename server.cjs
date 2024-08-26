@@ -92,9 +92,24 @@ bot.command('openapp', (ctx) => {
     );
 });
 
+// Проверка валидности даты авторизации
+const MAX_AUTH_DATE_AGE = 86400; // 24 часа в секундах
+
+function isAuthDateValid(authDate) {
+    const now = Math.floor(Date.now() / 1000);
+    return (now - authDate) < MAX_AUTH_DATE_AGE;
+}
+
+// Функция проверки авторизации
 function checkTelegramAuth(telegramData) {
     const { hash, ...data } = telegramData; // Исключаем 'hash' из данных
     const secret = crypto.createHash('sha256').update(process.env.TELEGRAM_BOT_TOKEN).digest();
+
+    // Сначала проверяем валидность auth_date
+    if (!isAuthDateValid(data.auth_date)) {
+        console.log('Auth date is too old');
+        return false;
+    }
 
     const dataCheckString = Object.keys(data)
         .sort()
@@ -115,12 +130,13 @@ function checkTelegramAuth(telegramData) {
         return false;
     }
 }
+
+// Логирование времени сервера и Telegram для отладки
 const serverTime = new Date();
 console.log('Current Server Time (UTC):', serverTime.toISOString());
 const telegramTime = new Date(1724695628 * 1000);
 const timeDifference = serverTime - telegramTime; // Разница во времени в миллисекундах
 console.log('Time difference (ms):', timeDifference);
-
 
 app.get('/time', (req, res) => {
     const serverTime = new Date();
@@ -162,18 +178,6 @@ app.post('/api/user', (req, res) => {
         }
     });
 });
-const MAX_AUTH_DATE_AGE = 86400; // 24 часа в секундах
-
-function isAuthDateValid(authDate) {
-    const now = Math.floor(Date.now() / 1000);
-    return (now - authDate) < MAX_AUTH_DATE_AGE;
-}
-
-// Внутри функции checkTelegramAuth
-if (!isAuthDateValid(data.auth_date)) {
-    console.log('Auth date is too old');
-    return false;
-}
 
 app.post('/webhook', (req, res) => {
     bot.handleUpdate(req.body, res);
