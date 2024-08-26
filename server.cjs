@@ -139,12 +139,10 @@ function isAuthDateValid(authDate) {
 }
 
 app.post('/api/user', (req, res) => {
-    console.log('Received body:', req.body);
-
-    const authDate = parseInt(req.body.auth_date, 10); // Указываем основание для преобразования (десятичное)
+    const authDate = parseInt(req.body.authDate, 10); // Используем правильное имя поля 'authDate'
 
     if (isNaN(authDate)) {
-        console.log('Invalid auth_date received:', req.body.auth_date);
+        console.log('Invalid auth_date received:', req.body.authDate);
         return res.status(400).send('Invalid auth_date');
     }
 
@@ -156,8 +154,15 @@ app.post('/api/user', (req, res) => {
 
     console.log('Received Data:', data);
 
-    // Далее остальная логика
+    if (!isAuthDateValid(data.auth_date)) {
+        console.log('Auth date is too old');
+        return res.status(403).send('Forbidden');
+    }
 
+    if (!checkTelegramAuth(data)) {
+        console.log('Telegram auth failed');
+        return res.status(403).send('Forbidden');
+    }
 
     // Запрос к базе данных для проверки пользователя
     const query = 'SELECT * FROM user WHERE telegram_id = ?';
@@ -178,6 +183,7 @@ app.post('/api/user', (req, res) => {
         }
     });
 });
+
 
 
 
