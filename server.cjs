@@ -110,20 +110,24 @@ function checkTelegramAuth(telegramData) {
         .map(key => `${key}=${data[key]}`)
         .join('\n'); // Форматирование строки данных
 
+    console.log('Data Check String:', dataCheckString); // Проверьте строку
+
     const generatedHash = crypto.createHmac('sha256', secretKey)
         .update(dataCheckString)
         .digest('hex'); // Генерация хэша
+
+    console.log('Generated Hash:', generatedHash);
+    console.log('Received Hash:', hash);
 
     if (generatedHash === hash) {
         console.log('Authentication successful');
         return true;
     } else {
         console.log('Authentication failed');
-        console.log('Expected hash:', generatedHash);
-        console.log('Received hash:', hash);
         return false;
     }
 }
+
 
 
 // Логирование времени сервера и Telegram для отладки
