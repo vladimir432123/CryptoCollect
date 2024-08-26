@@ -118,6 +118,7 @@ function checkTelegramAuth(data) {
 
 
 
+
 app.post('/api/user', (req, res) => {
     const data = {
         telegram_id: String(req.body.telegram_id),  // Убедитесь, что используете telegram_id
