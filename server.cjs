@@ -142,12 +142,18 @@ function checkTelegramAuth(telegramData) {
 app.post('/api/user', (req, res) => {
     const data = {
         telegram_id: req.body.telegram_id,
+        username: req.body.username,  // Ожидаем, что клиент передаст username
         auth_date: parseInt(req.body.authDate, 10),
-        hash: req.body.hash,
-        username: req.body.username // может быть undefined, это не влияет на аутентификацию
+        hash: req.body.hash
     };
 
     console.log('Received Data:', data);
+
+    // Проверка, что username присутствует
+    if (!data.username) {
+        console.log('Username is required but not provided');
+        return res.status(400).send('Username is required');
+    }
 
     // Проверка подлинности данных
     if (!checkTelegramAuth(data)) {
@@ -155,7 +161,7 @@ app.post('/api/user', (req, res) => {
         return res.status(403).send('Forbidden');
     }
 
-    // Если аутентификация прошла успешно, ищем пользователя в базе данных
+    // Запрос к базе данных для получения username по telegram_id
     const query = 'SELECT username FROM user WHERE telegram_id = ?';
 
     db.query(query, [data.telegram_id], (err, results) => {
@@ -174,6 +180,7 @@ app.post('/api/user', (req, res) => {
         }
     });
 });
+
 
 
 
