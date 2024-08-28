@@ -121,15 +121,24 @@ function checkTelegramAuth(telegramData) {
 }
 
 app.post('/api/user', (req, res) => {
-    // Получаем данные от Telegram
+    // Логирование тела запроса для отладки
+    console.log('Received body:', req.body);
+
+    // Извлекаем данные из тела запроса
     const data = {
-        id: req.body.id,
+        id: req.body.id, // Возможно нужно использовать req.body.telegram_id, если на клиенте это поле называется так
         username: req.body.username,
-        auth_date: parseInt(req.body.auth_date, 10),
+        auth_date: parseInt(req.body.authDate, 10), // Проверьте правильное именование поля
         hash: req.body.hash
     };
 
     console.log('Received Data:', data);
+
+    // Проверка, что данные извлечены корректно
+    if (!data.id || !data.username || isNaN(data.auth_date) || !data.hash) {
+        console.log('Invalid data received:', data);
+        return res.status(400).send('Invalid data received');
+    }
 
     // Проверка подлинности данных
     if (!checkTelegramAuth(data)) {
@@ -156,6 +165,7 @@ app.post('/api/user', (req, res) => {
         }
     });
 });
+
 
 
 app.post('/webhook', (req, res) => {
