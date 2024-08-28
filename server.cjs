@@ -120,25 +120,34 @@ function checkTelegramAuth(telegramData) {
     return hmac === hash;
 }
 
-app.post('/api/user', (req, res) => {
-    // Логирование тела запроса для отладки
-    console.log('Received body:', req.body);
+function checkTelegramAuth(telegramData) {
+    const { hash, ...data } = telegramData;
+    const secret = crypto.createHash('sha256').update(process.env.TELEGRAM_BOT_TOKEN).digest();
 
-    // Извлекаем данные из тела запроса
+    // Форматирование данных в строку
+    const dataCheckString = Object.keys(data)
+        .sort()  // Сортировка по ключу
+        .map(key => `${key}=${data[key]}`)
+        .join('\n');
+
+    // Генерация хэша с использованием HMAC-SHA256
+    const hmac = crypto.createHmac('sha256', secret)
+        .update(dataCheckString)
+        .digest('hex');
+
+    // Сравнение с полученным хэшем
+    return hmac === hash;
+}
+
+app.post('/api/user', (req, res) => {
     const data = {
-        telegram_id: req.body.telegram_id, // Используем правильное поле
-        username: req.body.username,       // Убедитесь, что username передается на клиенте
-        auth_date: parseInt(req.body.authDate, 10), // Обрабатываем authDate
-        hash: req.body.hash
+        telegram_id: req.body.telegram_id,
+        auth_date: parseInt(req.body.authDate, 10),
+        hash: req.body.hash,
+        username: req.body.username // может быть undefined, это не влияет на аутентификацию
     };
 
     console.log('Received Data:', data);
-
-    // Проверка, что данные извлечены корректно
-    if (!data.telegram_id || !data.auth_date || !data.hash) {
-        console.log('Invalid data received:', data);
-        return res.status(400).send('Invalid data received');
-    }
 
     // Проверка подлинности данных
     if (!checkTelegramAuth(data)) {
@@ -146,7 +155,7 @@ app.post('/api/user', (req, res) => {
         return res.status(403).send('Forbidden');
     }
 
-    // Запрос к базе данных для получения username по telegram_id
+    // Если аутентификация прошла успешно, ищем пользователя в базе данных
     const query = 'SELECT username FROM user WHERE telegram_id = ?';
 
     db.query(query, [data.telegram_id], (err, results) => {
