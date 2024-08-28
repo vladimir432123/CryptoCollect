@@ -100,14 +100,14 @@ function isAuthDateValid(authDate) {
     return (now - authDate) < MAX_AUTH_DATE_AGE;
 }
 
-// Функция проверки авторизации
+// Функция для проверки подлинности данных от Telegram
 function checkTelegramAuth(telegramData) {
-    const { hash, ...data } = telegramData; // Извлекаем hash, остальные данные сохраняем
-    const secret = crypto.createHash('sha256').update(process.env.TELEGRAM_BOT_TOKEN).digest(); // Генерация секретного ключа
+    const { hash, ...data } = telegramData;  // Извлекаем hash, остальные данные сохраняем
+    const secret = crypto.createHash('sha256').update(process.env.TELEGRAM_BOT_TOKEN).digest();  // Генерация секретного ключа
 
     // Форматирование данных в строку
     const dataCheckString = Object.keys(data)
-        .sort() // Сортировка по ключу
+        .sort()  // Сортировка по ключу
         .map(key => `${key}=${data[key]}`)
         .join('\n');
 
@@ -117,57 +117,30 @@ function checkTelegramAuth(telegramData) {
         .digest('hex');
 
     // Сравнение с полученным хэшем
-    if (hmac === hash) {
-        console.log('Authentication successful');
-        return true;
-    } else {
-        console.log('Authentication failed');
-        console.log('Expected hash:', hmac);
-        console.log('Received hash:', hash);
-        return false;
-    }
-}
-
-function isAuthDateValid(authDate) {
-    const serverTime = Math.floor(Date.now() / 1000); // Время сервера в секундах
-    const timeDifference = serverTime - authDate;
-
-    // Например, допустимая разница во времени 300 секунд (5 минут)
-    const maxAllowedTimeDifference = 600;
-
-    return timeDifference <= maxAllowedTimeDifference;
+    return hmac === hash;
 }
 
 app.post('/api/user', (req, res) => {
-    const authDate = parseInt(req.body.authDate, 10); // Используем правильное имя поля 'authDate'
-
-    if (isNaN(authDate)) {
-        console.log('Invalid auth_date received:', req.body.authDate);
-        return res.status(400).send('Invalid auth_date');
-    }
-
+    // Получаем данные от Telegram
     const data = {
-        telegram_id: String(req.body.telegram_id),
-        auth_date: authDate, 
-        hash: req.body.hash,
+        id: req.body.id,
+        username: req.body.username,
+        auth_date: parseInt(req.body.auth_date, 10),
+        hash: req.body.hash
     };
 
     console.log('Received Data:', data);
 
-    if (!isAuthDateValid(data.auth_date)) {
-        console.log('Auth date is too old');
-        return res.status(403).send('Forbidden');
-    }
-
+    // Проверка подлинности данных
     if (!checkTelegramAuth(data)) {
-        console.log('Telegram auth failed');
+        console.log('Authentication failed');
         return res.status(403).send('Forbidden');
     }
 
-    // Запрос к базе данных для проверки пользователя
-    const query = 'SELECT * FROM user WHERE telegram_id = ?';
+    // Запрос к базе данных для получения username по telegram_id
+    const query = 'SELECT username FROM user WHERE telegram_id = ?';
 
-    db.query(query, [data.telegram_id], (err, results) => {
+    db.query(query, [data.id], (err, results) => {
         if (err) {
             console.error('Error fetching user data:', err);
             return res.status(500).send('Server error');
@@ -183,9 +156,6 @@ app.post('/api/user', (req, res) => {
         }
     });
 });
-
-
-
 
 
 app.post('/webhook', (req, res) => {
