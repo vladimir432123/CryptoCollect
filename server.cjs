@@ -181,17 +181,6 @@ const generateHash = (data, token) => {
         .digest('hex');
 };
 
-// Пример использования
-const data = {
-    telegram_id: 748476487,
-    auth_date: 1724864281,
-    username: 'Vladimir476643'
-};
-
-const token = 'ваш_секретный_токен_бота';
-const hash = generateHash(data, token);
-console.log('Generated hash on client:', hash);
-
 
 
 
