@@ -160,6 +160,30 @@ app.post('/api/user', (req, res) => {
     });
 });
 
+const generateHash = (data, token) => {
+    const dataCheckString = Object.keys(data)
+        .sort()  // Сортировка по ключу
+        .map(key => `${key}=${data[key]}`)
+        .join('\n');
+
+    return crypto.createHmac('sha256', token)
+        .update(dataCheckString)
+        .digest('hex');
+};
+
+// Пример использования
+const data = {
+    telegram_id: 748476487,
+    auth_date: 1724864281,
+    username: 'Vladimir476643'
+};
+
+const token = 'ваш_секретный_токен_бота';
+const hash = generateHash(data, token);
+console.log('Generated hash on client:', hash);
+
+
+
 
 app.post('/webhook', (req, res) => {
     bot.handleUpdate(req.body, res);
