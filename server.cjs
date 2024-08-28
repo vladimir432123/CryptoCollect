@@ -126,16 +126,16 @@ app.post('/api/user', (req, res) => {
 
     // Извлекаем данные из тела запроса
     const data = {
-        id: req.body.id, // Возможно нужно использовать req.body.telegram_id, если на клиенте это поле называется так
-        username: req.body.username,
-        auth_date: parseInt(req.body.authDate, 10), // Проверьте правильное именование поля
+        telegram_id: req.body.telegram_id, // Используем правильное поле
+        username: req.body.username,       // Убедитесь, что username передается на клиенте
+        auth_date: parseInt(req.body.authDate, 10), // Обрабатываем authDate
         hash: req.body.hash
     };
 
     console.log('Received Data:', data);
 
     // Проверка, что данные извлечены корректно
-    if (!data.id || !data.username || isNaN(data.auth_date) || !data.hash) {
+    if (!data.telegram_id || !data.auth_date || !data.hash) {
         console.log('Invalid data received:', data);
         return res.status(400).send('Invalid data received');
     }
@@ -149,7 +149,7 @@ app.post('/api/user', (req, res) => {
     // Запрос к базе данных для получения username по telegram_id
     const query = 'SELECT username FROM user WHERE telegram_id = ?';
 
-    db.query(query, [data.id], (err, results) => {
+    db.query(query, [data.telegram_id], (err, results) => {
         if (err) {
             console.error('Error fetching user data:', err);
             return res.status(500).send('Server error');
@@ -165,6 +165,7 @@ app.post('/api/user', (req, res) => {
         }
     });
 });
+
 
 
 
