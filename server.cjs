@@ -103,36 +103,32 @@ function isAuthDateValid(authDate) {
 // Функция для проверки подлинности данных от Telegram
 function checkTelegramAuth(telegramData) {
     const { hash, ...data } = telegramData;
-    const secret = crypto.createHash('sha256').update(process.env.TELEGRAM_BOT_TOKEN).digest();
 
-    // Форматирование данных в строку
     const dataCheckString = Object.keys(data)
-        .sort()  // Сортировка по ключу
+        .filter(key => data[key] !== null)  // Исключаем ключи со значением null
+        .sort()
         .map(key => `${key}=${data[key]}`)
         .join('\n');
 
-// Логируйте данные для хэша
-console.log('Data check string:', dataCheckString);
-console.log('Using secret:', process.env.TELEGRAM_BOT_TOKEN);
+    console.log('Data check string:', dataCheckString);
+    console.log('Using secret:', process.env.TELEGRAM_BOT_TOKEN);
 
-// Генерация хэша с использованием HMAC-SHA256
-const hmac = crypto.createHmac('sha256', secret)
-    .update(dataCheckString)
-    .digest('hex');
+    const secret = crypto.createHash('sha256').update(process.env.TELEGRAM_BOT_TOKEN).digest();
+    const hmac = crypto.createHmac('sha256', secret)
+        .update(dataCheckString)
+        .digest('hex');
 
-console.log('Expected hash:', hmac);
-console.log('Received hash:', hash);
+    console.log('Expected hash:', hmac);
+    console.log('Received hash:', hash);
 
-// Сравните хэши
-if (hmac === hash) {
-    console.log('Authentication successful');
-    return true;
-} else {
-    console.log('Authentication failed');
-    console.log('Data for hash:', dataCheckString);
-    return false;
-}
-
+    if (hmac === hash) {
+        console.log('Authentication successful');
+        return true;
+    } else {
+        console.log('Authentication failed');
+        console.log('Data for hash:', dataCheckString);
+        return false;
+    }
 }
 
 app.post('/api/user', (req, res) => {
