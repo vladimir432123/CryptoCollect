@@ -101,6 +101,9 @@ const App: React.FC = () => {
         }
     })
     .catch(error => console.error('Error:', error));
+
+    // Уведомляем Telegram, что приложение готово к работе
+    WebApp.ready();
 }, []);
 
 
