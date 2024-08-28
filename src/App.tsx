@@ -75,6 +75,7 @@ const App: React.FC = () => {
     // Логирование данных, которые отправляются на сервер
     const dataToSend = {
         telegram_id: initData.user?.id,  // Проверяем, что используется правильный идентификатор
+        username: initData.user?.username || null,  // Передаем username, если он доступен
         authDate: initData.auth_date,
         hash: initData.hash
     };
@@ -101,7 +102,6 @@ const App: React.FC = () => {
     })
     .catch(error => console.error('Error:', error));
 }, []);
-
 
 
 
