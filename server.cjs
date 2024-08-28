@@ -123,6 +123,8 @@ const hmac = crypto.createHmac('sha256', secret)
 console.log('Expected hash:', hmac);
 console.log('Received hash:', hash);
 
+
+
 // Сравните хэши
 if (hmac === hash) {
     console.log('Authentication successful');
