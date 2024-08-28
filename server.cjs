@@ -126,7 +126,7 @@ app.post('/api/user', (req, res) => {
     const data = {
         telegram_id: req.body.telegram_id,
         username: req.body.username || null,
-        auth_date: parseInt(req.body.auth_date, 10),
+        auth_date: parseInt(req.body.authDate, 10),  // Исправлено поле authDate
         hash: req.body.hash
     };
 
@@ -149,6 +149,7 @@ app.post('/api/user', (req, res) => {
         res.json({ username: data.username });
     });
 });
+
 
 app.post('/webhook', (req, res) => {
     bot.handleUpdate(req.body, res);
