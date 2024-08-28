@@ -51,13 +51,14 @@ const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN);
 
 bot.start((ctx) => {
     const telegramId = ctx.message.from.id;
-    const username = ctx.message.from.username; // Должно содержать username, если он существует
+    const username = ctx.message.from.username || null; // Если username отсутствует, он будет null
 
     console.log('Telegram Data:', ctx.message.from);
 
+    // Сохраняем или обновляем пользователя по telegram_id
     db.query(
-        'INSERT INTO user (telegram_id, username) VALUES (?, ?) ON DUPLICATE KEY UPDATE auth_date = NOW()', 
-        [telegramId, username], 
+        'INSERT INTO user (telegram_id, username) VALUES (?, ?) ON DUPLICATE KEY UPDATE username = IFNULL(?, username), auth_date = NOW()', 
+        [telegramId, username, username], 
         (err) => {
             if (err) {
                 console.error('Database error:', err);
@@ -67,11 +68,7 @@ bot.start((ctx) => {
         }
     );
 
-    // Остальной код...
-
-
-
-    const miniAppUrl = `https://t.me/cryptocollect_bot?startapp=${username}&tgWebApp=true`;
+    const miniAppUrl = `https://t.me/cryptocollect_bot?startapp=${telegramId}&tgWebApp=true`;
 
     ctx.reply(
         'Добро пожаловать! Нажмите на кнопку ниже, чтобы открыть мини-приложение:',
@@ -82,10 +79,10 @@ bot.start((ctx) => {
 });
 
 bot.command('openapp', (ctx) => {
-    const username = ctx.message.from.username;
-    console.log(`Received /openapp command from ${username}`);
+    const telegramId = ctx.message.from.id;
+    console.log(`Received /openapp command from ${telegramId}`);
 
-    const miniAppUrl = `https://t.me/cryptocollect_bot?startapp=${username}&tgWebApp=true`;
+    const miniAppUrl = `https://t.me/cryptocollect_bot?startapp=${telegramId}&tgWebApp=true`;
     console.log('URL для мини-приложения:', miniAppUrl);
 
     ctx.reply(
@@ -106,31 +103,12 @@ function isAuthDateValid(authDate) {
 
 // Функция для проверки подлинности данных от Telegram
 function checkTelegramAuth(telegramData) {
-    const { hash, ...data } = telegramData;  // Извлекаем hash, остальные данные сохраняем
-    const secret = crypto.createHash('sha256').update(process.env.TELEGRAM_BOT_TOKEN).digest();  // Генерация секретного ключа
-
-    // Форматирование данных в строку
-    const dataCheckString = Object.keys(data)
-        .sort()  // Сортировка по ключу
-        .map(key => `${key}=${data[key]}`)
-        .join('\n');
-
-    // Генерация хэша с использованием HMAC-SHA256
-    const hmac = crypto.createHmac('sha256', secret)
-        .update(dataCheckString)
-        .digest('hex');
-
-    // Сравнение с полученным хэшем
-    return hmac === hash;
-}
-
-function checkTelegramAuth(telegramData) {
     const { hash, ...data } = telegramData;
     const secret = crypto.createHash('sha256').update(process.env.TELEGRAM_BOT_TOKEN).digest();
 
     // Форматирование данных в строку
     const dataCheckString = Object.keys(data)
-        .sort()  // Сортировка по ключу
+        .sort()
         .map(key => `${key}=${data[key]}`)
         .join('\n');
 
@@ -146,18 +124,12 @@ function checkTelegramAuth(telegramData) {
 app.post('/api/user', (req, res) => {
     const data = {
         telegram_id: req.body.telegram_id,
-        username: req.body.username,  // Ожидаем получения username
+        username: req.body.username || null, // Если username отсутствует, он будет null
         auth_date: parseInt(req.body.authDate, 10),
         hash: req.body.hash
     };
 
     console.log('Received Data:', data);
-
-    // Проверка наличия username
-    if (!data.username) {
-        console.log('Username is required but not provided');
-        return res.status(400).send('Username is required');
-    }
 
     // Проверка подлинности данных
     if (!checkTelegramAuth(data)) {
@@ -166,9 +138,9 @@ app.post('/api/user', (req, res) => {
     }
 
     // Запрос к базе данных для сохранения или обновления пользователя
-    const query = 'INSERT INTO user (telegram_id, username) VALUES (?, ?) ON DUPLICATE KEY UPDATE auth_date = NOW()';
+    const query = 'INSERT INTO user (telegram_id, username) VALUES (?, ?) ON DUPLICATE KEY UPDATE username = IFNULL(?, username), auth_date = NOW()';
 
-    db.query(query, [data.telegram_id, data.username], (err) => {
+    db.query(query, [data.telegram_id, data.username, data.username], (err) => {
         if (err) {
             console.error('Database error:', err);
             return res.status(500).send('Server error');
@@ -178,9 +150,6 @@ app.post('/api/user', (req, res) => {
         res.json({ username: data.username });
     });
 });
-
-
-
 
 app.post('/webhook', (req, res) => {
     bot.handleUpdate(req.body, res);
