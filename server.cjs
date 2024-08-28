@@ -112,20 +112,28 @@ function checkTelegramAuth(telegramData) {
         .map(key => `${key}=${data[key]}`)
         .join('\n');
 
-    console.log('Data check string:', dataCheckString);
+// Логируйте данные для хэша
+console.log('Data check string:', dataCheckString);
 
-    // Генерация хэша с использованием HMAC-SHA256
-    const hmac = crypto.createHmac('sha256', secret)
-        .update(dataCheckString)
-        .digest('hex');
+// Генерация хэша с использованием HMAC-SHA256
+const hmac = crypto.createHmac('sha256', secret)
+    .update(dataCheckString)
+    .digest('hex');
 
-    console.log('Expected hash:', hmac);
-    console.log('Received hash:', hash);
+console.log('Expected hash:', hmac);
+console.log('Received hash:', hash);
 
-    // Сравнение с полученным хэшем
-    return hmac === hash;
+// Сравните хэши
+if (hmac === hash) {
+    console.log('Authentication successful');
+    return true;
+} else {
+    console.log('Authentication failed');
+    console.log('Data for hash:', dataCheckString);
+    return false;
 }
 
+}
 
 app.post('/api/user', (req, res) => {
     // Логирование всех данных, которые приходят в запросе
