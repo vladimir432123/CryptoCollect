@@ -142,14 +142,14 @@ function checkTelegramAuth(telegramData) {
 app.post('/api/user', (req, res) => {
     const data = {
         telegram_id: req.body.telegram_id,
-        username: req.body.username,  // Ожидаем, что клиент передаст username
+        username: req.body.username,  // Ожидаем получения username
         auth_date: parseInt(req.body.authDate, 10),
         hash: req.body.hash
     };
 
     console.log('Received Data:', data);
 
-    // Проверка, что username присутствует
+    // Проверка наличия username
     if (!data.username) {
         console.log('Username is required but not provided');
         return res.status(400).send('Username is required');
@@ -161,26 +161,19 @@ app.post('/api/user', (req, res) => {
         return res.status(403).send('Forbidden');
     }
 
-    // Запрос к базе данных для получения username по telegram_id
-    const query = 'SELECT username FROM user WHERE telegram_id = ?';
+    // Запрос к базе данных для сохранения или обновления пользователя
+    const query = 'INSERT INTO user (telegram_id, username) VALUES (?, ?) ON DUPLICATE KEY UPDATE auth_date = NOW()';
 
-    db.query(query, [data.telegram_id], (err, results) => {
+    db.query(query, [data.telegram_id, data.username], (err) => {
         if (err) {
-            console.error('Error fetching user data:', err);
+            console.error('Database error:', err);
             return res.status(500).send('Server error');
         }
 
-        if (results.length > 0) {
-            const user = results[0];
-            console.log(`User ${user.username} found in database`);
-            res.json({ username: user.username });
-        } else {
-            console.log('User not found in database');
-            res.status(404).send('User not found');
-        }
+        console.log(`User ${data.username} inserted/updated in database.`);
+        res.json({ username: data.username });
     });
 });
-
 
 
 
