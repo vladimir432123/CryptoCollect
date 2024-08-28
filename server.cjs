@@ -77,7 +77,6 @@ bot.start((ctx) => {
     );
 });
 
-
 bot.command('openapp', (ctx) => {
     const telegramId = ctx.message.from.id;
     console.log(`Received /openapp command from ${telegramId}`);
@@ -114,6 +113,7 @@ function checkTelegramAuth(telegramData) {
 
 // Логируйте данные для хэша
 console.log('Data check string:', dataCheckString);
+console.log('Using secret:', process.env.TELEGRAM_BOT_TOKEN);
 
 // Генерация хэша с использованием HMAC-SHA256
 const hmac = crypto.createHmac('sha256', secret)
@@ -122,8 +122,6 @@ const hmac = crypto.createHmac('sha256', secret)
 
 console.log('Expected hash:', hmac);
 console.log('Received hash:', hash);
-
-
 
 // Сравните хэши
 if (hmac === hash) {
@@ -180,9 +178,6 @@ const generateHash = (data, token) => {
         .update(dataCheckString)
         .digest('hex');
 };
-
-
-
 
 app.post('/webhook', (req, res) => {
     bot.handleUpdate(req.body, res);
