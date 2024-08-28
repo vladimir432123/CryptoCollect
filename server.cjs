@@ -51,9 +51,9 @@ const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN);
 
 bot.start((ctx) => {
     const telegramId = ctx.message.from.id;
-    const username = ctx.message.from.username || `user_${telegramId}`;
+    const username = ctx.message.from.username; // Должно содержать username, если он существует
 
-    console.log(`Received /start command from ${username}`);
+    console.log('Telegram Data:', ctx.message.from);
 
     db.query(
         'INSERT INTO user (telegram_id, username) VALUES (?, ?) ON DUPLICATE KEY UPDATE auth_date = NOW()', 
@@ -66,6 +66,10 @@ bot.start((ctx) => {
             }
         }
     );
+
+    // Остальной код...
+
+
 
     const miniAppUrl = `https://t.me/cryptocollect_bot?startapp=${username}&tgWebApp=true`;
 
