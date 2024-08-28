@@ -11,7 +11,6 @@ const port = process.env.PORT || 8080;
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
-
 app.use(express.static(path.join(__dirname, 'dist')));
 
 const dbConfig = {
@@ -51,7 +50,7 @@ const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN);
 
 bot.start((ctx) => {
     const telegramId = ctx.message.from.id;
-    const username = ctx.message.from.username || `user_${telegramId}`; // Значение по умолчанию
+    const username = ctx.message.from.username || `user_${telegramId}`;
 
     console.log('Telegram Data:', ctx.message.from);
 
@@ -92,7 +91,6 @@ bot.command('openapp', (ctx) => {
     );
 });
 
-// Проверка валидности даты авторизации
 const MAX_AUTH_DATE_AGE = 86400; // 24 часа в секундах
 
 function isAuthDateValid(authDate) {
@@ -100,18 +98,16 @@ function isAuthDateValid(authDate) {
     return (now - authDate) < MAX_AUTH_DATE_AGE;
 }
 
-// Функция для проверки подлинности данных от Telegram
 function checkTelegramAuth(telegramData) {
     const { hash, ...data } = telegramData;
 
     const dataCheckString = Object.keys(data)
-        .filter(key => data[key] !== null)  // Исключаем ключи со значением null
+        .filter(key => data[key] !== null)
         .sort()
         .map(key => `${key}=${data[key]}`)
         .join('\n');
 
     console.log('Data check string:', dataCheckString);
-    console.log('Using secret:', process.env.TELEGRAM_BOT_TOKEN);
 
     const secret = crypto.createHash('sha256').update(process.env.TELEGRAM_BOT_TOKEN).digest();
     const hmac = crypto.createHmac('sha256', secret)
@@ -121,36 +117,26 @@ function checkTelegramAuth(telegramData) {
     console.log('Expected hash:', hmac);
     console.log('Received hash:', hash);
 
-    if (hmac === hash) {
-        console.log('Authentication successful');
-        return true;
-    } else {
-        console.log('Authentication failed');
-        console.log('Data for hash:', dataCheckString);
-        return false;
-    }
+    return hmac === hash;
 }
 
 app.post('/api/user', (req, res) => {
-    // Логирование всех данных, которые приходят в запросе
     console.log('Received POST body:', req.body);
 
     const data = {
         telegram_id: req.body.telegram_id,
-        username: req.body.username || null, // Проверяем и устанавливаем значение по умолчанию, если username отсутствует
-        auth_date: parseInt(req.body.authDate, 10),
+        username: req.body.username || null,
+        auth_date: parseInt(req.body.auth_date, 10),
         hash: req.body.hash
     };
 
     console.log('Processed Data:', data);
 
-    // Проверка подлинности данных
     if (!checkTelegramAuth(data)) {
         console.log('Authentication failed');
         return res.status(403).send('Forbidden');
     }
 
-    // Запрос к базе данных для сохранения или обновления пользователя
     const query = 'INSERT INTO user (telegram_id, username) VALUES (?, ?) ON DUPLICATE KEY UPDATE username = IFNULL(?, username), auth_date = NOW()';
 
     db.query(query, [data.telegram_id, data.username, data.username], (err) => {
@@ -163,17 +149,6 @@ app.post('/api/user', (req, res) => {
         res.json({ username: data.username });
     });
 });
-
-const generateHash = (data, token) => {
-    const dataCheckString = Object.keys(data)
-        .sort()  // Сортировка по ключу
-        .map(key => `${key}=${data[key]}`)
-        .join('\n');
-
-    return crypto.createHmac('sha256', token)
-        .update(dataCheckString)
-        .digest('hex');
-};
 
 app.post('/webhook', (req, res) => {
     bot.handleUpdate(req.body, res);
