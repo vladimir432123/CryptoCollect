@@ -122,14 +122,17 @@ function checkTelegramAuth(telegramData) {
 }
 
 app.post('/api/user', (req, res) => {
+    // Логирование всех данных, которые приходят в запросе
+    console.log('Received POST body:', req.body);
+
     const data = {
         telegram_id: req.body.telegram_id,
-        username: req.body.username || null, // Если username отсутствует, он будет null
+        username: req.body.username || null, // Проверяем и устанавливаем значение по умолчанию, если username отсутствует
         auth_date: parseInt(req.body.authDate, 10),
         hash: req.body.hash
     };
 
-    console.log('Received Data:', data);
+    console.log('Processed Data:', data);
 
     // Проверка подлинности данных
     if (!checkTelegramAuth(data)) {
@@ -150,6 +153,7 @@ app.post('/api/user', (req, res) => {
         res.json({ username: data.username });
     });
 });
+
 
 app.post('/webhook', (req, res) => {
     bot.handleUpdate(req.body, res);
