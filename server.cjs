@@ -51,11 +51,10 @@ const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN);
 
 bot.start((ctx) => {
     const telegramId = ctx.message.from.id;
-    const username = ctx.message.from.username || null; // Если username отсутствует, он будет null
+    const username = ctx.message.from.username || `user_${telegramId}`; // Значение по умолчанию
 
     console.log('Telegram Data:', ctx.message.from);
 
-    // Сохраняем или обновляем пользователя по telegram_id
     db.query(
         'INSERT INTO user (telegram_id, username) VALUES (?, ?) ON DUPLICATE KEY UPDATE username = IFNULL(?, username), auth_date = NOW()', 
         [telegramId, username, username], 
@@ -77,6 +76,7 @@ bot.start((ctx) => {
         ])
     );
 });
+
 
 bot.command('openapp', (ctx) => {
     const telegramId = ctx.message.from.id;
