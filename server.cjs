@@ -120,6 +120,7 @@ function checkTelegramAuth(telegramData) {
     return hmac === hash;
 }
 
+
 app.post('/api/user', (req, res) => {
     console.log('Received POST body:', req.body);
 
