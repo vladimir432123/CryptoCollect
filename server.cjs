@@ -137,6 +137,7 @@ app.post('/webhook', (req, res) => {
         res.status(403).json({ message: 'Authentication failed' });
     }
 
+
     console.log('Processed Data:', data);
 
     if (!checkTelegramAuth(data)) {
