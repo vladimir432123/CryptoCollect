@@ -64,43 +64,38 @@ const App: React.FC = () => {
     return () => clearInterval(recoveryInterval);
   }, [maxClicks]);
 
-  useEffect(() => {
+useEffect(() => {
     const initData = WebApp.initDataUnsafe;
 
     console.log('InitData:', initData);
 
-    const userName = initData.user?.username || 'Гость';
-    setUsername(userName);
-
-    // Логирование данных, которые отправляются на сервер
-    const dataToSend = {
-        telegram_id: initData.user?.id,  // Проверяем, что используется правильный идентификатор
-        username: initData.user?.username || null,  // Передаем username, если он доступен
-        authDate: initData.auth_date,
-        hash: initData.hash
-    };
-
-    console.log('Data sent to server:', dataToSend);
-
-    if (!dataToSend.telegram_id) {
-        console.error('Telegram ID is missing!');
+    const token = new URLSearchParams(window.location.search).get('token');
+    
+    if (!token) {
+        console.error('Токен сессии отсутствует!');
         return;
     }
 
-    fetch('/api/user', {
-        method: 'POST',
+    // Логирование данных, которые отправляются на сервер
+    const dataToSend = { token };
+    console.log('Отправка данных на сервер:', dataToSend);
+
+    fetch(`/app?token=${token}`, {
+        method: 'GET',
         headers: {
             'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(dataToSend)
+        }
     })
     .then(response => response.json())
     .then(data => {
         if (data.username) {
+            console.log('Имя пользователя получено с сервера:', data.username);
             setUsername(data.username);
+        } else {
+            console.error('Имя пользователя не получено с сервера');
         }
     })
-    .catch(error => console.error('Error:', error));
+    .catch(error => console.error('Ошибка при получении данных с сервера:', error));
 
     // Уведомляем Telegram, что приложение готово к работе
     WebApp.ready();
