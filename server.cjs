@@ -102,6 +102,7 @@ function isAuthDateValid(authDate) {
 function checkTelegramAuth(telegramData) {
     const { hash, ...data } = telegramData;
 
+    // Формируем строку для проверки данных
     const dataCheckString = Object.keys(data)
         .filter(key => data[key] !== null)
         .sort()
@@ -109,9 +110,10 @@ function checkTelegramAuth(telegramData) {
         .join('\n');
 
     console.log('Data check string:', dataCheckString);
-    console.log('Using secret:', process.env.TELEGRAM_BOT_TOKEN);
 
+    // Хешируем токен бота
     const secret = crypto.createHash('sha256').update(process.env.TELEGRAM_BOT_TOKEN).digest();
+    // Вычисляем HMAC на основе строки данных
     const hmac = crypto.createHmac('sha256', secret)
         .update(dataCheckString)
         .digest('hex');
@@ -128,6 +130,7 @@ function checkTelegramAuth(telegramData) {
         return false;
     }
 }
+
 
 app.post('/api/user', (req, res) => {
     console.log('Received POST body:', req.body);
