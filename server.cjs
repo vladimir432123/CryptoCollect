@@ -132,6 +132,12 @@ function checkTelegramAuth(telegramData) {
     } else {
         console.log('Authentication failed');
         console.log('Data for hash:', dataCheckString);
+
+        // Дополнительное логирование: проверить, есть ли проблемы с кодировкой
+        console.log('Data check string (buffer):', Buffer.from(dataCheckString, 'utf-8').toString('hex'));
+        console.log('HMAC buffer (expected):', Buffer.from(hmac, 'utf-8').toString('hex'));
+        console.log('HMAC buffer (received):', Buffer.from(hash, 'utf-8').toString('hex'));
+
         return false;
     }
 }
