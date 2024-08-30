@@ -92,20 +92,18 @@ bot.command('openapp', (ctx) => {
     );
 });
 
-// Проверка валидности даты авторизации
-const MAX_AUTH_DATE_AGE = 86400; // 24 часа в секундах
+const MAX_AUTH_DATE_AGE = 86400;
 
 function isAuthDateValid(authDate) {
     const now = Math.floor(Date.now() / 1000);
     return (now - authDate) < MAX_AUTH_DATE_AGE;
 }
 
-// Функция для проверки подлинности данных от Telegram
 function checkTelegramAuth(telegramData) {
     const { hash, ...data } = telegramData;
 
     const dataCheckString = Object.keys(data)
-        .filter(key => data[key] !== null)  // Исключаем ключи со значением null
+        .filter(key => data[key] !== null)
         .sort()
         .map(key => `${key}=${data[key]}`)
         .join('\n');
@@ -132,25 +130,22 @@ function checkTelegramAuth(telegramData) {
 }
 
 app.post('/api/user', (req, res) => {
-    // Логирование всех данных, которые приходят в запросе
     console.log('Received POST body:', req.body);
 
     const data = {
         telegram_id: req.body.telegram_id,
-        username: req.body.username || null, // Проверяем и устанавливаем значение по умолчанию, если username отсутствует
+        username: req.body.username || null,
         auth_date: parseInt(req.body.authDate, 10),
         hash: req.body.hash
     };
 
     console.log('Processed Data:', data);
 
-    // Проверка подлинности данных
     if (!checkTelegramAuth(data)) {
         console.log('Authentication failed');
         return res.status(403).send('Forbidden');
     }
 
-    // Запрос к базе данных для сохранения или обновления пользователя
     const query = 'INSERT INTO user (telegram_id, username) VALUES (?, ?) ON DUPLICATE KEY UPDATE username = IFNULL(?, username), auth_date = NOW()';
 
     db.query(query, [data.telegram_id, data.username, data.username], (err) => {
@@ -166,7 +161,7 @@ app.post('/api/user', (req, res) => {
 
 const generateHash = (data, token) => {
     const dataCheckString = Object.keys(data)
-        .sort()  // Сортировка по ключу
+        .sort()
         .map(key => `${key}=${data[key]}`)
         .join('\n');
 
@@ -183,7 +178,8 @@ const startServer = async () => {
     try {
         await bot.telegram.deleteWebhook({ drop_pending_updates: true });
 
-        const webhookUrl = 'https://app-21c4d0cd-2996-4394-bf8a-a453b9f7e396.cleverapps.io/webhook';
+        // Получаем вебхук URL из переменной окружения
+        const webhookUrl = process.env.WEBHOOK_URL;
 
         await bot.telegram.setWebhook(webhookUrl);
         console.log('Webhook set successfully:', webhookUrl);
