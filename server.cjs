@@ -141,39 +141,31 @@ app.post('/webhook', (req, res) => {
 
     if (authResult) {
         console.log('Authentication successful');
-        res.json({ message: 'Authentication successful' });
-    } else {
-        console.log('Authentication failed');
-        res.status(403).json({ message: 'Authentication failed' });
-    }
 
-    // Запрос к базе данных для сохранения или обновления пользователя
-    const query = 'INSERT INTO user (telegram_id, username) VALUES (?, ?) ON DUPLICATE KEY UPDATE username = IFNULL(?, username), auth_date = NOW()';
+        const telegramId = data.telegram_id;
+        const username = data.username;
 
-    db.query(query, [data.telegram_id, data.username, data.username], (err) => {
-        if (err) {
-            console.error('Database error:', err);
-            return res.status(500).send('Server error');
+        if (!telegramId || !username) {
+            console.error('Invalid data received');
+            return res.status(400).json({ message: 'Invalid data' });
         }
 
-        console.log(`User ${data.username} inserted/updated in database.`);
-        res.json({ username: data.username });
-    });
-});
+        // Запрос к базе данных для сохранения или обновления пользователя
+        const query = 'INSERT INTO user (telegram_id, username) VALUES (?, ?) ON DUPLICATE KEY UPDATE username = IFNULL(?, username), auth_date = NOW()';
 
-const generateHash = (data, token) => {
-    const dataCheckString = Object.keys(data)
-        .sort()
-        .map(key => `${key}=${data[key]}`)
-        .join('\n');
+        db.query(query, [telegramId, username, username], (err) => {
+            if (err) {
+                console.error('Database error:', err);
+                return res.status(500).send('Server error');
+            }
 
-    return crypto.createHmac('sha256', token)
-        .update(dataCheckString)
-        .digest('hex');
-};
-
-app.post('/webhook', (req, res) => {
-    bot.handleUpdate(req.body, res);
+            console.log(`User ${username} inserted/updated in database.`);
+            return res.json({ username });
+        });
+    } else {
+        console.log('Authentication failed');
+        return res.status(403).json({ message: 'Authentication failed' });
+    }
 });
 
 const startServer = async () => {
