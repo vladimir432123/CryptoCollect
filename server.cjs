@@ -102,12 +102,6 @@ function isAuthDateValid(authDate) {
 function checkTelegramAuth(telegramData) {
     const { hash, ...data } = telegramData;
 
-    // Проверка на наличие хэша
-    if (!hash) {
-        console.error('Hash not provided in request');
-        return false;
-    }
-
     // Формируем строку для проверки данных
     const dataCheckString = Object.keys(data)
         .filter(key => data[key] !== null)
@@ -142,25 +136,16 @@ app.post('/webhook', (req, res) => {
     if (authResult) {
         console.log('Authentication successful');
 
-        const telegramId = data.telegram_id;
-        const username = data.username;
-
-        if (!telegramId || !username) {
-            console.error('Invalid data received');
-            return res.status(400).json({ message: 'Invalid data' });
-        }
-
-        // Запрос к базе данных для сохранения или обновления пользователя
         const query = 'INSERT INTO user (telegram_id, username) VALUES (?, ?) ON DUPLICATE KEY UPDATE username = IFNULL(?, username), auth_date = NOW()';
 
-        db.query(query, [telegramId, username, username], (err) => {
+        db.query(query, [data.telegram_id, data.username, data.username], (err) => {
             if (err) {
                 console.error('Database error:', err);
                 return res.status(500).send('Server error');
             }
 
-            console.log(`User ${username} inserted/updated in database.`);
-            return res.json({ username });
+            console.log(`User ${data.username} inserted/updated in database.`);
+            return res.json({ username: data.username });
         });
     } else {
         console.log('Authentication failed');
@@ -168,11 +153,25 @@ app.post('/webhook', (req, res) => {
     }
 });
 
+const generateHash = (data, token) => {
+    const dataCheckString = Object.keys(data)
+        .sort()
+        .map(key => `${key}=${data[key]}`)
+        .join('\n');
+
+    return crypto.createHmac('sha256', token)
+        .update(dataCheckString)
+        .digest('hex');
+};
+
+app.post('/webhook', (req, res) => {
+    bot.handleUpdate(req.body, res);
+});
+
 const startServer = async () => {
     try {
         await bot.telegram.deleteWebhook({ drop_pending_updates: true });
 
-        // Получаем вебхук URL из переменной окружения
         const webhookUrl = process.env.WEBHOOK_URL;
 
         await bot.telegram.setWebhook(webhookUrl);
