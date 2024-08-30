@@ -127,49 +127,31 @@ function checkTelegramAuth(telegramData) {
 }
 
 app.post('/webhook', (req, res) => {
-    const authResult = checkTelegramAuth(req.body);
+    const telegramData = req.body;
 
-    if (authResult) {
-        console.log('Authentication successful');
-        res.json({ message: 'Authentication successful' });
-    } else {
+    console.log('Processed Data:', telegramData);
+
+    const authResult = checkTelegramAuth(telegramData);
+
+    if (!authResult) {
         console.log('Authentication failed');
-        res.status(403).json({ message: 'Authentication failed' });
+        return res.status(403).json({ message: 'Authentication failed' });
     }
 
-
-    console.log('Processed Data:', data);
-
-    if (!checkTelegramAuth(data)) {
-        console.log('Authentication failed');
-        return res.status(403).send('Forbidden');
-    }
+    console.log('Authentication successful');
 
     const query = 'INSERT INTO user (telegram_id, username) VALUES (?, ?) ON DUPLICATE KEY UPDATE username = IFNULL(?, username), auth_date = NOW()';
 
-    db.query(query, [data.telegram_id, data.username, data.username], (err) => {
+    db.query(query, [telegramData.id, telegramData.username, telegramData.username], (err) => {
         if (err) {
             console.error('Database error:', err);
             return res.status(500).send('Server error');
         }
 
-        console.log(`User ${data.username} inserted/updated in database.`);
-        res.json({ username: data.username });
+        console.log(`User ${telegramData.username} inserted/updated in database.`);
+        res.json({ username: telegramData.username });
     });
-});
 
-const generateHash = (data, token) => {
-    const dataCheckString = Object.keys(data)
-        .sort()
-        .map(key => `${key}=${data[key]}`)
-        .join('\n');
-
-    return crypto.createHmac('sha256', token)
-        .update(dataCheckString)
-        .digest('hex');
-};
-
-app.post('/webhook', (req, res) => {
     bot.handleUpdate(req.body, res);
 });
 
