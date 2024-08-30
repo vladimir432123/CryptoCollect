@@ -107,6 +107,13 @@ function checkTelegramAuth(telegramData) {
         return false;
     }
 
+    // Проверяем, если значения данных являются объектами, преобразуем их в строки
+    for (let key in data) {
+        if (typeof data[key] === 'object') {
+            data[key] = JSON.stringify(data[key]);
+        }
+    }
+
     const dataCheckString = Object.keys(data)
         .filter(key => data[key] !== null)
         .sort()
