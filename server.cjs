@@ -95,14 +95,9 @@ function validateSessionToken(token) {
 }
 
 // Обработка команды /start
-// Обработка команды /start
-// Обработка команды /start
 bot.start(async (ctx) => {
     const telegramId = ctx.message.from.id;
     const username = ctx.message.from.username || `user_${telegramId}`;
-
-    // Логирование для проверки, что команда /start обработана
-    console.log('Обработка команды /start для пользователя:', telegramId);
 
     // Проверка и создание аккаунта, если его нет
     db.query(
@@ -110,7 +105,7 @@ bot.start(async (ctx) => {
         [telegramId, username, '', username], 
         async (err) => {
             if (err) {
-                console.error('Ошибка базы данных при обработке команды /start:', err);
+                console.error('Database error:', err);
                 return ctx.reply('Произошла ошибка, попробуйте позже.');
             }
 
@@ -119,10 +114,6 @@ bot.start(async (ctx) => {
 
             // Сохранение токена в базе данных
             await saveSessionToken(telegramId, sessionToken);
-
-            // Логирование токена и URL
-            console.log('Сгенерирован токен сессии:', sessionToken);
-            console.log('Ссылка для Mini App:', miniAppUrl);
 
             // Генерация ссылки для Mini App с токеном
             const miniAppUrl = `https://t.me/cryptocollect_bot?startapp=${telegramId}&tgWebApp=true&token=${sessionToken}`;
@@ -142,24 +133,20 @@ bot.start(async (ctx) => {
 app.get('/app', async (req, res) => {
     const token = req.query.token;
 
-    // Логирование входящего запроса
-    console.log('Запрос от Mini App с токеном:', token);
-
     // Проверка токена на сервере
     const userData = await validateSessionToken(token);
     if (!userData) {
-        console.error('Недействительный или истекший токен:', token);
         return res.status(403).send('Неверный или истекший токен.');
     }
 
-    // Логирование данных пользователя
-    console.log('Пользователь найден:', userData.username);
-
     // Авторизация и загрузка данных пользователя
-    res.json({ username: userData.username });
+    res.send(`Добро пожаловать, ${userData.username}!`);
 });
 
-
+// Вебхук для Telegram
+app.post('/webhook', (req, res) => {
+    bot.handleUpdate(req.body, res);
+});
 
 // Запуск сервера
 const startServer = async () => {
