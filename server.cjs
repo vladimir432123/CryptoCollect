@@ -96,6 +96,7 @@ function validateSessionToken(token) {
 
 // Обработка команды /start
 // Обработка команды /start
+// Обработка команды /start
 bot.start(async (ctx) => {
     const telegramId = ctx.message.from.id;
     const username = ctx.message.from.username || `user_${telegramId}`;
@@ -157,6 +158,7 @@ app.get('/app', async (req, res) => {
     // Авторизация и загрузка данных пользователя
     res.json({ username: userData.username });
 });
+
 
 
 // Запуск сервера
