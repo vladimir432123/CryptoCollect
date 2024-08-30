@@ -107,13 +107,6 @@ function checkTelegramAuth(telegramData) {
         return false;
     }
 
-    // Проверяем, если значения данных являются объектами, преобразуем их в строки
-    for (let key in data) {
-        if (typeof data[key] === 'object') {
-            data[key] = JSON.stringify(data[key]);
-        }
-    }
-
     const dataCheckString = Object.keys(data)
         .filter(key => data[key] !== null)
         .sort()
@@ -122,11 +115,12 @@ function checkTelegramAuth(telegramData) {
 
     console.log('Data check string:', dataCheckString);
 
-    const secret = crypto.createHash('sha256').update(process.env.TELEGRAM_BOT_TOKEN, 'utf8').digest();
+    // Исправление: Используем правильное преобразование токена в бинарный секрет
+    const secret = crypto.createHash('sha256').update(process.env.TELEGRAM_BOT_TOKEN).digest();
     console.log('Secret key (hashed token):', secret.toString('hex'));
 
     const expectedHash = crypto.createHmac('sha256', secret)
-        .update(dataCheckString, 'utf8')
+        .update(dataCheckString)
         .digest('hex');
 
     console.log('Expected hash:', expectedHash);
@@ -150,4 +144,3 @@ app.post('/webhook', (req, res) => {
 app.listen(port, () => {
     console.log(`Server is running on port ${port}`);
 });
-
