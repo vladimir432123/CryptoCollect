@@ -107,6 +107,9 @@ function checkTelegramAuth(telegramData) {
         return false;
     }
 
+    // Подробное логирование данных
+    console.log('Received Data:', data);
+
     const dataCheckString = Object.keys(data)
         .filter(key => data[key] !== null)
         .sort()
@@ -115,11 +118,9 @@ function checkTelegramAuth(telegramData) {
 
     console.log('Data check string:', dataCheckString);
 
-    // Создаем секретный ключ на основе токена
     const secret = crypto.createHash('sha256').update(process.env.TELEGRAM_BOT_TOKEN).digest();
     console.log('Secret key (hashed token):', secret.toString('hex'));
 
-    // Генерация ожидаемого хэша
     const expectedHash = crypto.createHmac('sha256', secret)
         .update(dataCheckString)
         .digest('hex');
