@@ -115,10 +115,11 @@ function checkTelegramAuth(telegramData) {
 
     console.log('Data check string:', dataCheckString);
 
-    // Исправление: Используем правильное преобразование токена в бинарный секрет
+    // Создаем секретный ключ на основе токена
     const secret = crypto.createHash('sha256').update(process.env.TELEGRAM_BOT_TOKEN).digest();
     console.log('Secret key (hashed token):', secret.toString('hex'));
 
+    // Генерация ожидаемого хэша
     const expectedHash = crypto.createHmac('sha256', secret)
         .update(dataCheckString)
         .digest('hex');
@@ -129,18 +130,65 @@ function checkTelegramAuth(telegramData) {
     return expectedHash === hash;
 }
 
-app.post('/webhook', (req, res) => {
-    const authResult = checkTelegramAuth(req.body);
+app.post('/api/user', (req, res) => {
+    console.log('Received POST body:', req.body);
 
-    if (authResult) {
-        console.log('Authentication successful');
-        res.json({ message: 'Authentication successful' });
-    } else {
+    const data = {
+        telegram_id: req.body.telegram_id,
+        username: req.body.username || null,
+        auth_date: parseInt(req.body.authDate, 10),
+        hash: req.body.hash
+    };
+
+    console.log('Processed Data:', data);
+
+    if (!checkTelegramAuth(data)) {
         console.log('Authentication failed');
-        res.status(403).json({ message: 'Authentication failed' });
+        return res.status(403).send('Forbidden');
     }
+
+    const query = 'INSERT INTO user (telegram_id, username) VALUES (?, ?) ON DUPLICATE KEY UPDATE username = IFNULL(?, username), auth_date = NOW()';
+
+    db.query(query, [data.telegram_id, data.username, data.username], (err) => {
+        if (err) {
+            console.error('Database error:', err);
+            return res.status(500).send('Server error');
+        }
+
+        console.log(`User ${data.username} inserted/updated in database.`);
+        res.json({ username: data.username });
+    });
 });
 
-app.listen(port, () => {
-    console.log(`Server is running on port ${port}`);
+app.post('/webhook', (req, res) => {
+    bot.handleUpdate(req.body, res);
 });
+
+const startServer = async () => {
+    try {
+        await bot.telegram.deleteWebhook({ drop_pending_updates: true });
+
+        const webhookUrl = process.env.WEBHOOK_URL;
+
+        await bot.telegram.setWebhook(webhookUrl);
+        console.log('Webhook set successfully:', webhookUrl);
+    } catch (err) {
+        console.error('Ошибка установки вебхука:', err);
+    }
+
+    app.listen(port, () => {
+        console.log(`Сервер запущен на порту ${port}`);
+    });
+};
+
+const checkWebhook = async () => {
+    try {
+        const webhookInfo = await bot.telegram.getWebhookInfo();
+        console.log('Информация о вебхуке:', webhookInfo);
+    } catch (err) {
+        console.error('Ошибка получения информации о вебхуке:', err);
+    }
+};
+
+startServer();
+checkWebhook();
