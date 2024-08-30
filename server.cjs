@@ -102,7 +102,6 @@ function isAuthDateValid(authDate) {
 function checkTelegramAuth(telegramData) {
     const { hash, ...data } = telegramData;
 
-    // Формируем строку для проверки данных
     const dataCheckString = Object.keys(data)
         .filter(key => data[key] !== null)
         .sort()
@@ -110,33 +109,35 @@ function checkTelegramAuth(telegramData) {
         .join('\n');
 
     console.log('Data check string:', dataCheckString);
+    console.log('Using secret:', process.env.TELEGRAM_BOT_TOKEN);
 
-    // Создаем секретный ключ на основе токена
-    const secret = crypto.createHash('sha256').update(process.env.TELEGRAM_BOT_TOKEN, 'utf8').digest();
-    console.log('Secret key (hashed token):', secret.toString('hex'));
-
-    // Генерация ожидаемого хэша
-    const expectedHash = crypto.createHmac('sha256', secret)
-        .update(dataCheckString, 'utf8')
+    const secret = crypto.createHash('sha256').update(process.env.TELEGRAM_BOT_TOKEN).digest();
+    const hmac = crypto.createHmac('sha256', secret)
+        .update(dataCheckString)
         .digest('hex');
 
-    console.log('Expected hash:', expectedHash);
+    console.log('Expected hash:', hmac);
     console.log('Received hash:', hash);
 
-    return expectedHash === hash;
-}
-
-app.post('/webhook', (req, res) => {
-    const authResult = checkTelegramAuth(req.body);
-
-    if (authResult) {
+    if (hmac === hash) {
         console.log('Authentication successful');
-        res.json({ message: 'Authentication successful' });
+        return true;
     } else {
         console.log('Authentication failed');
-        res.status(403).json({ message: 'Authentication failed' });
+        console.log('Data for hash:', dataCheckString);
+        return false;
     }
+}
 
+app.post('/api/user', (req, res) => {
+    console.log('Received POST body:', req.body);
+
+    const data = {
+        telegram_id: req.body.telegram_id,
+        username: req.body.username || null,
+        auth_date: parseInt(req.body.authDate, 10),
+        hash: req.body.hash
+    };
 
     console.log('Processed Data:', data);
 
