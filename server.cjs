@@ -77,21 +77,6 @@ bot.start((ctx) => {
     );
 });
 
-bot.command('openapp', (ctx) => {
-    const telegramId = ctx.message.from.id;
-    console.log(`Received /openapp command from ${telegramId}`);
-
-    const miniAppUrl = `https://t.me/cryptocollect_bot?startapp=${telegramId}&tgWebApp=true`;
-    console.log('URL для мини-приложения:', miniAppUrl);
-
-    ctx.reply(
-        'Нажмите на кнопку ниже, чтобы открыть мини-приложение:',
-        Markup.inlineKeyboard([
-            Markup.button.url('Открыть мини-приложение', miniAppUrl)
-        ])
-    );
-});
-
 const MAX_AUTH_DATE_AGE = 86400;
 
 function isAuthDateValid(authDate) {
@@ -151,8 +136,6 @@ app.post('/webhook', (req, res) => {
         console.log(`User ${telegramData.username} inserted/updated in database.`);
         res.json({ username: telegramData.username });
     });
-
-    bot.handleUpdate(req.body, res);
 });
 
 const startServer = async () => {
