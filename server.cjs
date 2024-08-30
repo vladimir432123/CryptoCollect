@@ -101,8 +101,8 @@ bot.start(async (ctx) => {
 
     // Проверка и создание аккаунта, если его нет
     db.query(
-        'INSERT INTO user (telegram_id, username) VALUES (?, ?) ON DUPLICATE KEY UPDATE username = IFNULL(?, username), auth_date = NOW()', 
-        [telegramId, username, username], 
+        'INSERT INTO user (telegram_id, username, session_token) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE username = IFNULL(?, username), auth_date = NOW()', 
+        [telegramId, username, '', username], 
         async (err) => {
             if (err) {
                 console.error('Database error:', err);
@@ -115,21 +115,21 @@ bot.start(async (ctx) => {
             // Сохранение токена в базе данных
             await saveSessionToken(telegramId, sessionToken);
 
-            // Генерация ссылки
-            const appUrl = `https://yourapp.com/app?token=${sessionToken}`;
+            // Генерация ссылки для Mini App с токеном
+            const miniAppUrl = `https://t.me/cryptocollect_bot?startapp=${telegramId}&tgWebApp=true&token=${sessionToken}`;
 
             // Отправка ссылки пользователю
             ctx.reply(
                 'Добро пожаловать! Нажмите на кнопку ниже, чтобы открыть приложение:',
                 Markup.inlineKeyboard([
-                    Markup.button.url('Открыть приложение', appUrl)
+                    Markup.button.url('Открыть приложение', miniAppUrl)
                 ])
             );
         }
     );
 });
 
-// Обработка команд и запросов от пользователя
+// Обработка запросов от Mini App
 app.get('/app', async (req, res) => {
     const token = req.query.token;
 
