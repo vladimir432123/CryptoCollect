@@ -53,7 +53,7 @@ bot.start((ctx) => {
     const telegramId = ctx.message.from.id;
     const username = ctx.message.from.username || `user_${telegramId}`; // Значение по умолчанию
 
-    console.log('Telegram Data:', ctx.message.from);
+    console.log('Telegram Data:', JSON.stringify(ctx.message.from, null, 2));
 
     db.query(
         'INSERT INTO user (telegram_id, username) VALUES (?, ?) ON DUPLICATE KEY UPDATE username = IFNULL(?, username), auth_date = NOW()', 
@@ -96,11 +96,14 @@ const MAX_AUTH_DATE_AGE = 86400;
 
 function isAuthDateValid(authDate) {
     const now = Math.floor(Date.now() / 1000);
+    console.log(`Current timestamp: ${now}, authDate: ${authDate}, difference: ${now - authDate}`);
     return (now - authDate) < MAX_AUTH_DATE_AGE;
 }
 
 function checkTelegramAuth(telegramData) {
     const { hash, ...data } = telegramData;
+
+    console.log('Incoming data for hash generation:', JSON.stringify(data, null, 2));
 
     // Формируем строку для проверки данных
     const dataCheckString = Object.keys(data)
@@ -113,6 +116,8 @@ function checkTelegramAuth(telegramData) {
 
     // Хешируем токен бота
     const secret = crypto.createHash('sha256').update(process.env.TELEGRAM_BOT_TOKEN).digest();
+    console.log('Secret generated from bot token:', secret.toString('hex'));
+
     // Вычисляем HMAC на основе строки данных
     const hmac = crypto.createHmac('sha256', secret)
         .update(dataCheckString)
@@ -131,9 +136,8 @@ function checkTelegramAuth(telegramData) {
     }
 }
 
-
 app.post('/api/user', (req, res) => {
-    console.log('Received POST body:', req.body);
+    console.log('Received POST body:', JSON.stringify(req.body, null, 2));
 
     const data = {
         telegram_id: req.body.telegram_id,
@@ -142,7 +146,7 @@ app.post('/api/user', (req, res) => {
         hash: req.body.hash
     };
 
-    console.log('Processed Data:', data);
+    console.log('Processed Data:', JSON.stringify(data, null, 2));
 
     if (!checkTelegramAuth(data)) {
         console.log('Authentication failed');
@@ -168,9 +172,14 @@ const generateHash = (data, token) => {
         .map(key => `${key}=${data[key]}`)
         .join('\n');
 
-    return crypto.createHmac('sha256', token)
+    console.log('Data check string for manual hash generation:', dataCheckString);
+
+    const hmac = crypto.createHmac('sha256', token)
         .update(dataCheckString)
         .digest('hex');
+
+    console.log('Manually generated hash:', hmac);
+    return hmac;
 };
 
 app.post('/webhook', (req, res) => {
