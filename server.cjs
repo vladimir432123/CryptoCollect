@@ -11,9 +11,9 @@ const port = process.env.PORT || 8080;
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
-
 app.use(express.static(path.join(__dirname, 'dist')));
 
+// Настройки базы данных
 const dbConfig = {
     host: process.env.DB_HOST,
     user: process.env.DB_USER,
@@ -37,7 +37,8 @@ db.query(`
         id INT AUTO_INCREMENT PRIMARY KEY,
         telegram_id BIGINT UNIQUE,
         username VARCHAR(255) UNIQUE,
-        auth_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        auth_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        session_token VARCHAR(255)
     )
 `, (err) => {
     if (err) {
@@ -47,154 +48,107 @@ db.query(`
     }
 });
 
+// Инициализация бота
 const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN);
 
-bot.start((ctx) => {
+// Генерация уникального токена сессии
+function generateSessionToken(telegramId) {
+    return crypto.randomBytes(64).toString('hex');
+}
+
+// Сохранение токена сессии в базе данных
+function saveSessionToken(telegramId, sessionToken) {
+    return new Promise((resolve, reject) => {
+        db.query(
+            'UPDATE user SET session_token = ? WHERE telegram_id = ?',
+            [sessionToken, telegramId],
+            (err, results) => {
+                if (err) {
+                    console.error('Ошибка сохранения токена сессии в базе данных:', err);
+                    return reject(err);
+                }
+                resolve();
+            }
+        );
+    });
+}
+
+// Валидация токена сессии
+function validateSessionToken(token) {
+    return new Promise((resolve, reject) => {
+        db.query(
+            'SELECT * FROM user WHERE session_token = ?',
+            [token],
+            (err, results) => {
+                if (err) {
+                    console.error('Ошибка проверки токена сессии:', err);
+                    return reject(err);
+                }
+                if (results.length > 0) {
+                    resolve(results[0]);
+                } else {
+                    resolve(null);
+                }
+            }
+        );
+    });
+}
+
+// Обработка команды /start
+bot.start(async (ctx) => {
     const telegramId = ctx.message.from.id;
-    const username = ctx.message.from.username || `user_${telegramId}`; // Значение по умолчанию
+    const username = ctx.message.from.username || `user_${telegramId}`;
 
-    console.log('Telegram Data:', JSON.stringify(ctx.message.from, null, 2));
-
+    // Проверка и создание аккаунта, если его нет
     db.query(
         'INSERT INTO user (telegram_id, username) VALUES (?, ?) ON DUPLICATE KEY UPDATE username = IFNULL(?, username), auth_date = NOW()', 
         [telegramId, username, username], 
-        (err) => {
+        async (err) => {
             if (err) {
                 console.error('Database error:', err);
-            } else {
-                console.log(`User ${username} inserted/updated in database.`);
+                return ctx.reply('Произошла ошибка, попробуйте позже.');
             }
+
+            // Генерация уникального токена
+            const sessionToken = generateSessionToken(telegramId);
+
+            // Сохранение токена в базе данных
+            await saveSessionToken(telegramId, sessionToken);
+
+            // Генерация ссылки
+            const appUrl = `https://yourapp.com/app?token=${sessionToken}`;
+
+            // Отправка ссылки пользователю
+            ctx.reply(
+                'Добро пожаловать! Нажмите на кнопку ниже, чтобы открыть приложение:',
+                Markup.inlineKeyboard([
+                    Markup.button.url('Открыть приложение', appUrl)
+                ])
+            );
         }
     );
-
-    const miniAppUrl = `https://t.me/cryptocollect_bot?startapp=${telegramId}&tgWebApp=true`;
-
-    ctx.reply(
-        'Добро пожаловать! Нажмите на кнопку ниже, чтобы открыть мини-приложение:',
-        Markup.inlineKeyboard([
-            Markup.button.url('Открыть мини-приложение', miniAppUrl)
-        ])
-    );
 });
 
-bot.command('openapp', (ctx) => {
-    const telegramId = ctx.message.from.id;
-    console.log(`Received /openapp command from ${telegramId}`);
+// Обработка команд и запросов от пользователя
+app.get('/app', async (req, res) => {
+    const token = req.query.token;
 
-    const miniAppUrl = `https://t.me/cryptocollect_bot?startapp=${telegramId}&tgWebApp=true`;
-    console.log('URL для мини-приложения:', miniAppUrl);
-
-    ctx.reply(
-        'Нажмите на кнопку ниже, чтобы открыть мини-приложение:',
-        Markup.inlineKeyboard([
-            Markup.button.url('Открыть мини-приложение', miniAppUrl)
-        ])
-    );
-});
-
-const MAX_AUTH_DATE_AGE = 86400;
-
-function isAuthDateValid(authDate) {
-    const now = Math.floor(Date.now() / 1000);
-    console.log(`Current timestamp: ${now}, authDate: ${authDate}, difference: ${now - authDate}`);
-    return (now - authDate) < MAX_AUTH_DATE_AGE;
-}
-
-function checkTelegramAuth(telegramData) {
-    const { hash, ...data } = telegramData;
-
-    console.log('Step 1: Incoming data for hash generation:', JSON.stringify(data, null, 2));
-    console.log('Step 2: Raw data received:', telegramData);
-
-    // Формируем строку для проверки данных
-    const dataCheckString = Object.keys(data)
-        .filter(key => data[key] !== null)
-        .sort()
-        .map(key => `${key}=${data[key]}`)
-        .join('\n');
-
-    console.log('Step 3: Data check string:', dataCheckString);
-    console.log('Step 4: Data check string (hex):', Buffer.from(dataCheckString, 'utf-8').toString('hex'));
-
-    // Хешируем токен бота
-    console.log('Step 5: Bot token before hashing:', process.env.TELEGRAM_BOT_TOKEN);
-    const secret = crypto.createHash('sha256').update(process.env.TELEGRAM_BOT_TOKEN).digest();
-    console.log('Step 6: Secret generated from bot token:', secret.toString('hex'));
-
-    // Вычисляем HMAC на основе строки данных
-    const hmac = crypto.createHmac('sha256', secret)
-        .update(dataCheckString)
-        .digest('hex');
-
-    console.log('Step 7: Expected hash:', hmac);
-    console.log('Step 8: Received hash:', hash);
-
-    if (hmac === hash) {
-        console.log('Step 9: Authentication successful');
-        return true;
-    } else {
-        console.log('Step 9: Authentication failed');
-        console.log('Step 10: Data for hash:', dataCheckString);
-
-        // Дополнительное логирование: проверить, есть ли проблемы с кодировкой
-        console.log('Step 11: Data check string (buffer):', Buffer.from(dataCheckString, 'utf-8').toString('hex'));
-        console.log('Step 12: HMAC buffer (expected):', Buffer.from(hmac, 'utf-8').toString('hex'));
-        console.log('Step 13: HMAC buffer (received):', Buffer.from(hash, 'utf-8').toString('hex'));
-
-        return false;
-    }
-}
-
-app.post('/api/user', (req, res) => {
-    console.log('Received POST body:', JSON.stringify(req.body, null, 2));
-
-    const data = {
-        telegram_id: req.body.telegram_id,
-        username: req.body.username || null,
-        auth_date: parseInt(req.body.authDate, 10),
-        hash: req.body.hash
-    };
-
-    console.log('Processed Data:', JSON.stringify(data, null, 2));
-
-    if (!checkTelegramAuth(data)) {
-        console.log('Authentication failed');
-        return res.status(403).send('Forbidden');
+    // Проверка токена на сервере
+    const userData = await validateSessionToken(token);
+    if (!userData) {
+        return res.status(403).send('Неверный или истекший токен.');
     }
 
-    const query = 'INSERT INTO user (telegram_id, username) VALUES (?, ?) ON DUPLICATE KEY UPDATE username = IFNULL(?, username), auth_date = NOW()';
-
-    db.query(query, [data.telegram_id, data.username, data.username], (err) => {
-        if (err) {
-            console.error('Database error:', err);
-            return res.status(500).send('Server error');
-        }
-
-        console.log(`User ${data.username} inserted/updated in database.`);
-        res.json({ username: data.username });
-    });
+    // Авторизация и загрузка данных пользователя
+    res.send(`Добро пожаловать, ${userData.username}!`);
 });
 
-const generateHash = (data, token) => {
-    const dataCheckString = Object.keys(data)
-        .sort()
-        .map(key => `${key}=${data[key]}`)
-        .join('\n');
-
-    console.log('Data check string for manual hash generation:', dataCheckString);
-
-    const hmac = crypto.createHmac('sha256', token)
-        .update(dataCheckString)
-        .digest('hex');
-
-    console.log('Manually generated hash:', hmac);
-    return hmac;
-};
-
+// Вебхук для Telegram
 app.post('/webhook', (req, res) => {
     bot.handleUpdate(req.body, res);
 });
 
+// Запуск сервера
 const startServer = async () => {
     try {
         await bot.telegram.deleteWebhook({ drop_pending_updates: true });
@@ -203,7 +157,7 @@ const startServer = async () => {
         const webhookUrl = process.env.WEBHOOK_URL;
 
         await bot.telegram.setWebhook(webhookUrl);
-        console.log('Webhook set successfully:', webhookUrl);
+        console.log('Webhook успешно установлен:', webhookUrl);
     } catch (err) {
         console.error('Ошибка установки вебхука:', err);
     }
@@ -213,6 +167,7 @@ const startServer = async () => {
     });
 };
 
+// Проверка вебхука
 const checkWebhook = async () => {
     try {
         const webhookInfo = await bot.telegram.getWebhookInfo();
