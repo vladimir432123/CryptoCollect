@@ -103,7 +103,8 @@ function isAuthDateValid(authDate) {
 function checkTelegramAuth(telegramData) {
     const { hash, ...data } = telegramData;
 
-    console.log('Incoming data for hash generation:', JSON.stringify(data, null, 2));
+    console.log('Step 1: Incoming data for hash generation:', JSON.stringify(data, null, 2));
+    console.log('Step 2: Raw data received:', telegramData);
 
     // Формируем строку для проверки данных
     const dataCheckString = Object.keys(data)
@@ -112,31 +113,33 @@ function checkTelegramAuth(telegramData) {
         .map(key => `${key}=${data[key]}`)
         .join('\n');
 
-    console.log('Data check string:', dataCheckString);
+    console.log('Step 3: Data check string:', dataCheckString);
+    console.log('Step 4: Data check string (hex):', Buffer.from(dataCheckString, 'utf-8').toString('hex'));
 
     // Хешируем токен бота
+    console.log('Step 5: Bot token before hashing:', process.env.TELEGRAM_BOT_TOKEN);
     const secret = crypto.createHash('sha256').update(process.env.TELEGRAM_BOT_TOKEN).digest();
-    console.log('Secret generated from bot token:', secret.toString('hex'));
+    console.log('Step 6: Secret generated from bot token:', secret.toString('hex'));
 
     // Вычисляем HMAC на основе строки данных
     const hmac = crypto.createHmac('sha256', secret)
         .update(dataCheckString)
         .digest('hex');
 
-    console.log('Expected hash:', hmac);
-    console.log('Received hash:', hash);
+    console.log('Step 7: Expected hash:', hmac);
+    console.log('Step 8: Received hash:', hash);
 
     if (hmac === hash) {
-        console.log('Authentication successful');
+        console.log('Step 9: Authentication successful');
         return true;
     } else {
-        console.log('Authentication failed');
-        console.log('Data for hash:', dataCheckString);
+        console.log('Step 9: Authentication failed');
+        console.log('Step 10: Data for hash:', dataCheckString);
 
         // Дополнительное логирование: проверить, есть ли проблемы с кодировкой
-        console.log('Data check string (buffer):', Buffer.from(dataCheckString, 'utf-8').toString('hex'));
-        console.log('HMAC buffer (expected):', Buffer.from(hmac, 'utf-8').toString('hex'));
-        console.log('HMAC buffer (received):', Buffer.from(hash, 'utf-8').toString('hex'));
+        console.log('Step 11: Data check string (buffer):', Buffer.from(dataCheckString, 'utf-8').toString('hex'));
+        console.log('Step 12: HMAC buffer (expected):', Buffer.from(hmac, 'utf-8').toString('hex'));
+        console.log('Step 13: HMAC buffer (received):', Buffer.from(hash, 'utf-8').toString('hex'));
 
         return false;
     }
