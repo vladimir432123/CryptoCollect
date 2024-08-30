@@ -49,6 +49,34 @@ db.query(`
 
 const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN);
 
+bot.start((ctx) => {
+    const telegramId = ctx.message.from.id;
+    const username = ctx.message.from.username || `user_${telegramId}`; // Значение по умолчанию
+
+    console.log('Telegram Data:', ctx.message.from);
+
+    db.query(
+        'INSERT INTO user (telegram_id, username) VALUES (?, ?) ON DUPLICATE KEY UPDATE username = IFNULL(?, username), auth_date = NOW()', 
+        [telegramId, username, username], 
+        (err) => {
+            if (err) {
+                console.error('Database error:', err);
+            } else {
+                console.log(`User ${username} inserted/updated in database.`);
+            }
+        }
+    );
+
+    const miniAppUrl = `https://t.me/cryptocollect_bot?startapp=${telegramId}&tgWebApp=true`;
+
+    ctx.reply(
+        'Добро пожаловать! Нажмите на кнопку ниже, чтобы открыть мини-приложение:',
+        Markup.inlineKeyboard([
+            Markup.button.url('Открыть мини-приложение', miniAppUrl)
+        ])
+    );
+});
+
 bot.command('openapp', (ctx) => {
     const telegramId = ctx.message.from.id;
     console.log(`Received /openapp command from ${telegramId}`);
@@ -74,6 +102,7 @@ function isAuthDateValid(authDate) {
 function checkTelegramAuth(telegramData) {
     const { hash, ...data } = telegramData;
 
+    // Формируем строку для проверки данных
     const dataCheckString = Object.keys(data)
         .filter(key => data[key] !== null)
         .sort()
@@ -82,9 +111,11 @@ function checkTelegramAuth(telegramData) {
 
     console.log('Data check string:', dataCheckString);
 
+    // Создаем секретный ключ на основе токена
     const secret = crypto.createHash('sha256').update(process.env.TELEGRAM_BOT_TOKEN, 'utf8').digest();
     console.log('Secret key (hashed token):', secret.toString('hex'));
 
+    // Генерация ожидаемого хэша
     const expectedHash = crypto.createHmac('sha256', secret)
         .update(dataCheckString, 'utf8')
         .digest('hex');
@@ -95,45 +126,48 @@ function checkTelegramAuth(telegramData) {
     return expectedHash === hash;
 }
 
-// Маршрут для аутентификации
-app.post('/api/auth', (req, res) => {
-    const data = {
-        telegram_id: req.body.telegram_id,
-        username: req.body.username,
-        auth_date: parseInt(req.body.auth_date, 10),
-        hash: req.body.hash,
-    };
-
-    console.log('Received POST body:', data);
-
-    if (!isAuthDateValid(data.auth_date)) {
-        console.log('Authentication failed due to expired auth_date');
-        return res.status(403).json({ message: 'Authentication failed: expired auth_date' });
-    }
-
-    const authResult = checkTelegramAuth(data);
+app.post('/webhook', (req, res) => {
+    const authResult = checkTelegramAuth(req.body);
 
     if (authResult) {
         console.log('Authentication successful');
-
-        const query = 'INSERT INTO user (telegram_id, username) VALUES (?, ?) ON DUPLICATE KEY UPDATE username = IFNULL(?, username), auth_date = NOW()';
-
-        db.query(query, [data.telegram_id, data.username, data.username], (err) => {
-            if (err) {
-                console.error('Database error:', err);
-                return res.status(500).send('Server error');
-            }
-
-            console.log(`User ${data.username} inserted/updated in database.`);
-            return res.json({ username: data.username });
-        });
+        res.json({ message: 'Authentication successful' });
     } else {
         console.log('Authentication failed');
-        return res.status(403).json({ message: 'Authentication failed' });
+        res.status(403).json({ message: 'Authentication failed' });
     }
+
+    console.log('Processed Data:', data);
+
+    if (!checkTelegramAuth(data)) {
+        console.log('Authentication failed');
+        return res.status(403).send('Forbidden');
+    }
+
+    const query = 'INSERT INTO user (telegram_id, username) VALUES (?, ?) ON DUPLICATE KEY UPDATE username = IFNULL(?, username), auth_date = NOW()';
+
+    db.query(query, [data.telegram_id, data.username, data.username], (err) => {
+        if (err) {
+            console.error('Database error:', err);
+            return res.status(500).send('Server error');
+        }
+
+        console.log(`User ${data.username} inserted/updated in database.`);
+        res.json({ username: data.username });
+    });
 });
 
-// Маршрут для обработки обновлений Telegram
+const generateHash = (data, token) => {
+    const dataCheckString = Object.keys(data)
+        .sort()
+        .map(key => `${key}=${data[key]}`)
+        .join('\n');
+
+    return crypto.createHmac('sha256', token)
+        .update(dataCheckString)
+        .digest('hex');
+};
+
 app.post('/webhook', (req, res) => {
     bot.handleUpdate(req.body, res);
 });
@@ -142,6 +176,7 @@ const startServer = async () => {
     try {
         await bot.telegram.deleteWebhook({ drop_pending_updates: true });
 
+        // Получаем вебхук URL из переменной окружения
         const webhookUrl = process.env.WEBHOOK_URL;
 
         await bot.telegram.setWebhook(webhookUrl);
