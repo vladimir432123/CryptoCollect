@@ -95,12 +95,42 @@ const App: React.FC = () => {
         if (data.username) {
             setUsername(data.username);
         }
+        if (data.points !== undefined) {
+            setPoints(data.points);
+        }
     })
     .catch((error) => console.error('Ошибка при получении данных с сервера:', error));
 }, []);
 
+useEffect(() => {
+    const handleBeforeUnload = () => {
+        const initData = WebApp.initDataUnsafe;
+        const userId = initData?.user?.id;
 
+        if (!userId) return;
 
+        fetch(`/savePoints`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ userId, points }),
+        })
+        .then((response) => {
+            if (!response.ok) {
+                throw new Error(`Ошибка HTTP: ${response.status}`);
+            }
+            return response.json();
+        })
+        .catch((error) => console.error('Ошибка при сохранении данных:', error));
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    return () => {
+        window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+}, [points]);
 
 
 
