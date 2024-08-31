@@ -67,15 +67,17 @@ const App: React.FC = () => {
     const initData = WebApp.initDataUnsafe;
     console.log('InitData:', initData);
 
-    const token = initData?.query_id || new URLSearchParams(window.location.search).get('token');
-    console.log('Token:', token);
+    // Используем user.id в качестве идентификатора пользователя вместо токена
+    const userId = initData?.user?.id;
+    console.log('User ID:', userId);
 
-    if (!token) {
-        console.error('Токен сессии отсутствует!');
+    if (!userId) {
+        console.error('User ID отсутствует!');
         return;
     }
 
-    fetch(`/app?token=${token}`, {
+    // Отправляем userId на сервер для валидации и получения данных
+    fetch(`/app?userId=${userId}`, {
         method: 'GET',
         headers: {
             'Content-Type': 'application/json',
@@ -96,6 +98,7 @@ const App: React.FC = () => {
     })
     .catch((error) => console.error('Ошибка при получении данных с сервера:', error));
 }, []);
+
 
 
 
