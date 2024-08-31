@@ -67,15 +67,14 @@ const App: React.FC = () => {
     const initData = WebApp.initDataUnsafe;
     console.log('InitData:', initData);
 
-    const token = new URLSearchParams(window.location.search).get('token');
-    console.log('Token:', token); // Логирование токена
+    // Если токен есть в initData, получаем его
+    const token = initData?.query_id || new URLSearchParams(window.location.search).get('token');
+    console.log('Token:', token);
 
     if (!token) {
         console.error('Токен сессии отсутствует!');
         return;
     }
-
-    console.log('Отправка данных на сервер с токеном:', token);
 
     fetch(`/app?token=${token}`, {
         method: 'GET',
@@ -84,19 +83,16 @@ const App: React.FC = () => {
         },
     })
     .then((response) => {
-        console.log('Ответ от сервера:', response); // Логирование ответа от сервера
+        console.log('Ответ от сервера:', response);
         if (!response.ok) {
             throw new Error(`Ошибка HTTP: ${response.status}`);
         }
         return response.json();
     })
     .then((data) => {
-        console.log('Данные от сервера:', data); // Логирование полученных данных
+        console.log('Данные от сервера:', data);
         if (data.username) {
-            console.log('Имя пользователя получено с сервера:', data.username);
             setUsername(data.username);
-        } else {
-            console.error('Имя пользователя не получено с сервера');
         }
     })
     .catch((error) => console.error('Ошибка при получении данных с сервера:', error));
