@@ -31,7 +31,7 @@ db.connect((err) => {
     console.log('Успешное подключение к базе данных');
 });
 
-db.query(
+db.query(`
     CREATE TABLE IF NOT EXISTS user (
         id INT AUTO_INCREMENT PRIMARY KEY,
         telegram_id BIGINT UNIQUE,
@@ -39,7 +39,7 @@ db.query(
         auth_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         session_token VARCHAR(255)
     )
-, (err) => {
+`, (err) => {
     if (err) {
         console.error('Ошибка создания таблицы:', err);
     } else {
@@ -91,25 +91,24 @@ function validateSessionToken(token) {
 
 bot.start(async (ctx) => {
     const telegramId = ctx.message.from.id;
-    const username = ctx.message.from.username || user_${telegramId};
+    const username = ctx.message.from.username || `user_${telegramId}`;
 
     console.log('Обработка команды /start для пользователя:', telegramId);
+
+    const sessionToken = generateSessionToken(telegramId);
 
     db.query(
         'INSERT INTO user (telegram_id, username, session_token) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE username = IFNULL(VALUES(username), username), auth_date = NOW(), session_token = VALUES(session_token)', 
         [telegramId, username, sessionToken], 
-        async (err, results) => {
+        (err, results) => {
             if (err) {
                 console.error('Ошибка базы данных при обработке команды /start:', err);
                 return ctx.reply('Произошла ошибка, попробуйте позже.');
             }
 
-            const sessionToken = generateSessionToken(telegramId);
-            await saveSessionToken(telegramId, sessionToken);
-
             console.log('Сгенерирован токен сессии:', sessionToken);
 
-            const miniAppUrl = https://t.me/cryptocollect_bot?startapp=${telegramId}&tgWebApp=true&token=${sessionToken};
+            const miniAppUrl = `https://t.me/cryptocollect_bot?startapp=${telegramId}&tgWebApp=true&token=${sessionToken}`;
 
             ctx.reply(
                 'Добро пожаловать! Нажмите на кнопку ниже, чтобы открыть приложение:',
@@ -120,7 +119,6 @@ bot.start(async (ctx) => {
         }
     );
 });
-
 
 app.get('/app', async (req, res) => {
     const token = req.query.token;
@@ -137,6 +135,9 @@ app.get('/app', async (req, res) => {
     res.json({ username: userData.username });
 });
 
+app.post('/webhook', (req, res) => {
+    bot.handleUpdate(req.body, res);
+});
 
 const startServer = async () => {
     try {
@@ -145,23 +146,13 @@ const startServer = async () => {
         const webhookUrl = process.env.WEBHOOK_URL;
         await bot.telegram.setWebhook(webhookUrl);
         console.log('Webhook успешно установлен:', webhookUrl);
+
+        app.listen(port, () => {
+            console.log(`Сервер запущен на порту ${port}`);
+        });
     } catch (err) {
         console.error('Ошибка установки вебхука:', err);
-    }
-
-    app.listen(port, () => {
-        console.log(Сервер запущен на порту ${port});
-    });
-};
-
-const checkWebhook = async () => {
-    try {
-        const webhookInfo = await bot.telegram.getWebhookInfo();
-        console.log('Информация о вебхуке:', webhookInfo);
-    } catch (err) {
-        console.error('Ошибка получения информации о вебхуке:', err);
     }
 };
 
 startServer();
-checkWebhook();
