@@ -145,6 +145,11 @@ app.get('/app', async (req, res) => {
     }
 });
 
+// Обработка Webhook-запросов
+app.post('/webhook', (req, res) => {
+    bot.handleUpdate(req.body);
+    res.sendStatus(200);
+});
 
 const startServer = async () => {
     try {
