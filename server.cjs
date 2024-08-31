@@ -13,7 +13,6 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'dist')));
 
-// Настройки базы данных
 const dbConfig = {
     host: process.env.DB_HOST,
     user: process.env.DB_USER,
@@ -48,15 +47,12 @@ db.query(`
     }
 });
 
-// Инициализация бота
 const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN);
 
-// Генерация уникального токена сессии
 function generateSessionToken(telegramId) {
     return crypto.randomBytes(64).toString('hex');
 }
 
-// Сохранение токена сессии в базе данных
 function saveSessionToken(telegramId, sessionToken) {
     return new Promise((resolve, reject) => {
         db.query(
@@ -73,7 +69,6 @@ function saveSessionToken(telegramId, sessionToken) {
     });
 }
 
-// Валидация токена сессии
 function validateSessionToken(token) {
     return new Promise((resolve, reject) => {
         db.query(
@@ -94,31 +89,28 @@ function validateSessionToken(token) {
     });
 }
 
-// Обработка команды /start
 bot.start(async (ctx) => {
     const telegramId = ctx.message.from.id;
     const username = ctx.message.from.username || `user_${telegramId}`;
 
-    // Проверка и создание аккаунта, если его нет
+    console.log('Обработка команды /start для пользователя:', telegramId);
+
     db.query(
-        'INSERT INTO user (telegram_id, username, session_token) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE username = IFNULL(?, username), auth_date = NOW()', 
+        'INSERT INTO user (telegram_id, username) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE username = IFNULL(?, username), auth_date = NOW()', 
         [telegramId, username, '', username], 
         async (err) => {
             if (err) {
-                console.error('Database error:', err);
+                console.error('Ошибка базы данных при обработке команды /start:', err);
                 return ctx.reply('Произошла ошибка, попробуйте позже.');
             }
 
-            // Генерация уникального токена
             const sessionToken = generateSessionToken(telegramId);
-
-            // Сохранение токена в базе данных
             await saveSessionToken(telegramId, sessionToken);
 
-            // Генерация ссылки для Mini App с токеном
+            console.log('Сгенерирован токен сессии:', sessionToken);
+
             const miniAppUrl = `https://t.me/cryptocollect_bot?startapp=${telegramId}&tgWebApp=true&token=${sessionToken}`;
 
-            // Отправка ссылки пользователю
             ctx.reply(
                 'Добро пожаловать! Нажмите на кнопку ниже, чтобы открыть приложение:',
                 Markup.inlineKeyboard([
@@ -129,33 +121,30 @@ bot.start(async (ctx) => {
     );
 });
 
-// Обработка запросов от Mini App
 app.get('/app', async (req, res) => {
     const token = req.query.token;
 
-    // Проверка токена на сервере
+    console.log('Запрос от Mini App с токеном:', token);
+
     const userData = await validateSessionToken(token);
     if (!userData) {
+        console.error('Недействительный или истекший токен:', token);
         return res.status(403).send('Неверный или истекший токен.');
     }
 
-    // Авторизация и загрузка данных пользователя
-    res.send(`Добро пожаловать, ${userData.username}!`);
+    console.log('Пользователь найден:', userData.username);
+    res.json({ username: userData.username });
 });
 
-// Вебхук для Telegram
 app.post('/webhook', (req, res) => {
     bot.handleUpdate(req.body, res);
 });
 
-// Запуск сервера
 const startServer = async () => {
     try {
         await bot.telegram.deleteWebhook({ drop_pending_updates: true });
 
-        // Получаем вебхук URL из переменной окружения
         const webhookUrl = process.env.WEBHOOK_URL;
-
         await bot.telegram.setWebhook(webhookUrl);
         console.log('Webhook успешно установлен:', webhookUrl);
     } catch (err) {
@@ -167,7 +156,6 @@ const startServer = async () => {
     });
 };
 
-// Проверка вебхука
 const checkWebhook = async () => {
     try {
         const webhookInfo = await bot.telegram.getWebhookInfo();
