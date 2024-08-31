@@ -70,30 +70,14 @@ function saveSessionToken(telegramId, sessionToken) {
     });
 }
 
-function saveUserPoints(telegramId, points) {
+function validateSessionToken(token) {
     return new Promise((resolve, reject) => {
         db.query(
-            'UPDATE user SET points = ? WHERE telegram_id = ?',
-            [points, telegramId],
+            'SELECT * FROM user WHERE session_token = ?',
+            [token],
             (err, results) => {
                 if (err) {
-                    console.error('Ошибка сохранения очков в базе данных:', err);
-                    return reject(err);
-                }
-                resolve();
-            }
-        );
-    });
-}
-
-function getUserData(userId) {
-    return new Promise((resolve, reject) => {
-        db.query(
-            'SELECT * FROM user WHERE telegram_id = ?',
-            [userId],
-            (err, results) => {
-                if (err) {
-                    console.error('Ошибка проверки User ID:', err);
+                    console.error('Ошибка проверки токена сессии:', err);
                     return reject(err);
                 }
                 if (results.length > 0) {
@@ -114,10 +98,8 @@ bot.start(async (ctx) => {
 
     const sessionToken = generateSessionToken(telegramId);
 
-    console.log('Сгенерирован токен сессии:', sessionToken);
-
     db.query(
-        'INSERT INTO user (telegram_id, username, session_token, points) VALUES (?, ?, ?, 10000) ON DUPLICATE KEY UPDATE username = IFNULL(VALUES(username), username), auth_date = NOW(), session_token = VALUES(session_token)', 
+        'INSERT INTO user (telegram_id, username, session_token) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE username = IFNULL(VALUES(username), username), auth_date = NOW(), session_token = VALUES(session_token)', 
         [telegramId, username, sessionToken], 
         (err, results) => {
             if (err) {
@@ -125,21 +107,16 @@ bot.start(async (ctx) => {
                 return ctx.reply('Произошла ошибка, попробуйте позже.');
             }
 
-            console.log('Данные успешно сохранены в базе данных для пользователя:', telegramId);
+            console.log('Сгенерирован токен сессии:', sessionToken);
 
             const miniAppUrl = `https://t.me/cryptocollect_bot?startapp=${telegramId}&tgWebApp=true&token=${sessionToken}`;
 
-            console.log('Отправка сообщения с URL:', miniAppUrl);
             ctx.reply(
                 'Добро пожаловать! Нажмите на кнопку ниже, чтобы открыть приложение:',
                 Markup.inlineKeyboard([
                     Markup.button.url('Открыть приложение', miniAppUrl)
                 ])
-            ).then(() => {
-                console.log('Сообщение успешно отправлено пользователю:', telegramId);
-            }).catch((error) => {
-                console.error('Ошибка при отправке сообщения:', error);
-            });
+            );
         }
     );
 });
@@ -155,36 +132,46 @@ app.get('/app', async (req, res) => {
     console.log('Запрос от Mini App с User ID:', userId);
 
     try {
-        const userData = await getUserData(userId);
-        if (userData) {
-            console.log('Пользователь найден:', JSON.stringify(userData, null, 2));
-            return res.json({ username: userData.username, points: userData.points });
-        } else {
-            console.error('Пользователь не найден с User ID:', userId);
-            return res.status(404).json({ error: 'Пользователь не найден' });
-        }
+        const query = 'SELECT * FROM user WHERE telegram_id = ?';
+        db.query(query, [userId], (err, results) => {
+            if (err) {
+                console.error('Ошибка проверки User ID:', err);
+                return res.status(500).json({ error: 'Ошибка сервера' });
+            }
+            if (results.length > 0) {
+                const userData = results[0];
+                console.log('Пользователь найден:', JSON.stringify(userData, null, 2));
+                return res.json({ username: userData.username, points: userData.points });
+            } else {
+                console.error('Пользователь не найден с User ID:', userId);
+                return res.status(404).json({ error: 'Пользователь не найден' });
+            }
+        });
     } catch (error) {
         console.error('Ошибка при проверке User ID:', error);
         res.status(500).json({ error: 'Ошибка сервера' });
     }
 });
 
-app.post('/save-points', async (req, res) => {
+app.post('/save-points', (req, res) => {
     const { userId, points } = req.body;
 
     if (!userId || points === undefined) {
-        console.error('User ID или points не переданы в запросе');
-        return res.status(400).json({ error: 'User ID и points обязательны' });
+        return res.status(400).json({ error: 'User ID и Points обязательны' });
     }
 
-    try {
-        await saveUserPoints(userId, points);
-        console.log('Очки пользователя сохранены:', userId, points);
-        res.status(200).json({ message: 'Очки успешно сохранены' });
-    } catch (error) {
-        console.error('Ошибка при сохранении очков:', error);
-        res.status(500).json({ error: 'Ошибка сервера' });
-    }
+    db.query(
+        'UPDATE user SET points = ? WHERE telegram_id = ?',
+        [points, userId],
+        (err, results) => {
+            if (err) {
+                console.error('Ошибка сохранения очков:', err);
+                return res.status(500).json({ error: 'Ошибка сервера' });
+            }
+            console.log('Очки успешно сохранены для пользователя:', userId);
+            res.json({ success: true });
+        }
+    );
 });
 
 app.post('/webhook', (req, res) => {
@@ -198,6 +185,7 @@ app.post('/webhook', (req, res) => {
             res.sendStatus(500);
         });
 });
+
 
 const startServer = async () => {
     try {
@@ -214,5 +202,6 @@ const startServer = async () => {
         console.error('Ошибка установки вебхука:', err);
     }
 };
+
 
 startServer();
