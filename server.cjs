@@ -53,7 +53,7 @@ function generateSessionToken(telegramId) {
     return crypto.randomBytes(64).toString('hex');
 }
 
-function saveSessionToken(telegramId, sessionToken) {
+async function saveSessionToken(telegramId, sessionToken) {
     return new Promise((resolve, reject) => {
         db.query(
             'UPDATE user SET session_token = ? WHERE telegram_id = ?',
@@ -69,7 +69,7 @@ function saveSessionToken(telegramId, sessionToken) {
     });
 }
 
-function validateSessionToken(token) {
+async function validateSessionToken(token) {
     return new Promise((resolve, reject) => {
         db.query(
             'SELECT * FROM user WHERE session_token = ?',
@@ -96,6 +96,7 @@ bot.start(async (ctx) => {
     console.log('Обработка команды /start для пользователя:', telegramId);
 
     const sessionToken = generateSessionToken(telegramId);
+    await saveSessionToken(telegramId, sessionToken);
 
     db.query(
         'INSERT INTO user (telegram_id, username, session_token) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE username = IFNULL(VALUES(username), username), auth_date = NOW(), session_token = VALUES(session_token)', 
@@ -120,6 +121,7 @@ bot.start(async (ctx) => {
     );
 });
 
+
 app.get('/app', async (req, res) => {
     const token = req.query.token;
 
@@ -135,9 +137,6 @@ app.get('/app', async (req, res) => {
     res.json({ username: userData.username });
 });
 
-app.post('/webhook', (req, res) => {
-    bot.handleUpdate(req.body, res);
-});
 
 const startServer = async () => {
     try {
@@ -146,13 +145,23 @@ const startServer = async () => {
         const webhookUrl = process.env.WEBHOOK_URL;
         await bot.telegram.setWebhook(webhookUrl);
         console.log('Webhook успешно установлен:', webhookUrl);
-
-        app.listen(port, () => {
-            console.log(`Сервер запущен на порту ${port}`);
-        });
     } catch (err) {
         console.error('Ошибка установки вебхука:', err);
+    }
+
+    app.listen(port, () => {
+        console.log(`Сервер запущен на порту ${port}`);
+    });
+};
+
+const checkWebhook = async () => {
+    try {
+        const webhookInfo = await bot.telegram.getWebhookInfo();
+        console.log('Информация о вебхуке:', webhookInfo);
+    } catch (err) {
+        console.error('Ошибка получения информации о вебхуке:', err);
     }
 };
 
 startServer();
+checkWebhook();
