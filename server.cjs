@@ -121,35 +121,38 @@ bot.start(async (ctx) => {
 });
 
 app.get('/app', async (req, res) => {
-    const token = req.query.token;
+    const userId = req.query.userId;
 
-    if (!token) {
-        console.error('Токен не передан в запросе');
-        return res.status(400).json({ error: 'Токен обязателен' });
+    if (!userId) {
+        console.error('User ID не передан в запросе');
+        return res.status(400).json({ error: 'User ID обязателен' });
     }
 
-    console.log('Запрос от Mini App с токеном:', token);
+    console.log('Запрос от Mini App с User ID:', userId);
 
     try {
-        const userData = await validateSessionToken(token);
-        if (!userData) {
-            console.error('Недействительный или истекший токен:', token);
-            return res.status(403).json({ error: 'Неверный или истекший токен' });
-        }
-
-        console.log('Пользователь найден:', JSON.stringify(userData, null, 2));
-        res.json({ username: userData.username });
+        const query = 'SELECT * FROM user WHERE telegram_id = ?';
+        db.query(query, [userId], (err, results) => {
+            if (err) {
+                console.error('Ошибка проверки User ID:', err);
+                return res.status(500).json({ error: 'Ошибка сервера' });
+            }
+            if (results.length > 0) {
+                const userData = results[0];
+                console.log('Пользователь найден:', JSON.stringify(userData, null, 2));
+                return res.json({ username: userData.username });
+            } else {
+                console.error('Пользователь не найден с User ID:', userId);
+                return res.status(404).json({ error: 'Пользователь не найден' });
+            }
+        });
     } catch (error) {
-        console.error('Ошибка при проверке токена:', error);
+        console.error('Ошибка при проверке User ID:', error);
         res.status(500).json({ error: 'Ошибка сервера' });
     }
 });
 
-// Обработка Webhook-запросов
-app.post('/webhook', (req, res) => {
-    bot.handleUpdate(req.body);
-    res.sendStatus(200);
-});
+
 
 const startServer = async () => {
     try {
