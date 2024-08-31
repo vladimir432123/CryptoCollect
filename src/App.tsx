@@ -65,11 +65,11 @@ const App: React.FC = () => {
 
   useEffect(() => {
     const initData = WebApp.initDataUnsafe;
-
     console.log('InitData:', initData);
 
     const token = new URLSearchParams(window.location.search).get('token');
-    
+    console.log('Token:', token);
+
     if (!token) {
         console.error('Токен сессии отсутствует!');
         return;
@@ -80,16 +80,18 @@ const App: React.FC = () => {
     fetch(`/app?token=${token}`, {
         method: 'GET',
         headers: {
-            'Content-Type': 'application/json'
-        }
+            'Content-Type': 'application/json',
+        },
     })
-    .then(response => {
+    .then((response) => {
+        console.log('Ответ от сервера:', response);
         if (!response.ok) {
             throw new Error(`Ошибка HTTP: ${response.status}`);
         }
         return response.json();
     })
-    .then(data => {
+    .then((data) => {
+        console.log('Данные от сервера:', data);
         if (data.username) {
             console.log('Имя пользователя получено с сервера:', data.username);
             setUsername(data.username);
@@ -97,10 +99,11 @@ const App: React.FC = () => {
             console.error('Имя пользователя не получено с сервера');
         }
     })
-    .catch(error => console.error('Ошибка при получении данных с сервера:', error));
+    .catch((error) => console.error('Ошибка при получении данных с сервера:', error));
 
     WebApp.ready();
-  }, []);
+}, []);
+
 
   const handleMainButtonClick = useCallback((e: React.TouchEvent<HTMLDivElement>) => {
     const touches = e.touches;
