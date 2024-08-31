@@ -84,7 +84,10 @@ const App: React.FC = () => {
             'Content-Type': 'application/json'
         }
     })
-    .then(response => response.json())
+    .then(response => {
+        console.log('Ответ от сервера:', response);
+        return response.json();
+    })
     .then(data => {
         if (data.username) {
             console.log('Имя пользователя получено с сервера:', data.username);
