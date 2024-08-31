@@ -96,7 +96,7 @@ bot.start(async (ctx) => {
     console.log('Обработка команды /start для пользователя:', telegramId);
 
     db.query(
-        'INSERT INTO user (telegram_id, username) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE username = IFNULL(?, username), auth_date = NOW()', 
+        'INSERT INTO user (telegram_id, username, session_token) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE username = IFNULL(?, username), auth_date = NOW()', 
         [telegramId, username, '', username], 
         async (err) => {
             if (err) {
@@ -120,6 +120,7 @@ bot.start(async (ctx) => {
         }
     );
 });
+
 
 app.get('/app', async (req, res) => {
     const token = req.query.token;
