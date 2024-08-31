@@ -97,6 +97,8 @@ bot.start(async (ctx) => {
 
     const sessionToken = generateSessionToken(telegramId);
 
+    console.log('Сгенерирован токен сессии:', sessionToken);
+
     db.query(
         'INSERT INTO user (telegram_id, username, session_token) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE username = IFNULL(VALUES(username), username), auth_date = NOW(), session_token = VALUES(session_token)', 
         [telegramId, username, sessionToken], 
@@ -106,19 +108,25 @@ bot.start(async (ctx) => {
                 return ctx.reply('Произошла ошибка, попробуйте позже.');
             }
 
-            console.log('Сгенерирован токен сессии:', sessionToken);
+            console.log('Данные успешно сохранены в базе данных для пользователя:', telegramId);
 
             const miniAppUrl = `https://t.me/cryptocollect_bot?startapp=${telegramId}&tgWebApp=true&token=${sessionToken}`;
 
+            console.log('Отправка сообщения с URL:', miniAppUrl);
             ctx.reply(
                 'Добро пожаловать! Нажмите на кнопку ниже, чтобы открыть приложение:',
                 Markup.inlineKeyboard([
                     Markup.button.url('Открыть приложение', miniAppUrl)
                 ])
-            );
+            ).then(() => {
+                console.log('Сообщение успешно отправлено пользователю:', telegramId);
+            }).catch((error) => {
+                console.error('Ошибка при отправке сообщения:', error);
+            });
         }
     );
 });
+
 
 app.get('/app', async (req, res) => {
     const userId = req.query.userId;
@@ -152,6 +160,17 @@ app.get('/app', async (req, res) => {
     }
 });
 
+app.post('/webhook', (req, res) => {
+    console.log('Получен запрос на /webhook:', req.body);
+    bot.handleUpdate(req.body)
+        .then(() => {
+            res.sendStatus(200);
+        })
+        .catch((err) => {
+            console.error('Ошибка при обработке запроса:', err);
+            res.sendStatus(500);
+        });
+});
 
 
 const startServer = async () => {
