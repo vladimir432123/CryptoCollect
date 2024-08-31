@@ -133,13 +133,10 @@ app.get('/app', async (req, res) => {
         return res.status(403).send('Неверный или истекший токен.');
     }
 
-    console.log('Пользователь найден:', userData.username);
+    console.log('Пользователь найден:', JSON.stringify(userData, null, 2));
     res.json({ username: userData.username });
 });
 
-app.post('/webhook', (req, res) => {
-    bot.handleUpdate(req.body, res);
-});
 
 const startServer = async () => {
     try {
