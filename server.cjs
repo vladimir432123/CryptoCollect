@@ -93,23 +93,27 @@ bot.start(async (ctx) => {
     const telegramId = ctx.message.from.id;
     const username = ctx.message.from.username || `user_${telegramId}`;
 
-    console.log('Обработка команды /start для пользователя:', telegramId);
+    console.log(`Обработка команды /start для пользователя: ${telegramId} (${username})`);
 
     db.query(
         'INSERT INTO user (telegram_id, username, session_token) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE username = IFNULL(?, username), auth_date = NOW()', 
         [telegramId, username, '', username], 
-        async (err) => {
+        async (err, results) => {
             if (err) {
                 console.error('Ошибка базы данных при обработке команды /start:', err);
                 return ctx.reply('Произошла ошибка, попробуйте позже.');
             }
 
-            const sessionToken = generateSessionToken(telegramId);
-            await saveSessionToken(telegramId, sessionToken);
+            console.log('Результат операции с базой данных:', results);
 
+            const sessionToken = generateSessionToken(telegramId);
             console.log('Сгенерирован токен сессии:', sessionToken);
 
+            await saveSessionToken(telegramId, sessionToken);
+
             const miniAppUrl = `https://t.me/cryptocollect_bot?startapp=${telegramId}&tgWebApp=true&token=${sessionToken}`;
+
+            console.log('Ссылка на мини-приложение:', miniAppUrl);
 
             ctx.reply(
                 'Добро пожаловать! Нажмите на кнопку ниже, чтобы открыть приложение:',
@@ -120,7 +124,6 @@ bot.start(async (ctx) => {
         }
     );
 });
-
 
 app.get('/app', async (req, res) => {
     const token = req.query.token;
