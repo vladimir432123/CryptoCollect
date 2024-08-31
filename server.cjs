@@ -110,15 +110,21 @@ bot.start(async (ctx) => {
 
             const miniAppUrl = `https://t.me/cryptocollect_bot?startapp=${telegramId}&tgWebApp=true&token=${sessionToken}`;
 
+            console.log('Отправка сообщения пользователю');
             ctx.reply(
                 'Добро пожаловать! Нажмите на кнопку ниже, чтобы открыть приложение:',
                 Markup.inlineKeyboard([
                     Markup.button.url('Открыть приложение', miniAppUrl)
                 ])
-            );
+            ).then(() => {
+                console.log('Сообщение успешно отправлено');
+            }).catch((error) => {
+                console.error('Ошибка при отправке сообщения:', error);
+            });
         }
     );
 });
+
 
 app.get('/app', async (req, res) => {
     const userId = req.query.userId;
