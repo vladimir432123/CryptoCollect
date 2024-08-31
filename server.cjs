@@ -31,7 +31,7 @@ db.connect((err) => {
     console.log('Успешное подключение к базе данных');
 });
 
-db.query(`
+db.query(
     CREATE TABLE IF NOT EXISTS user (
         id INT AUTO_INCREMENT PRIMARY KEY,
         telegram_id BIGINT UNIQUE,
@@ -39,7 +39,7 @@ db.query(`
         auth_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         session_token VARCHAR(255)
     )
-`, (err) => {
+, (err) => {
     if (err) {
         console.error('Ошибка создания таблицы:', err);
     } else {
@@ -53,7 +53,7 @@ function generateSessionToken(telegramId) {
     return crypto.randomBytes(64).toString('hex');
 }
 
-async function saveSessionToken(telegramId, sessionToken) {
+function saveSessionToken(telegramId, sessionToken) {
     return new Promise((resolve, reject) => {
         db.query(
             'UPDATE user SET session_token = ? WHERE telegram_id = ?',
@@ -69,7 +69,7 @@ async function saveSessionToken(telegramId, sessionToken) {
     });
 }
 
-async function validateSessionToken(token) {
+function validateSessionToken(token) {
     return new Promise((resolve, reject) => {
         db.query(
             'SELECT * FROM user WHERE session_token = ?',
@@ -91,41 +91,35 @@ async function validateSessionToken(token) {
 
 bot.start(async (ctx) => {
     const telegramId = ctx.message.from.id;
-    const username = ctx.message.from.username || `user_${telegramId}`;
+    const username = ctx.message.from.username || user_${telegramId};
 
     console.log('Обработка команды /start для пользователя:', telegramId);
 
-    try {
-        const sessionToken = generateSessionToken(telegramId);
-        await saveSessionToken(telegramId, sessionToken);
-
-        db.query(
-            'INSERT INTO user (telegram_id, username, session_token) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE username = IFNULL(VALUES(username), username), auth_date = NOW(), session_token = VALUES(session_token)', 
-            [telegramId, username, sessionToken], 
-            (err, results) => {
-                if (err) {
-                    console.error('Ошибка базы данных при обработке команды /start:', err);
-                    return ctx.reply('Произошла ошибка, попробуйте позже.');
-                }
-
-                console.log('Сгенерирован токен сессии:', sessionToken);
-
-                const miniAppUrl = `https://t.me/cryptocollect_bot?startapp=${telegramId}&tgWebApp=true&token=${sessionToken}`;
-
-                ctx.reply(
-                    'Добро пожаловать! Нажмите на кнопку ниже, чтобы открыть приложение:',
-                    Markup.inlineKeyboard([
-                        Markup.button.url('Открыть приложение', miniAppUrl)
-                    ])
-                );
+    db.query(
+        'INSERT INTO user (telegram_id, username, session_token) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE username = IFNULL(VALUES(username), username), auth_date = NOW(), session_token = VALUES(session_token)', 
+        [telegramId, username, sessionToken], 
+        async (err, results) => {
+            if (err) {
+                console.error('Ошибка базы данных при обработке команды /start:', err);
+                return ctx.reply('Произошла ошибка, попробуйте позже.');
             }
-        );
-    } catch (error) {
-        console.error('Ошибка при обработке команды /start:', error);
-        ctx.reply('Произошла внутренняя ошибка, попробуйте позже.');
-    }
-});
 
+            const sessionToken = generateSessionToken(telegramId);
+            await saveSessionToken(telegramId, sessionToken);
+
+            console.log('Сгенерирован токен сессии:', sessionToken);
+
+            const miniAppUrl = https://t.me/cryptocollect_bot?startapp=${telegramId}&tgWebApp=true&token=${sessionToken};
+
+            ctx.reply(
+                'Добро пожаловать! Нажмите на кнопку ниже, чтобы открыть приложение:',
+                Markup.inlineKeyboard([
+                    Markup.button.url('Открыть приложение', miniAppUrl)
+                ])
+            );
+        }
+    );
+});
 
 
 app.get('/app', async (req, res) => {
@@ -156,7 +150,7 @@ const startServer = async () => {
     }
 
     app.listen(port, () => {
-        console.log(`Сервер запущен на порту ${port}`);
+        console.log(Сервер запущен на порту ${port});
     });
 };
 
