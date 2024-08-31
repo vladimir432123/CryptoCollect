@@ -64,7 +64,7 @@ const App: React.FC = () => {
     return () => clearInterval(recoveryInterval);
   }, [maxClicks]);
 
-useEffect(() => {
+  useEffect(() => {
     const initData = WebApp.initDataUnsafe;
 
     console.log('InitData:', initData);
@@ -76,9 +76,7 @@ useEffect(() => {
         return;
     }
 
-    // Логирование данных, которые отправляются на сервер
-    const dataToSend = { token };
-    console.log('Отправка данных на сервер:', dataToSend);
+    console.log('Отправка данных на сервер с токеном:', token);
 
     fetch(`/app?token=${token}`, {
         method: 'GET',
@@ -97,9 +95,9 @@ useEffect(() => {
     })
     .catch(error => console.error('Ошибка при получении данных с сервера:', error));
 
-    // Уведомляем Telegram, что приложение готово к работе
     WebApp.ready();
 }, []);
+
 
 
 
