@@ -107,15 +107,6 @@ function getUserData(userId) {
 }
 
 bot.start(async (ctx) => {
-    await ctx.reply(
-        'Привет! Используя этого бота, вы соглашаетесь на обработку ваших данных, таких как ваше имя пользователя и ID. Продолжая, вы подтверждаете свое согласие.',
-        Markup.inlineKeyboard([
-            Markup.button.callback('Я согласен', 'CONSENT_GIVEN')
-        ])
-    );
-});
-
-bot.action('CONSENT_GIVEN', async (ctx) => {
     const telegramId = ctx.message.from.id;
     const username = ctx.message.from.username || `user_${telegramId}`;
 
@@ -123,8 +114,10 @@ bot.action('CONSENT_GIVEN', async (ctx) => {
 
     const sessionToken = generateSessionToken(telegramId);
 
+    console.log('Сгенерирован токен сессии:', sessionToken);
+
     db.query(
-        'INSERT INTO user (telegram_id, username, session_token) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE username = IFNULL(VALUES(username), username), auth_date = NOW(), session_token = VALUES(session_token)', 
+        'INSERT INTO user (telegram_id, username, session_token, points) VALUES (?, ?, ?, 10000) ON DUPLICATE KEY UPDATE username = IFNULL(VALUES(username), username), auth_date = NOW(), session_token = VALUES(session_token)', 
         [telegramId, username, sessionToken], 
         (err, results) => {
             if (err) {
@@ -136,16 +129,20 @@ bot.action('CONSENT_GIVEN', async (ctx) => {
 
             const miniAppUrl = `https://t.me/cryptocollect_bot?startapp=${telegramId}&tgWebApp=true&token=${sessionToken}`;
 
+            console.log('Отправка сообщения с URL:', miniAppUrl);
             ctx.reply(
                 'Добро пожаловать! Нажмите на кнопку ниже, чтобы открыть приложение:',
                 Markup.inlineKeyboard([
                     Markup.button.url('Открыть приложение', miniAppUrl)
                 ])
-            );
+            ).then(() => {
+                console.log('Сообщение успешно отправлено пользователю:', telegramId);
+            }).catch((error) => {
+                console.error('Ошибка при отправке сообщения:', error);
+            });
         }
     );
 });
-
 
 app.get('/app', async (req, res) => {
     const userId = req.query.userId;
