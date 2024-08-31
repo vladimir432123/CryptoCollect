@@ -152,24 +152,13 @@ app.get('/app', async (req, res) => {
     }
 });
 
-// Обработка Webhook-запросов
-app.post('/webhook', (req, res) => {
-    console.log('Получен запрос на /webhook:', req.body);
-    bot.handleUpdate(req.body)
-        .then(() => {
-            res.sendStatus(200);
-        })
-        .catch((err) => {
-            console.error('Ошибка при обработке запроса:', err);
-            res.sendStatus(500);
-        });
-});
+
 
 const startServer = async () => {
     try {
         await bot.telegram.deleteWebhook({ drop_pending_updates: true });
 
-        const webhookUrl = `${process.env.WEBHOOK_URL}/webhook`;
+        const webhookUrl = process.env.WEBHOOK_URL; // Используем URL из переменной среды
         await bot.telegram.setWebhook(webhookUrl);
         console.log('Webhook успешно установлен:', webhookUrl);
 
@@ -180,5 +169,6 @@ const startServer = async () => {
         console.error('Ошибка установки вебхука:', err);
     }
 };
+
 
 startServer();
