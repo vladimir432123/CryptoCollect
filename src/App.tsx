@@ -68,7 +68,7 @@ const App: React.FC = () => {
     console.log('InitData:', initData);
 
     const token = new URLSearchParams(window.location.search).get('token');
-    console.log('Token:', token);
+    console.log('Token:', token); // Логирование токена
 
     if (!token) {
         console.error('Токен сессии отсутствует!');
@@ -84,14 +84,14 @@ const App: React.FC = () => {
         },
     })
     .then((response) => {
-        console.log('Ответ от сервера:', response);
+        console.log('Ответ от сервера:', response); // Логирование ответа от сервера
         if (!response.ok) {
             throw new Error(`Ошибка HTTP: ${response.status}`);
         }
         return response.json();
     })
     .then((data) => {
-        console.log('Данные от сервера:', data);
+        console.log('Данные от сервера:', data); // Логирование полученных данных
         if (data.username) {
             console.log('Имя пользователя получено с сервера:', data.username);
             setUsername(data.username);
@@ -100,9 +100,8 @@ const App: React.FC = () => {
         }
     })
     .catch((error) => console.error('Ошибка при получении данных с сервера:', error));
-
-    WebApp.ready();
 }, []);
+
 
 
   const handleMainButtonClick = useCallback((e: React.TouchEvent<HTMLDivElement>) => {
