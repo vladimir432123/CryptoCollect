@@ -8,7 +8,6 @@ import MineContent from './MineContent'; // Adjust the path as necessary
 import { FaTasks } from 'react-icons/fa'; // Импортируем иконку задач
 import WebApp from '@twa-dev/sdk'; // Правильный импорт WebApp
 
-
 const Farm: React.FC<{ className?: string }> = ({ className }) => (
   <svg className={className} viewBox="0 0 24 24" fill="currentColor">
     <path d="M1 22h22V8l-11-6-11 6v14zm2-2v-9h18v9H3zm9-4.5a2.5 2.5 0 100-5 2.5 2.5 0 000 5z" />
@@ -85,7 +84,9 @@ const App: React.FC = () => {
         }
     })
     .then(response => {
-        console.log('Ответ от сервера:', response);
+        if (!response.ok) {
+            throw new Error(`Ошибка HTTP: ${response.status}`);
+        }
         return response.json();
     })
     .then(data => {
@@ -99,12 +100,7 @@ const App: React.FC = () => {
     .catch(error => console.error('Ошибка при получении данных с сервера:', error));
 
     WebApp.ready();
-}, []);
-
-
-
-
-
+  }, []);
 
   const handleMainButtonClick = useCallback((e: React.TouchEvent<HTMLDivElement>) => {
     const touches = e.touches;
