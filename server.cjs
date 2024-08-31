@@ -53,59 +53,23 @@ function generateSessionToken(telegramId) {
     return crypto.randomBytes(64).toString('hex');
 }
 
-function saveSessionToken(telegramId, sessionToken) {
-    return new Promise((resolve, reject) => {
-        db.query(
-            'UPDATE user SET session_token = ? WHERE telegram_id = ?',
-            [sessionToken, telegramId],
-            (err, results) => {
-                if (err) {
-                    console.error('Ошибка сохранения токена сессии в базе данных:', err);
-                    return reject(err);
-                }
-                resolve();
-            }
-        );
-    });
-}
-
-function validateSessionToken(token) {
-    return new Promise((resolve, reject) => {
-        db.query(
-            'SELECT * FROM user WHERE session_token = ?',
-            [token],
-            (err, results) => {
-                if (err) {
-                    console.error('Ошибка проверки токена сессии:', err);
-                    return reject(err);
-                }
-                if (results.length > 0) {
-                    resolve(results[0]);
-                } else {
-                    resolve(null);
-                }
-            }
-        );
-    });
-}
-
 bot.start(async (ctx) => {
     const telegramId = ctx.message.from.id;
     const username = ctx.message.from.username || `user_${telegramId}`;
 
     console.log('Обработка команды /start для пользователя:', telegramId);
 
+    // Генерация токена перед использованием
+    const sessionToken = generateSessionToken(telegramId);
+
     db.query(
         'INSERT INTO user (telegram_id, username, session_token) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE username = IFNULL(VALUES(username), username), auth_date = NOW(), session_token = VALUES(session_token)', 
         [telegramId, username, sessionToken], 
-        async (err, results) => {
+        (err, results) => {
             if (err) {
                 console.error('Ошибка базы данных при обработке команды /start:', err);
                 return ctx.reply('Произошла ошибка, попробуйте позже.');
             }
-
-            const sessionToken = generateSessionToken(telegramId);
-            await saveSessionToken(telegramId, sessionToken);
 
             console.log('Сгенерирован токен сессии:', sessionToken);
 
@@ -121,7 +85,6 @@ bot.start(async (ctx) => {
     );
 });
 
-
 app.get('/app', async (req, res) => {
     const token = req.query.token;
 
@@ -136,7 +99,6 @@ app.get('/app', async (req, res) => {
     console.log('Пользователь найден:', JSON.stringify(userData, null, 2));
     res.json({ username: userData.username });
 });
-
 
 const startServer = async () => {
     try {
