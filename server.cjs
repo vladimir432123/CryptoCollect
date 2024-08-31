@@ -124,21 +124,17 @@ bot.start(async (ctx) => {
 
 app.get('/app', async (req, res) => {
     const token = req.query.token;
+
     console.log('Запрос от Mini App с токеном:', token);
 
-    try {
-        const userData = await validateSessionToken(token);
-        if (!userData) {
-            console.error('Недействительный или истекший токен:', token);
-            return res.status(403).send('Неверный или истекший токен.');
-        }
-
-        console.log('Пользователь найден:', JSON.stringify(userData, null, 2));
-        res.json({ username: userData.username });
-    } catch (error) {
-        console.error('Ошибка при обработке запроса:', error);
-        res.status(500).send('Ошибка сервера.');
+    const userData = await validateSessionToken(token);
+    if (!userData) {
+        console.error('Недействительный или истекший токен:', token);
+        return res.status(403).send('Неверный или истекший токен.');
     }
+
+    console.log('Пользователь найден:', JSON.stringify(userData, null, 2));
+    res.json({ username: userData.username });
 });
 
 
