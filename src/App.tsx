@@ -66,63 +66,53 @@ const App: React.FC = () => {
 
   useEffect(() => {
     const initData = WebApp.initDataUnsafe;
-    console.log('InitData:', initData);
 
     const userIdFromTelegram = initData?.user?.id;
-    console.log('User ID:', userIdFromTelegram);
 
     if (!userIdFromTelegram) {
-        console.error('User ID отсутствует!');
-        return;
+      return;
     }
 
     setUserId(userIdFromTelegram);
 
     fetch(`/app?userId=${userIdFromTelegram}`, {
-        method: 'GET',
-        headers: {
-            'Content-Type': 'application/json',
-        },
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
     })
-    .then((response) => {
-        console.log('Ответ от сервера:', response);
+      .then((response) => {
         if (!response.ok) {
-            throw new Error(`Ошибка HTTP: ${response.status}`);
+          throw new Error(`Ошибка HTTP: ${response.status}`);
         }
         return response.json();
-    })
-    .then((data) => {
-        console.log('Данные от сервера:', data);
+      })
+      .then((data) => {
         if (data.username) {
-            setUsername(data.username);
+          setUsername(data.username);
         }
         if (data.points !== undefined) {
-            setPoints(data.points);
+          setPoints(data.points);
         }
-    })
-    .catch((error) => console.error('Ошибка при получении данных с сервера:', error));
+      })
+      .catch((error) => console.error('Ошибка при получении данных с сервера:', error));
   }, []);
 
   useEffect(() => {
-    if (userId) {
-      const saveInterval = setInterval(() => {
+    if (userId !== null) {
+      const savePoints = () => {
         fetch('/save-points', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({ userId, points }),
-        })
-        .then(response => response.json())
-        .then(data => {
-          console.log('Очки успешно сохранены:', data);
-        })
-        .catch(error => {
+        }).catch((error) => {
           console.error('Ошибка при сохранении очков:', error);
         });
-      }, 2000); // Отправка запроса каждые 2 секунды
+      };
 
-      return () => clearInterval(saveInterval);
+      savePoints();
     }
   }, [points, userId]);
 
@@ -130,26 +120,28 @@ const App: React.FC = () => {
     const touches = e.touches;
     if (remainingClicks > 0 && touches.length <= 5) {
       setRemainingClicks((prevClicks: number) => prevClicks - touches.length);
-      setPoints(prevPoints => prevPoints + tapProfit * touches.length);
+      setPoints((prevPoints) => prevPoints + tapProfit * touches.length);
 
-      const newClicks = Array.from(touches).map(touch => ({
+      const newClicks = Array.from(touches).map((touch) => ({
         id: Date.now() + touch.identifier,
         x: touch.clientX,
         y: touch.clientY,
-        profit: tapProfit
+        profit: tapProfit,
       }));
 
-      setClicks(prevClicks => [...prevClicks, ...newClicks]);
+      setClicks((prevClicks) => [...prevClicks, ...newClicks]);
 
       setTimeout(() => {
-        setClicks(prevClicks => prevClicks.filter(click => !newClicks.some(newClick => newClick.id === click.id)));
+        setClicks((prevClicks) =>
+          prevClicks.filter((click) => !newClicks.some((newClick) => newClick.id === click.id))
+        );
       }, 1000);
 
       const button = e.currentTarget;
       button.classList.add('clicked');
       setTimeout(() => {
         button.classList.remove('clicked');
-      }, 200); 
+      }, 200);
     }
   }, [remainingClicks, tapProfit]);
 
@@ -180,8 +172,8 @@ const App: React.FC = () => {
   const upgradeTapProfit = () => {
     const nextLevel = tapProfitLevels[tapProfitLevel];
     if (nextLevel && points >= nextLevel.cost) {
-      setPoints(prevPoints => prevPoints - nextLevel.cost);
-      setTapProfitLevel(prevLevel => prevLevel + 1);
+      setPoints((prevPoints) => prevPoints - nextLevel.cost);
+      setTapProfitLevel((prevLevel) => prevLevel + 1);
       setTapProfit(nextLevel.profit);
     }
   };
@@ -202,8 +194,8 @@ const App: React.FC = () => {
   const upgradeTapIncrease = () => {
     const nextLevel = tapIncreaseLevels[tapIncreaseLevel];
     if (nextLevel && points >= nextLevel.cost) {
-      setPoints(prevPoints => prevPoints - nextLevel.cost);
-      setTapIncreaseLevel(prevLevel => prevLevel + 1);
+      setPoints((prevPoints) => prevPoints - nextLevel.cost);
+      setTapIncreaseLevel((prevLevel) => prevLevel + 1);
       setMaxClicks(nextLevel.taps);
       setRemainingClicks(nextLevel.taps);
     }
@@ -216,7 +208,7 @@ const App: React.FC = () => {
           <Hamster size={24} className="text-yellow-400" />
         </div>
         <div>
-          <p className="text-sm text-gray-300">{username ? username : 'Гость'}</p> {/* Используем состояние username */}
+          <p className="text-sm text-gray-300">{username ? username : 'Гость'}</p>
         </div>
       </div>
       <div className="flex items-center justify-between space-x-4 mt-1">
@@ -271,7 +263,7 @@ const App: React.FC = () => {
       <div className="absolute bottom-16 left-0 right-0 flex flex-col items-center z-40">
         <div className="w-full px-4 flex items-center justify-between mb-4">
           <div className="w-[calc(100%-50px)] h-[10px] bg-gray-600 rounded-md overflow-hidden">
-            <div 
+            <div
               className="h-full bg-yellow-400 transition-all duration-200 ease-linear"
               style={{ width: `${(remainingClicks / maxClicks) * 100}%` }}
             ></div>
@@ -293,49 +285,49 @@ const App: React.FC = () => {
       : 'Increases the maximum number of taps that can be made at a time. This improvement will allow you to play longer without having to wait for clicks to be restored.';
 
     return (
-        <div
-            className={`fixed bottom-0 left-0 right-0 bg-gray-800 rounded-t-2xl p-4 z-[40] transition-transform duration-1000 ease-out ${
-              selectedUpgrade ? 'translate-y-0' : 'translate-y-full'
-            }`}
-            style={{ height: 'calc(50% - 80px)' }}
-        >
-          <div className="flex flex-col items-center">
-            <div className="w-10 h-12 bg-gray-700 mb-2"></div>
-            <h2 className="text-xl font-bold text-yellow-400 mb-1">
-              {isMultitap ? 'Multitap' : 'Tap increase'}
-            </h2>
-            <p className="text-sm text-gray-400 mb-2">Level {currentLevel}</p>
-            <p className="text-sm text-gray-300 text-center mb-4">
-              {description}
-            </p>
-            {currentLevel < maxLevel ? (
-              <button
-                onClick={upgradeFunction}
-                disabled={points < nextLevel.cost}
-                className={`w-full py-3 rounded-lg font-bold text-center transition-colors ${
-                  points >= nextLevel.cost
-                    ? 'bg-yellow-400 text-gray-900 hover:bg-yellow-500'
-                    : 'bg-gray-600 text-gray-400 cursor-not-allowed'
-                }`}
-              >
-                Улучшить ({nextLevel.cost} монет)
-              </button>
-            ) : (
-              <div className="text-yellow-400 font-bold text-center">MAX LEVEL</div>
-            )}
-          </div>
+      <div
+        className={`fixed bottom-0 left-0 right-0 bg-gray-800 rounded-t-2xl p-4 z-[40] transition-transform duration-1000 ease-out ${
+          selectedUpgrade ? 'translate-y-0' : 'translate-y-full'
+        }`}
+        style={{ height: 'calc(50% - 80px)' }}
+      >
+        <div className="flex flex-col items-center">
+          <div className="w-10 h-12 bg-gray-700 mb-2"></div>
+          <h2 className="text-xl font-bold text-yellow-400 mb-1">
+            {isMultitap ? 'Multitap' : 'Tap increase'}
+          </h2>
+          <p className="text-sm text-gray-400 mb-2">Level {currentLevel}</p>
+          <p className="text-sm text-gray-300 text-center mb-4">
+            {description}
+          </p>
+          {currentLevel < maxLevel ? (
+            <button
+              onClick={upgradeFunction}
+              disabled={points < nextLevel.cost}
+              className={`w-full py-3 rounded-lg font-bold text-center transition-colors ${
+                points >= nextLevel.cost
+                  ? 'bg-yellow-400 text-gray-900 hover:bg-yellow-500'
+                  : 'bg-gray-600 text-gray-400 cursor-not-allowed'
+              }`}
+            >
+              Улучшить ({nextLevel.cost} монет)
+            </button>
+          ) : (
+            <div className="text-yellow-400 font-bold text-center">MAX LEVEL</div>
+          )}
         </div>
+      </div>
     );
   };
 
   const renderBoostMenu = () => {
     const closeUpgradeMenu = () => setSelectedUpgrade(null);
-  
+
     return (
       <div className="absolute inset-0 bg-gray-800 z-50 flex flex-col">
         {renderUserInfo()}
         <div className="w-full h-px bg-gray-600 mt-4"></div>
-  
+
         <div className="flex-grow flex flex-col items-center justify-start p-4 space-y-5">
           <div
             className="w-full bg-gray-700 rounded-lg p-4"
@@ -349,7 +341,7 @@ const App: React.FC = () => {
               Increases the profit for each tap, allowing you to accumulate coins faster.
             </p>
           </div>
-  
+
           <div
             className="w-full bg-gray-700 rounded-lg p-4"
             onClick={() => setSelectedUpgrade('tapIncrease')}
@@ -373,7 +365,7 @@ const App: React.FC = () => {
       </div>
     );
   };
-  
+
   return (
     <div className="min-h-screen flex justify-center items-center bg-gray-900">
       <div className="w-full max-w-[390px] h-screen font-bold flex flex-col relative overflow-hidden bg-gray-800">
