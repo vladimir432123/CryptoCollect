@@ -95,31 +95,37 @@ bot.start(async (ctx) => {
 
     console.log('Обработка команды /start для пользователя:', telegramId);
 
-    const sessionToken = generateSessionToken(telegramId);
-    await saveSessionToken(telegramId, sessionToken);
+    try {
+        const sessionToken = generateSessionToken(telegramId);
+        await saveSessionToken(telegramId, sessionToken);
 
-    db.query(
-        'INSERT INTO user (telegram_id, username, session_token) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE username = IFNULL(VALUES(username), username), auth_date = NOW(), session_token = VALUES(session_token)', 
-        [telegramId, username, sessionToken], 
-        (err, results) => {
-            if (err) {
-                console.error('Ошибка базы данных при обработке команды /start:', err);
-                return ctx.reply('Произошла ошибка, попробуйте позже.');
+        db.query(
+            'INSERT INTO user (telegram_id, username, session_token) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE username = IFNULL(VALUES(username), username), auth_date = NOW(), session_token = VALUES(session_token)', 
+            [telegramId, username, sessionToken], 
+            (err, results) => {
+                if (err) {
+                    console.error('Ошибка базы данных при обработке команды /start:', err);
+                    return ctx.reply('Произошла ошибка, попробуйте позже.');
+                }
+
+                console.log('Сгенерирован токен сессии:', sessionToken);
+
+                const miniAppUrl = `https://t.me/cryptocollect_bot?startapp=${telegramId}&tgWebApp=true&token=${sessionToken}`;
+
+                ctx.reply(
+                    'Добро пожаловать! Нажмите на кнопку ниже, чтобы открыть приложение:',
+                    Markup.inlineKeyboard([
+                        Markup.button.url('Открыть приложение', miniAppUrl)
+                    ])
+                );
             }
-
-            console.log('Сгенерирован токен сессии:', sessionToken);
-
-            const miniAppUrl = `https://t.me/cryptocollect_bot?startapp=${telegramId}&tgWebApp=true&token=${sessionToken}`;
-
-            ctx.reply(
-                'Добро пожаловать! Нажмите на кнопку ниже, чтобы открыть приложение:',
-                Markup.inlineKeyboard([
-                    Markup.button.url('Открыть приложение', miniAppUrl)
-                ])
-            );
-        }
-    );
+        );
+    } catch (error) {
+        console.error('Ошибка при обработке команды /start:', error);
+        ctx.reply('Произошла внутренняя ошибка, попробуйте позже.');
+    }
 });
+
 
 
 app.get('/app', async (req, res) => {
