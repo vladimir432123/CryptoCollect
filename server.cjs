@@ -110,21 +110,15 @@ bot.start(async (ctx) => {
 
             const miniAppUrl = `https://t.me/cryptocollect_bot?startapp=${telegramId}&tgWebApp=true&token=${sessionToken}`;
 
-            console.log('Отправка сообщения пользователю');
             ctx.reply(
                 'Добро пожаловать! Нажмите на кнопку ниже, чтобы открыть приложение:',
                 Markup.inlineKeyboard([
                     Markup.button.url('Открыть приложение', miniAppUrl)
                 ])
-            ).then(() => {
-                console.log('Сообщение успешно отправлено');
-            }).catch((error) => {
-                console.error('Ошибка при отправке сообщения:', error);
-            });
+            );
         }
     );
 });
-
 
 app.get('/app', async (req, res) => {
     const userId = req.query.userId;
@@ -158,13 +152,24 @@ app.get('/app', async (req, res) => {
     }
 });
 
-
+// Обработка Webhook-запросов
+app.post('/webhook', (req, res) => {
+    console.log('Получен запрос на /webhook:', req.body);
+    bot.handleUpdate(req.body)
+        .then(() => {
+            res.sendStatus(200);
+        })
+        .catch((err) => {
+            console.error('Ошибка при обработке запроса:', err);
+            res.sendStatus(500);
+        });
+});
 
 const startServer = async () => {
     try {
         await bot.telegram.deleteWebhook({ drop_pending_updates: true });
 
-        const webhookUrl = process.env.WEBHOOK_URL;
+        const webhookUrl = `${process.env.WEBHOOK_URL}/webhook`;
         await bot.telegram.setWebhook(webhookUrl);
         console.log('Webhook успешно установлен:', webhookUrl);
 
