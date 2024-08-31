@@ -24,6 +24,7 @@ const App: React.FC = () => {
   const [remainingClicks, setRemainingClicks] = useState(maxClicks);
   const [points, setPoints] = useState<number>(10000);  // Изначально 10,000 points
   const [username, setUsername] = useState<string | null>(null);
+  const [userId, setUserId] = useState<number | null>(null);
 
   const [clicks, setClicks] = useState<{ id: number, x: number, y: number, profit: number }[]>([]);
   const [isBoostMenuOpen, setIsBoostMenuOpen] = useState(false);
@@ -67,17 +68,17 @@ const App: React.FC = () => {
     const initData = WebApp.initDataUnsafe;
     console.log('InitData:', initData);
 
-    // Используем user.id в качестве идентификатора пользователя вместо токена
-    const userId = initData?.user?.id;
-    console.log('User ID:', userId);
+    const userIdFromTelegram = initData?.user?.id;
+    console.log('User ID:', userIdFromTelegram);
 
-    if (!userId) {
+    if (!userIdFromTelegram) {
         console.error('User ID отсутствует!');
         return;
     }
 
-    // Отправляем userId на сервер для валидации и получения данных
-    fetch(`/app?userId=${userId}`, {
+    setUserId(userIdFromTelegram);
+
+    fetch(`/app?userId=${userIdFromTelegram}`, {
         method: 'GET',
         headers: {
             'Content-Type': 'application/json',
@@ -100,39 +101,30 @@ const App: React.FC = () => {
         }
     })
     .catch((error) => console.error('Ошибка при получении данных с сервера:', error));
-}, []);
+  }, []);
 
-useEffect(() => {
-    const handleBeforeUnload = () => {
-        const initData = WebApp.initDataUnsafe;
-        const userId = initData?.user?.id;
-
-        if (!userId) return;
-
-        fetch(`/savePoints`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ userId, points }),
+  useEffect(() => {
+    if (userId) {
+      const saveInterval = setInterval(() => {
+        fetch('/save-points', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ userId, points }),
         })
-        .then((response) => {
-            if (!response.ok) {
-                throw new Error(`Ошибка HTTP: ${response.status}`);
-            }
-            return response.json();
+        .then(response => response.json())
+        .then(data => {
+          console.log('Очки успешно сохранены:', data);
         })
-        .catch((error) => console.error('Ошибка при сохранении данных:', error));
-    };
+        .catch(error => {
+          console.error('Ошибка при сохранении очков:', error);
+        });
+      }, 2000); // Отправка запроса каждые 2 секунды
 
-    window.addEventListener('beforeunload', handleBeforeUnload);
-
-    return () => {
-        window.removeEventListener('beforeunload', handleBeforeUnload);
-    };
-}, [points]);
-
-
+      return () => clearInterval(saveInterval);
+    }
+  }, [points, userId]);
 
   const handleMainButtonClick = useCallback((e: React.TouchEvent<HTMLDivElement>) => {
     const touches = e.touches;
@@ -224,7 +216,7 @@ useEffect(() => {
           <Hamster size={24} className="text-yellow-400" />
         </div>
         <div>
-        <p className="text-sm text-gray-300">{username ? username : 'Гость'}</p> {/* Используем состояние username */}
+          <p className="text-sm text-gray-300">{username ? username : 'Гость'}</p> {/* Используем состояние username */}
         </div>
       </div>
       <div className="flex items-center justify-between space-x-4 mt-1">
