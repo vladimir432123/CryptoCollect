@@ -38,7 +38,9 @@ db.query(`
         username VARCHAR(255) UNIQUE,
         auth_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         session_token VARCHAR(255),
-        points INT DEFAULT 10000
+        points INT DEFAULT 10000,
+        tapProfitLevel INT DEFAULT 1,
+        tapIncreaseLevel INT DEFAULT 1
     )
 `, (err) => {
     if (err) {
@@ -96,22 +98,19 @@ bot.start(async (ctx) => {
 
     const sessionToken = generateSessionToken(telegramId);
 
-    // Проверяем, есть ли уже пользователь в базе данных
-    db.query('SELECT points FROM user WHERE telegram_id = ?', [telegramId], (err, results) => {
+    db.query('SELECT * FROM user WHERE telegram_id = ?', [telegramId], (err, results) => {
         if (err) {
             return ctx.reply('Произошла ошибка, попробуйте позже.');
         }
 
         if (results.length > 0) {
-            // Пользователь существует, обновляем токен сессии
             db.query(
                 'UPDATE user SET session_token = ?, auth_date = NOW() WHERE telegram_id = ?',
                 [sessionToken, telegramId]
             );
         } else {
-            // Новый пользователь, добавляем его в базу данных с подарком в 10,000 points
             db.query(
-                'INSERT INTO user (telegram_id, username, session_token, points) VALUES (?, ?, ?, 10000)',
+                'INSERT INTO user (telegram_id, username, session_token, points, tapProfitLevel, tapIncreaseLevel) VALUES (?, ?, ?, 10000, 1, 1)',
                 [telegramId, username, sessionToken]
             );
         }
@@ -126,7 +125,6 @@ bot.start(async (ctx) => {
         );
     });
 });
-
 
 app.get('/app', async (req, res) => {
     const userId = req.query.userId;
@@ -148,7 +146,12 @@ app.get('/app', async (req, res) => {
             if (results.length > 0) {
                 const userData = results[0];
                 console.log('Пользователь найден:', JSON.stringify(userData, null, 2));
-                return res.json({ username: userData.username, points: userData.points });
+                return res.json({ 
+                    username: userData.username, 
+                    points: userData.points,
+                    tapProfitLevel: userData.tapProfitLevel, 
+                    tapIncreaseLevel: userData.tapIncreaseLevel 
+                });
             } else {
                 console.error('Пользователь не найден с User ID:', userId);
                 return res.status(404).json({ error: 'Пользователь не найден' });
@@ -183,7 +186,6 @@ app.post('/save-data', (req, res) => {
     });
 });
 
-
 app.post('/webhook', (req, res) => {
     console.log('Получен запрос на /webhook:', req.body);
     bot.handleUpdate(req.body)
@@ -196,12 +198,11 @@ app.post('/webhook', (req, res) => {
         });
 });
 
-
 const startServer = async () => {
     try {
         await bot.telegram.deleteWebhook({ drop_pending_updates: true });
 
-        const webhookUrl = process.env.WEBHOOK_URL; // Используем URL из переменной среды
+        const webhookUrl = process.env.WEBHOOK_URL;
         await bot.telegram.setWebhook(webhookUrl);
         console.log('Webhook успешно установлен:', webhookUrl);
 
@@ -212,6 +213,5 @@ const startServer = async () => {
         console.error('Ошибка установки вебхука:', err);
     }
 };
-
 
 startServer();
