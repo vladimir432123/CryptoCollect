@@ -127,6 +127,29 @@ bot.start(async (ctx) => {
 });
 
 
+app.post('/logout', (req, res) => {
+    const { userId } = req.body;
+    
+    if (!userId) {
+        return res.status(400).json({ error: 'Missing userId' });
+    }
+
+    const query = `
+        UPDATE user
+        SET last_logout = NOW()
+        WHERE telegram_id = ?
+    `;
+
+    db.query(query, [userId], (err) => {
+        if (err) {
+            console.error('Ошибка при обновлении времени выхода:', err);
+            return res.status(500).json({ error: 'Server error' });
+        }
+        res.json({ success: true });
+    });
+});
+
+// Обработка входа в приложение и восстановление кликов
 app.get('/app', async (req, res) => {
     const userId = req.query.userId;
 
@@ -146,12 +169,24 @@ app.get('/app', async (req, res) => {
             }
             if (results.length > 0) {
                 const userData = results[0];
-                console.log('Пользователь найден:', JSON.stringify(userData, null, 2));
+                const lastLogout = userData.last_logout ? new Date(userData.last_logout).getTime() : null;
+                const now = Date.now();
+
+                let restoredClicks = 0;
+
+                if (lastLogout) {
+                    const timeDifference = Math.floor((now - lastLogout) / 1000);
+                    restoredClicks = Math.min(Math.floor(timeDifference), userData.tapIncreaseLevel * 500); 
+                }
+
+                const remainingClicks = Math.min(userData.remainingClicks + restoredClicks, userData.tapIncreaseLevel * 500);
+
                 return res.json({
                     username: userData.username,
                     points: userData.points,
                     tapProfitLevel: userData.tapProfitLevel,
-                    tapIncreaseLevel: userData.tapIncreaseLevel
+                    tapIncreaseLevel: userData.tapIncreaseLevel,
+                    remainingClicks,
                 });
             } else {
                 console.error('Пользователь не найден с User ID:', userId);
@@ -163,6 +198,8 @@ app.get('/app', async (req, res) => {
         res.status(500).json({ error: 'Ошибка сервера' });
     }
 });
+
+
 
 app.post('/save-data', (req, res) => {
     const { userId, points, tapProfitLevel, tapIncreaseLevel } = req.body;
@@ -188,23 +225,15 @@ app.post('/save-data', (req, res) => {
 
         console.log('Данные успешно сохранены для пользователя с ID:', userId);
 
-        const fetchUpdatedData = 'SELECT points, tapProfitLevel, tapIncreaseLevel FROM user WHERE telegram_id = ?';
-        db.query(fetchUpdatedData, [userId], (err, results) => {
-            if (err) {
-                console.error('Ошибка при получении обновленных данных:', err);
-                return res.status(500).json({ error: 'Server error' });
-            }
-
-            const updatedData = results[0];
-            res.json({
-                success: true,
-                points: updatedData.points,
-                tapProfitLevel: updatedData.tapProfitLevel,
-                tapIncreaseLevel: updatedData.tapIncreaseLevel,
-            });
+        res.json({
+            success: true,
+            points,
+            tapProfitLevel,
+            tapIncreaseLevel,
         });
     });
 });
+
 
 
 
