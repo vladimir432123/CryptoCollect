@@ -147,6 +147,9 @@ const App: React.FC = () => {
             const result = await response.json();
             if (result.success) {
                 console.log('POST-запрос успешно отправлен и данные сохранены.');
+                // Обновляем локальное состояние на основе ответа сервера
+                setTapProfitLevel(result.tapProfitLevel);
+                setTapIncreaseLevel(result.tapIncreaseLevel);
             }
         } catch (error) {
             console.error('Ошибка при сохранении данных:', error);
