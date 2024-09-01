@@ -123,33 +123,31 @@ const App: React.FC = () => {
       .catch((error) => console.error('Ошибка при получении данных с сервера:', error));
   }, [tapProfitLevels, tapIncreaseLevels]);
 
-  useEffect(() => {
+  const saveUpgradeData = useCallback(() => {
     if (userId !== null) {
-      const saveData = () => {
-        fetch('/save-data', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            userId,
-            points,
-            tapProfitLevel,
-            tapIncreaseLevel,
-          }),
-        }).then((response) => {
-          if (!response.ok) {
-            throw new Error(`Ошибка HTTP: ${response.status}`);
-          }
-          return response.json();
-        }).catch((error) => {
-          console.error('Ошибка при сохранении данных:', error);
-        });
-      };
-
-      saveData();
+      fetch('/save-data', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId,
+          points,
+          tapProfitLevel,
+          tapIncreaseLevel,
+        }),
+      }).then((response) => {
+        if (!response.ok) {
+          throw new Error(`Ошибка HTTP: ${response.status}`);
+        }
+        return response.json();
+      }).then(() => {
+        console.log('Данные успешно сохранены');
+      }).catch((error) => {
+        console.error('Ошибка при сохранении данных:', error);
+      });
     }
-  }, [points, tapProfitLevel, tapIncreaseLevel, userId]);
+  }, [userId, points, tapProfitLevel, tapIncreaseLevel]);
 
   const handleMainButtonClick = useCallback((e: React.TouchEvent<HTMLDivElement>) => {
     const touches = e.touches;
@@ -203,30 +201,6 @@ const App: React.FC = () => {
   const toggleBoostMenu = () => {
     setIsBoostMenuOpen(!isBoostMenuOpen);
   };
-
-  const saveUpgradeData = useCallback(() => {
-    if (userId !== null) {
-      fetch('/save-data', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          userId,
-          points,
-          tapProfitLevel,
-          tapIncreaseLevel,
-        }),
-      }).then((response) => {
-        if (!response.ok) {
-          throw new Error(`Ошибка HTTP: ${response.status}`);
-        }
-        return response.json();
-      }).catch((error) => {
-        console.error('Ошибка при сохранении данных:', error);
-      });
-    }
-  }, [userId, points, tapProfitLevel, tapIncreaseLevel]);
 
   const upgradeTapProfit = () => {
     const nextLevelData = tapProfitLevels[tapProfitLevel];
