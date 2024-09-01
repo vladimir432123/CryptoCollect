@@ -260,10 +260,10 @@ const App: React.FC = () => {
     </div>
   );
 
+  // Добавляем новый функционал
   const renderMainContent = () => (
     <>
       {renderUserInfo()}
-
       <div className="flex-grow mt-4 relative">
         <div className="px-4 mt-4 flex justify-center">
           <div className="px-4 py-2 flex items-center space-x-2">
@@ -271,7 +271,6 @@ const App: React.FC = () => {
             <p className="text-4xl text-yellow-400">{Math.floor(points).toLocaleString()}</p>
           </div>
         </div>
-
         <div className="px-4 mt-4 flex justify-center">
           <div
             className="w-80 h-80 p-4 rounded-full bg-gray-700 shadow-lg main-button"
@@ -282,7 +281,6 @@ const App: React.FC = () => {
           </div>
         </div>
       </div>
-
       <div className="absolute bottom-32 right-4 z-50">
         <button
           onClick={toggleBoostMenu}
@@ -327,7 +325,7 @@ const App: React.FC = () => {
           <h2 className="text-xl font-bold text-yellow-400 mb-1">
             {isMultitap ? 'Multitap' : 'Tap increase'}
           </h2>
-          <p className="text-sm text-gray-400 mb-2">Level {currentLevel}</p>
+          <p className="text-sm text.gray-400 mb-2">Level {currentLevel}</p>
           <p className="text-sm text-gray-300 text-center mb-4">
             {description}
           </p>
