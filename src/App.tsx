@@ -370,15 +370,19 @@ const upgradeTapIncrease = async () => {
         </button>
       </div>
       <div className="absolute bottom-16 left-0 right-0 flex flex-col items-center z-40">
-        <div className="w-full px-4 flex items-center justify-between mb-4">
-          <div className="w-[calc(100%-50px)] h-[10px] bg-gray-600 rounded-md overflow-hidden">
-            <div
-              className="h-full bg-yellow-400 transition-all duration-200 ease-linear"
-              style={{ width: `${(remainingClicks / maxClicks) * 100}%` }}
-            ></div>
-          </div>
-        </div>
+  <div className="w-full px-4 flex items-center justify-between mb-4">
+    <div className="w-[calc(100%-50px)] h-[10px] bg-gray-600 rounded-md overflow-hidden relative">
+      <div
+        className="h-full bg-yellow-400 transition-all duration-200 ease-linear"
+        style={{ width: `${(remainingClicks / maxClicks) * 100}%` }}
+      ></div>
+      <div className="absolute right-0 top-1/2 transform -translate-y-1/2 pr-2 text-sm text-gray-300">
+        {remainingClicks} / {maxClicks}
       </div>
+    </div>
+  </div>
+</div>
+
     </>
   );
 
