@@ -160,26 +160,29 @@ app.get('/app', async (req, res) => {
     }
 });
 
-app.post('/save-points', (req, res) => {
-    const { userId, points } = req.body;
+// Обновленный обработчик для сохранения данных
+app.post('/save-data', (req, res) => {
+    const { userId, points, tapProfitLevel, tapIncreaseLevel } = req.body;
 
-    if (!userId || points === undefined) {
-        return res.status(400).json({ error: 'User ID и Points обязательны' });
+    if (!userId || points === undefined || tapProfitLevel === undefined || tapIncreaseLevel === undefined) {
+        return res.status(400).json({ error: 'Missing required fields' });
     }
 
-    db.query(
-        'UPDATE user SET points = ? WHERE telegram_id = ?',
-        [points, userId],
-        (err, results) => {
-            if (err) {
-                console.error('Ошибка сохранения очков:', err);
-                return res.status(500).json({ error: 'Ошибка сервера' });
-            }
-            console.log('Очки успешно сохранены для пользователя:', userId);
-            res.json({ success: true });
+    const query = `
+        UPDATE user 
+        SET points = ?, tapProfitLevel = ?, tapIncreaseLevel = ?
+        WHERE telegram_id = ?
+    `;
+
+    db.query(query, [points, tapProfitLevel, tapIncreaseLevel, userId], (err, results) => {
+        if (err) {
+            console.error('Error saving data:', err);
+            return res.status(500).json({ error: 'Server error' });
         }
-    );
+        res.json({ success: true });
+    });
 });
+
 
 app.post('/webhook', (req, res) => {
     console.log('Получен запрос на /webhook:', req.body);
