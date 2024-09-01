@@ -148,10 +148,13 @@ const App: React.FC = () => {
             if (result.success) {
                 console.log('POST-запрос успешно отправлен и данные сохранены.');
 
-                // Обновляем состояния на основе данных, полученных с сервера
-                setPoints(result.points);
-                setTapProfitLevel(result.tapProfitLevel);
-                setTapIncreaseLevel(result.tapIncreaseLevel);
+                // Искусственная задержка перед обновлением UI
+                setTimeout(() => {
+                    // Обновляем состояния на основе данных, полученных с сервера
+                    setPoints(result.points);
+                    setTapProfitLevel(result.tapProfitLevel);
+                    setTapIncreaseLevel(result.tapIncreaseLevel);
+                }, 100);  // Задержка в 100 миллисекунд
             } else {
                 console.error('Ошибка при сохранении данных на сервере:', result.error);
             }
@@ -166,8 +169,6 @@ const App: React.FC = () => {
 const upgradeTapProfit = async () => {
     const nextLevelData = tapProfitLevels[tapProfitLevel];
     if (nextLevelData && points >= nextLevelData.cost) {
-        setPoints(points - nextLevelData.cost);
-        setTapProfitLevel(tapProfitLevel + 1);
         await saveUpgradeData(); // Сохранение данных после обновления уровня
     }
 };
@@ -175,11 +176,10 @@ const upgradeTapProfit = async () => {
 const upgradeTapIncrease = async () => {
     const nextLevelData = tapIncreaseLevels[tapIncreaseLevel];
     if (nextLevelData && points >= nextLevelData.cost) {
-        setPoints(points - nextLevelData.cost);
-        setTapIncreaseLevel(tapIncreaseLevel + 1);
         await saveUpgradeData(); // Сохранение данных после обновления уровня
     }
 };
+
 
 
   const handleMainButtonClick = useCallback((e: React.TouchEvent<HTMLDivElement>) => {
