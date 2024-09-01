@@ -136,3 +136,70 @@
     opacity: 0;
   }
 }
+/* Добавьте это в App.css или другой ваш CSS-файл */
+
+.upgrade-menu {
+  .upgrade-menu {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background-color: #2d3748;
+    padding: 1rem;
+    z-index: 40;
+    transition: transform 0.3s ease-out;
+    height: calc(60% - 0px); /* Увеличиваем высоту меню */
+    border-top-left-radius: 1rem;
+    border-top-right-radius: 1rem;
+  }
+  
+
+.upgrade-menu.open {
+  transform: translateY(0);
+}
+
+.upgrade-button {
+  width: 100%;
+  padding: 0.75rem;
+  font-size: 1rem;
+  font-weight: bold;
+  text-align: center;
+  background-color: #ecc94b; /* Цвет кнопки */
+  color: #1a202c; /* Цвет текста */
+  border-radius: 0.5rem;
+  transition: background-color 0.2s;
+}
+
+.upgrade-button:disabled {
+  background-color: #718096; /* Серый цвет для неактивной кнопки */
+  color: #a0aec0;
+  cursor: not-allowed;
+}
+
+.upgrade-button:hover:not(:disabled) {
+  background-color: #d69e2e; /* Более темный цвет при наведении */
+}
+
+.upgrade-description {
+  font-size: 0.875rem;
+  color: #a0aec0; /* Цвет текста описания */
+  text-align: center;
+  margin-bottom: 1rem;
+}
+
+.upgrade-title {
+  font-size: 1.25rem;
+  font-weight: bold;
+  color: #f6e05e; /* Цвет заголовка */
+  text-align: center;
+  margin-bottom: 0.5rem;
+}
+
+.upgrade-level {
+  font-size: 1rem;
+  font-weight: bold;
+  color: #f6e05e; /* Цвет уровня */
+  text-align: center;
+  margin-bottom: 1rem;
+}
+}
