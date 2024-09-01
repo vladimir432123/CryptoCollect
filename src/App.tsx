@@ -18,13 +18,19 @@ const RECOVERY_RATE = 1000; // 1 клик в секунду (1000 мс)
 
 const App: React.FC = () => {
   const [tapProfit, setTapProfit] = useState(1);
-  const [tapProfitLevel, setTapProfitLevel] = useState(1);
+  const [tapProfitLevel, setTapProfitLevel] = useState<number>(() => {
+    const savedLevel = localStorage.getItem('tapProfitLevel');
+    return savedLevel ? parseInt(savedLevel) : 1;
+  });
   const [maxClicks, setMaxClicks] = useState(1000);
-  const [tapIncreaseLevel, setTapIncreaseLevel] = useState(1);
+  const [tapIncreaseLevel, setTapIncreaseLevel] = useState<number>(() => {
+    const savedLevel = localStorage.getItem('tapIncreaseLevel');
+    return savedLevel ? parseInt(savedLevel) : 1;
+  });
   const [remainingClicks, setRemainingClicks] = useState(maxClicks);
   const [points, setPoints] = useState<number>(() => {
     const savedPoints = localStorage.getItem('points');
-    return savedPoints ? parseInt(savedPoints) : 0;  // Загрузка points из локального хранилища
+    return savedPoints ? parseInt(savedPoints) : 0;
   });
   const [username, setUsername] = useState<string | null>(null);
   const [userId, setUserId] = useState<number | null>(null);
@@ -45,6 +51,19 @@ const App: React.FC = () => {
     { level: 8, profit: 14, cost: 72000 },
     { level: 9, profit: 16, cost: 104000 },
     { level: 10, profit: 18, cost: 178000 },
+  ], []);
+
+  const tapIncreaseLevels = useMemo(() => [
+    { level: 1, taps: 1000, cost: 3000 },
+    { level: 2, taps: 1500, cost: 7000 },
+    { level: 3, taps: 2000, cost: 11000 },
+    { level: 4, taps: 2500, cost: 26000 },
+    { level: 5, taps: 3000, cost: 45000 },
+    { level: 6, taps: 3500, cost: 72000 },
+    { level: 7, taps: 4000, cost: 120000 },
+    { level: 8, taps: 4500, cost: 170000 },
+    { level: 9, taps: 5000, cost: 210000 },
+    { level: 10, taps: 5500, cost: 270000 },
   ], []);
 
   const levelNames = useMemo(() => [
@@ -69,7 +88,6 @@ const App: React.FC = () => {
 
   useEffect(() => {
     const initData = WebApp.initDataUnsafe;
-
     const userIdFromTelegram = initData?.user?.id;
 
     if (!userIdFromTelegram) {
@@ -96,7 +114,15 @@ const App: React.FC = () => {
         }
         if (data.points !== undefined) {
           setPoints(data.points);
-          localStorage.setItem('points', data.points.toString()); // Сохранение points в локальное хранилище
+          localStorage.setItem('points', data.points.toString());
+        }
+        if (data.tapProfitLevel !== undefined) {
+          setTapProfitLevel(data.tapProfitLevel);
+          localStorage.setItem('tapProfitLevel', data.tapProfitLevel.toString());
+        }
+        if (data.tapIncreaseLevel !== undefined) {
+          setTapIncreaseLevel(data.tapIncreaseLevel);
+          localStorage.setItem('tapIncreaseLevel', data.tapIncreaseLevel.toString());
         }
       })
       .catch((error) => console.error('Ошибка при получении данных с сервера:', error));
@@ -104,28 +130,35 @@ const App: React.FC = () => {
 
   useEffect(() => {
     if (userId !== null) {
-      const savePoints = () => {
-        fetch('/save-points', {
+      const saveData = () => {
+        fetch('/save-data', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ userId, points }),
+          body: JSON.stringify({
+            userId,
+            points,
+            tapProfitLevel,
+            tapIncreaseLevel,
+          }),
         }).then((response) => {
           if (!response.ok) {
             throw new Error(`Ошибка HTTP: ${response.status}`);
           }
           return response.json();
         }).then(() => {
-          localStorage.setItem('points', points.toString()); // Сохранение points в локальное хранилище
+          localStorage.setItem('points', points.toString());
+          localStorage.setItem('tapProfitLevel', tapProfitLevel.toString());
+          localStorage.setItem('tapIncreaseLevel', tapIncreaseLevel.toString());
         }).catch((error) => {
-          console.error('Ошибка при сохранении очков:', error);
+          console.error('Ошибка при сохранении данных:', error);
         });
       };
 
-      savePoints();
+      saveData();
     }
-  }, [points, userId]);
+  }, [points, tapProfitLevel, tapIncreaseLevel, userId]);
 
   const handleMainButtonClick = useCallback((e: React.TouchEvent<HTMLDivElement>) => {
     const touches = e.touches;
@@ -189,19 +222,6 @@ const App: React.FC = () => {
     }
   };
 
-  const tapIncreaseLevels = useMemo(() => [
-    { level: 1, taps: 1000, cost: 3000 },
-    { level: 2, taps: 1500, cost: 7000 },
-    { level: 3, taps: 2000, cost: 11000 },
-    { level: 4, taps: 2500, cost: 26000 },
-    { level: 5, taps: 3000, cost: 45000 },
-    { level: 6, taps: 3500, cost: 72000 },
-    { level: 7, taps: 4000, cost: 120000 },
-    { level: 8, taps: 4500, cost: 170000 },
-    { level: 9, taps: 5000, cost: 210000 },
-    { level: 10, taps: 5500, cost: 270000 },
-  ], []);
-
   const upgradeTapIncrease = () => {
     const nextLevel = tapIncreaseLevels[tapIncreaseLevel];
     if (nextLevel && points >= nextLevel.cost) {
@@ -246,7 +266,7 @@ const App: React.FC = () => {
 
       <div className="flex-grow mt-4 relative">
         <div className="px-4 mt-4 flex justify-center">
-          <div className="px-4 py-2 flex items.center space-x-2">
+          <div className="px-4 py-2 flex items-center space-x-2">
             <img src={dollarCoin} alt="Dollar Coin" className="w-10 h-10" />
             <p className="text-4xl text-yellow-400">{Math.floor(points).toLocaleString()}</p>
           </div>
@@ -307,7 +327,7 @@ const App: React.FC = () => {
           <h2 className="text-xl font-bold text-yellow-400 mb-1">
             {isMultitap ? 'Multitap' : 'Tap increase'}
           </h2>
-          <p className="text-sm text.gray-400 mb-2">Level {currentLevel}</p>
+          <p className="text-sm text-gray-400 mb-2">Level {currentLevel}</p>
           <p className="text-sm text-gray-300 text-center mb-4">
             {description}
           </p>
@@ -357,7 +377,7 @@ const App: React.FC = () => {
             className="w-full bg-gray-700 rounded-lg p-4"
             onClick={() => setSelectedUpgrade('tapIncrease')}
           >
-            <div className="flex justify-between items.center">
+            <div className="flex justify-between items-center">
               <span className="text-gray-300 font-semibold">Tap increase</span>
               <span className="text-yellow-400 font-bold">Level {tapIncreaseLevel}</span>
             </div>
