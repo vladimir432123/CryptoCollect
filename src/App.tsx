@@ -314,30 +314,22 @@ const App: React.FC = () => {
       : 'Increases the maximum number of taps that can be made at a time. This improvement will allow you to play longer without having to wait for clicks to be restored.';
 
     return (
-      <div
-        className={`fixed bottom-0 left-0 right-0 bg-gray-800 rounded-t-2xl p-4 z-[40] transition-transform duration-1000 ease-out ${
-          selectedUpgrade ? 'translate-y-0' : 'translate-y-full'
-        }`}
-        style={{ height: 'calc(50% - 80px)' }}
-      >
+      <div className={`upgrade-menu ${selectedUpgrade ? 'open' : ''}`}>
         <div className="flex flex-col items-center">
-          <div className="w-10 h-12 bg-gray-700 mb-2"></div>
-          <h2 className="text-xl font-bold text-yellow-400 mb-1">
+          <div className="upgrade-title">
             {isMultitap ? 'Multitap' : 'Tap increase'}
-          </h2>
-          <p className="text-sm text.gray-400 mb-2">Level {currentLevel}</p>
-          <p className="text-sm text-gray-300 text-center mb-4">
+          </div>
+          <div className="upgrade-level">
+            Level {currentLevel}
+          </div>
+          <div className="upgrade-description">
             {description}
-          </p>
+          </div>
           {currentLevel < maxLevel ? (
             <button
               onClick={upgradeFunction}
               disabled={points < nextLevel.cost}
-              className={`w-full py-3 rounded-lg font-bold text-center transition-colors ${
-                points >= nextLevel.cost
-                  ? 'bg-yellow-400 text-gray-900 hover:bg-yellow-500'
-                  : 'bg-gray-600 text-gray-400 cursor-not-allowed'
-              }`}
+              className="upgrade-button"
             >
               Улучшить ({nextLevel.cost} монет)
             </button>
