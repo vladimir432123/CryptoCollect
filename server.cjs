@@ -185,10 +185,12 @@ app.post('/save-data', (req, res) => {
             console.error('Ошибка при сохранении данных:', err);
             return res.status(500).json({ error: 'Server error' });
         }
+
         console.log('Данные успешно сохранены для пользователя с ID:', userId);
         res.json({ success: true, tapProfitLevel, tapIncreaseLevel });
     });
 });
+
 
 
 app.post('/webhook', (req, res) => {
