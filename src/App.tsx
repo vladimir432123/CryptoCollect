@@ -147,13 +147,17 @@ const App: React.FC = () => {
             const result = await response.json();
             if (result.success) {
                 console.log('POST-запрос успешно отправлен и данные сохранены.');
-                // Обновляем состояние после успешного сохранения
+                // Локально обновляем состояния только после успешного сохранения на сервере
                 setTapProfitLevel(result.tapProfitLevel);
                 setTapIncreaseLevel(result.tapIncreaseLevel);
+            } else {
+                console.error('Ошибка при сохранении данных на сервере:', result.error);
             }
         } catch (error) {
             console.error('Ошибка при сохранении данных:', error);
         }
+    } else {
+        console.log('userId is null, POST-запрос не отправлен');
     }
 }, [userId, points, tapProfitLevel, tapIncreaseLevel]);
 
@@ -213,23 +217,23 @@ const App: React.FC = () => {
   const upgradeTapProfit = async () => {
     const nextLevelData = tapProfitLevels[tapProfitLevel];
     if (nextLevelData && points >= nextLevelData.cost) {
-        // Обновляем состояние только после успешного сохранения данных на сервере
-        const newLevel = tapProfitLevel + 1;
-        setTapProfit(tapProfitLevels[newLevel - 1].profit);
+        setPoints(points - nextLevelData.cost);
+        setTapProfitLevel(tapProfitLevel + 1);
+        setTapProfit(tapProfitLevels[tapProfitLevel].profit); // обновляем прибыль
 
-        await saveUpgradeData(); // Сохранение данных после обновления уровня
+        await saveUpgradeData();
     }
 };
 
 const upgradeTapIncrease = async () => {
     const nextLevelData = tapIncreaseLevels[tapIncreaseLevel];
     if (nextLevelData && points >= nextLevelData.cost) {
-        // Обновляем состояние только после успешного сохранения данных на сервере
-        const newLevel = tapIncreaseLevel + 1;
-        setMaxClicks(tapIncreaseLevels[newLevel - 1].taps);
-        setRemainingClicks(tapIncreaseLevels[newLevel - 1].taps);
+        setPoints(points - nextLevelData.cost);
+        setTapIncreaseLevel(tapIncreaseLevel + 1);
+        setMaxClicks(tapIncreaseLevels[tapIncreaseLevel].taps); // обновляем максимальные клики
+        setRemainingClicks(tapIncreaseLevels[tapIncreaseLevel].taps);
 
-        await saveUpgradeData(); // Сохранение данных после обновления уровня
+        await saveUpgradeData();
     }
 };
 
