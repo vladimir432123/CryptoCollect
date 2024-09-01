@@ -7,14 +7,15 @@ import Friends from './icons/Friends';
 import MineContent from './MineContent';
 import { FaTasks } from 'react-icons/fa';
 import WebApp from '@twa-dev/sdk';
-import LoadingScreen from './LoadingScreen.tsx'; // Импортируем новый компонент
-
+import LoadingScreen from './LoadingScreen.tsx';
 
 const Farm: React.FC<{ className?: string }> = ({ className }) => (
   <svg className={className} viewBox="0 0 24 24" fill="currentColor">
     <path d="M1 22h22V8l-11-6-11 6v14zm2-2v-9h18v9H3zm9-4.5a2.5 2.5 0 100-5 2.5 2.5 0 000 5z" />
   </svg>
 );
+
+const RECOVERY_RATE = 1000;
 
 const App: React.FC = () => {
   const [tapProfit, setTapProfit] = useState(1);
@@ -28,13 +29,12 @@ const App: React.FC = () => {
   });
   const [username, setUsername] = useState<string | null>(null);
   const [userId, setUserId] = useState<number | null>(null);
-  const [loading, setLoading] = useState(true); // Добавляем состояние для загрузочного экрана
+  const [loading, setLoading] = useState(true);
 
   const [clicks, setClicks] = useState<{ id: number, x: number, y: number, profit: number }[]>([]);
   const [isBoostMenuOpen, setIsBoostMenuOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState('farm');
   const [selectedUpgrade, setSelectedUpgrade] = useState<string | null>(null);
-  const RECOVERY_RATE = 1000; // Восстанавливаем RECOVERY_RATE
 
   const tapProfitLevels = useMemo(() => [
     { level: 1, profit: 1, cost: 1000 },
@@ -114,19 +114,39 @@ const App: React.FC = () => {
         }
         if (data.tapProfitLevel !== undefined) {
           setTapProfitLevel(data.tapProfitLevel);
-          setTapProfit(tapProfitLevels[data.tapProfitLevel - 1].profit); // обновляем tapProfit на основе загруженного уровня
+          setTapProfit(tapProfitLevels[data.tapProfitLevel - 1].profit);
         }
         if (data.tapIncreaseLevel !== undefined) {
           setTapIncreaseLevel(data.tapIncreaseLevel);
-          setMaxClicks(tapIncreaseLevels[data.tapIncreaseLevel - 1].taps); // обновляем maxClicks на основе загруженного уровня
-          setRemainingClicks(tapIncreaseLevels[data.tapIncreaseLevel - 1].taps);
+          setMaxClicks(tapIncreaseLevels[data.tapIncreaseLevel - 1].taps);
+          setRemainingClicks(data.remainingClicks); // Устанавливаем восстановленные клики
         }
       })
       .finally(() => {
-        setLoading(false); // Убираем экран загрузки после получения всех данных
+        setLoading(false);
       })
       .catch((error) => console.error('Ошибка при получении данных с сервера:', error));
   }, [tapProfitLevels, tapIncreaseLevels]);
+
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      if (userId !== null) {
+        fetch('/logout', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ userId }),
+        }).catch((error) => console.error('Ошибка при отправке времени выхода:', error));
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [userId]);
 
   const saveUpgradeData = useCallback(async (newTapProfitLevel: number, newTapIncreaseLevel: number) => {
     if (userId !== null) {
@@ -152,7 +172,6 @@ const App: React.FC = () => {
             const result = await response.json();
             if (result.success) {
                 console.log('POST-запрос успешно отправлен и данные сохранены.');
-                // Обновляем состояния на основе данных, полученных с сервера
                 setTapProfitLevel(result.tapProfitLevel);
                 setTapIncreaseLevel(result.tapIncreaseLevel);
             } else {
@@ -173,7 +192,7 @@ const upgradeTapProfit = async () => {
       setTapProfit(tapProfitLevels[newLevel - 1].profit);
       setPoints(prevPoints => prevPoints - nextLevelData.cost);
 
-      await saveUpgradeData(newLevel, tapIncreaseLevel); // Сохранение данных после обновления уровня
+      await saveUpgradeData(newLevel, tapIncreaseLevel);
   }
 };
 
@@ -185,7 +204,7 @@ const upgradeTapIncrease = async () => {
       setRemainingClicks(tapIncreaseLevels[newLevel - 1].taps);
       setPoints(prevPoints => prevPoints - nextLevelData.cost);
 
-      await saveUpgradeData(tapProfitLevel, newLevel); // Сохранение данных после обновления уровня
+      await saveUpgradeData(tapProfitLevel, newLevel);
   }
 };
 
@@ -370,19 +389,18 @@ const upgradeTapIncrease = async () => {
         </button>
       </div>
       <div className="absolute bottom-16 left-0 right-0 flex flex-col items-center z-40">
-  <div className="w-full px-4 flex items-center justify-between mb-4">
-    <div className="w-[calc(100%-50px)] h-[10px] bg-gray-600 rounded-md overflow-hidden relative">
-      <div
-        className="h-full bg-yellow-400 transition-all duration-200 ease-linear"
-        style={{ width: `${(remainingClicks / maxClicks) * 100}%` }}
-      ></div>
-      <div className="absolute right-0 top-1/2 transform -translate-y-1/2 pr-2 text-sm text-gray-300">
-        {remainingClicks} / {maxClicks}
+        <div className="w-full px-4 flex items-center justify-between mb-4">
+          <div className="w-[calc(100%-50px)] h-[10px] bg-gray-600 rounded-md overflow-hidden relative">
+            <div
+              className="h-full bg-yellow-400 transition-all duration-200 ease-linear"
+              style={{ width: `${(remainingClicks / maxClicks) * 100}%` }}
+            ></div>
+            <div className="absolute right-0 top-1/2 transform -translate-y-1/2 pr-2 text-sm text-gray-300">
+              {remainingClicks} / {maxClicks}
+            </div>
+          </div>
+        </div>
       </div>
-    </div>
-  </div>
-</div>
-
     </>
   );
 
@@ -410,7 +428,7 @@ const upgradeTapIncrease = async () => {
               setPoints={setPoints}
               selectedUpgrade={selectedUpgrade}
               setSelectedUpgrade={setSelectedUpgrade}
-              username={username || 'Гость'} // Передаем username в MineContent
+              username={username || 'Гость'} 
             />
           )}
           {isBoostMenuOpen && renderBoostContent()}
