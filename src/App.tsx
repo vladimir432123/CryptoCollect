@@ -147,7 +147,7 @@ const App: React.FC = () => {
             const result = await response.json();
             if (result.success) {
                 console.log('POST-запрос успешно отправлен и данные сохранены.');
-                // Обновляем локальное состояние на основе ответа сервера
+                // Обновляем состояние после успешного сохранения
                 setTapProfitLevel(result.tapProfitLevel);
                 setTapIncreaseLevel(result.tapIncreaseLevel);
             }
@@ -213,12 +213,9 @@ const App: React.FC = () => {
   const upgradeTapProfit = async () => {
     const nextLevelData = tapProfitLevels[tapProfitLevel];
     if (nextLevelData && points >= nextLevelData.cost) {
-        setPoints((prevPoints) => prevPoints - nextLevelData.cost);
-        setTapProfitLevel((prevLevel) => {
-            const newLevel = prevLevel + 1;
-            setTapProfit(tapProfitLevels[newLevel - 1].profit);
-            return newLevel;
-        });
+        // Обновляем состояние только после успешного сохранения данных на сервере
+        const newLevel = tapProfitLevel + 1;
+        setTapProfit(tapProfitLevels[newLevel - 1].profit);
 
         await saveUpgradeData(); // Сохранение данных после обновления уровня
     }
@@ -227,13 +224,10 @@ const App: React.FC = () => {
 const upgradeTapIncrease = async () => {
     const nextLevelData = tapIncreaseLevels[tapIncreaseLevel];
     if (nextLevelData && points >= nextLevelData.cost) {
-        setPoints((prevPoints) => prevPoints - nextLevelData.cost);
-        setTapIncreaseLevel((prevLevel) => {
-            const newLevel = prevLevel + 1;
-            setMaxClicks(tapIncreaseLevels[newLevel - 1].taps);
-            setRemainingClicks(tapIncreaseLevels[newLevel - 1].taps);
-            return newLevel;
-        });
+        // Обновляем состояние только после успешного сохранения данных на сервере
+        const newLevel = tapIncreaseLevel + 1;
+        setMaxClicks(tapIncreaseLevels[newLevel - 1].taps);
+        setRemainingClicks(tapIncreaseLevels[newLevel - 1].taps);
 
         await saveUpgradeData(); // Сохранение данных после обновления уровня
     }
