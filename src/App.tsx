@@ -123,7 +123,7 @@ const App: React.FC = () => {
       .catch((error) => console.error('Ошибка при получении данных с сервера:', error));
   }, [tapProfitLevels, tapIncreaseLevels]);
 
-  const saveUpgradeData = useCallback(async () => {
+  const saveUpgradeData = useCallback(async (newTapProfitLevel: number, newTapIncreaseLevel: number) => {
     if (userId !== null) {
         try {
             console.log('Отправка POST-запроса для сохранения данных...');
@@ -135,8 +135,8 @@ const App: React.FC = () => {
                 body: JSON.stringify({
                     userId,
                     points,
-                    tapProfitLevel,
-                    tapIncreaseLevel,
+                    tapProfitLevel: newTapProfitLevel,
+                    tapIncreaseLevel: newTapIncreaseLevel,
                 }),
             });
 
@@ -147,15 +147,42 @@ const App: React.FC = () => {
             const result = await response.json();
             if (result.success) {
                 console.log('POST-запрос успешно отправлен и данные сохранены.');
+                // Обновляем состояния на основе данных, полученных с сервера
                 setTapProfitLevel(result.tapProfitLevel);
                 setTapIncreaseLevel(result.tapIncreaseLevel);
+            } else {
+                console.error('Ошибка при сохранении данных на сервере:', result.error);
             }
         } catch (error) {
             console.error('Ошибка при сохранении данных:', error);
         }
+    } else {
+        console.log('userId is null, POST-запрос не отправлен');
     }
-}, [userId, points, tapProfitLevel, tapIncreaseLevel]);
+}, [userId, points]);
 
+const upgradeTapProfit = async () => {
+  const nextLevelData = tapProfitLevels[tapProfitLevel];
+  if (nextLevelData && points >= nextLevelData.cost) {
+      const newLevel = tapProfitLevel + 1;
+      setTapProfit(tapProfitLevels[newLevel - 1].profit);
+      setPoints(prevPoints => prevPoints - nextLevelData.cost);
+
+      await saveUpgradeData(newLevel, tapIncreaseLevel); // Сохранение данных после обновления уровня
+  }
+};
+
+const upgradeTapIncrease = async () => {
+  const nextLevelData = tapIncreaseLevels[tapIncreaseLevel];
+  if (nextLevelData && points >= nextLevelData.cost) {
+      const newLevel = tapIncreaseLevel + 1;
+      setMaxClicks(tapIncreaseLevels[newLevel - 1].taps);
+      setRemainingClicks(tapIncreaseLevels[newLevel - 1].taps);
+      setPoints(prevPoints => prevPoints - nextLevelData.cost);
+
+      await saveUpgradeData(tapProfitLevel, newLevel); // Сохранение данных после обновления уровня
+  }
+};
   const handleMainButtonClick = useCallback((e: React.TouchEvent<HTMLDivElement>) => {
     const touches = e.touches;
     if (remainingClicks > 0 && touches.length <= 5) {
@@ -209,48 +236,6 @@ const App: React.FC = () => {
     setIsBoostMenuOpen(!isBoostMenuOpen);
   };
 
-  const upgradeTapProfit = async () => {
-    const nextLevelData = tapProfitLevels[tapProfitLevel];
-    if (nextLevelData && points >= nextLevelData.cost) {
-        const newLevel = tapProfitLevel + 1;
-
-        // Обновляем состояние на клиенте сразу
-        setTapProfitLevel(newLevel);
-        setTapProfit(tapProfitLevels[newLevel - 1].profit);
-        setPoints((prevPoints) => prevPoints - nextLevelData.cost);
-
-        // Асинхронно сохраняем данные на сервере
-        try {
-            await saveUpgradeData(); // Сохранение данных после обновления уровня
-            console.log('Уровень tapProfit успешно увеличен до:', newLevel);
-        } catch (error) {
-            console.error('Ошибка при сохранении данных:', error);
-            // Вы можете добавить уведомление для пользователя о проблеме
-        }
-    }
-};
-
-const upgradeTapIncrease = async () => {
-    const nextLevelData = tapIncreaseLevels[tapIncreaseLevel];
-    if (nextLevelData && points >= nextLevelData.cost) {
-        const newLevel = tapIncreaseLevel + 1;
-
-        // Обновляем состояние на клиенте сразу
-        setTapIncreaseLevel(newLevel);
-        setMaxClicks(tapIncreaseLevels[newLevel - 1].taps);
-        setRemainingClicks(tapIncreaseLevels[newLevel - 1].taps);
-        setPoints((prevPoints) => prevPoints - nextLevelData.cost);
-
-        // Асинхронно сохраняем данные на сервере
-        try {
-            await saveUpgradeData(); // Сохранение данных после обновления уровня
-            console.log('Уровень tapIncrease успешно увеличен до:', newLevel);
-        } catch (error) {
-            console.error('Ошибка при сохранении данных:', error);
-            // Вы можете добавить уведомление для пользователя о проблеме
-        }
-    }
-};
 
 
 
