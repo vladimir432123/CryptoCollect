@@ -98,7 +98,7 @@ bot.start(async (ctx) => {
 
     const sessionToken = generateSessionToken(telegramId);
 
-    db.query('SELECT * FROM user WHERE telegram_id = ?', [telegramId], (err, results) => {
+    db.query('SELECT points FROM user WHERE telegram_id = ?', [telegramId], (err, results) => {
         if (err) {
             return ctx.reply('Произошла ошибка, попробуйте позже.');
         }
@@ -110,7 +110,7 @@ bot.start(async (ctx) => {
             );
         } else {
             db.query(
-                'INSERT INTO user (telegram_id, username, session_token, points, tapProfitLevel, tapIncreaseLevel) VALUES (?, ?, ?, 10000, 1, 1)',
+                'INSERT INTO user (telegram_id, username, session_token, points) VALUES (?, ?, ?, 10000)',
                 [telegramId, username, sessionToken]
             );
         }
@@ -125,6 +125,7 @@ bot.start(async (ctx) => {
         );
     });
 });
+
 
 app.get('/app', async (req, res) => {
     const userId = req.query.userId;
@@ -146,11 +147,11 @@ app.get('/app', async (req, res) => {
             if (results.length > 0) {
                 const userData = results[0];
                 console.log('Пользователь найден:', JSON.stringify(userData, null, 2));
-                return res.json({ 
-                    username: userData.username, 
+                return res.json({
+                    username: userData.username,
                     points: userData.points,
-                    tapProfitLevel: userData.tapProfitLevel, 
-                    tapIncreaseLevel: userData.tapIncreaseLevel 
+                    tapProfitLevel: userData.tapProfitLevel,
+                    tapIncreaseLevel: userData.tapIncreaseLevel
                 });
             } else {
                 console.error('Пользователь не найден с User ID:', userId);
@@ -163,13 +164,19 @@ app.get('/app', async (req, res) => {
     }
 });
 
-// Обновленный обработчик для сохранения данных
 app.post('/save-data', (req, res) => {
     const { userId, points, tapProfitLevel, tapIncreaseLevel } = req.body;
 
     if (!userId || points === undefined || tapProfitLevel === undefined || tapIncreaseLevel === undefined) {
         return res.status(400).json({ error: 'Missing required fields' });
     }
+
+    console.log('Сохранение данных пользователя:', {
+        userId,
+        points,
+        tapProfitLevel,
+        tapIncreaseLevel
+    });
 
     const query = `
         UPDATE user 
@@ -179,9 +186,11 @@ app.post('/save-data', (req, res) => {
 
     db.query(query, [points, tapProfitLevel, tapIncreaseLevel, userId], (err, results) => {
         if (err) {
-            console.error('Error saving data:', err);
-            return res.status(500).json({ error: 'Server error' });
+            console.error('Ошибка при сохранении данных:', err);
+            return res.status(500).json({ error: 'Ошибка сервера' });
         }
+
+        console.log('Данные успешно сохранены');
         res.json({ success: true });
     });
 });
