@@ -188,7 +188,6 @@ app.post('/save-data', (req, res) => {
 
         console.log('Данные успешно сохранены для пользователя с ID:', userId);
 
-        // Возвращаем обновленные данные обратно на клиент
         const fetchUpdatedData = 'SELECT points, tapProfitLevel, tapIncreaseLevel FROM user WHERE telegram_id = ?';
         db.query(fetchUpdatedData, [userId], (err, results) => {
             if (err) {
@@ -206,7 +205,6 @@ app.post('/save-data', (req, res) => {
         });
     });
 });
-
 
 
 
