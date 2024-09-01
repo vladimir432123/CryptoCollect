@@ -22,7 +22,10 @@ const App: React.FC = () => {
   const [maxClicks, setMaxClicks] = useState(1000);
   const [tapIncreaseLevel, setTapIncreaseLevel] = useState(1);
   const [remainingClicks, setRemainingClicks] = useState(maxClicks);
-  const [points, setPoints] = useState<number>(10000);  // Изначально 10,000 points
+  const [points, setPoints] = useState<number>(() => {
+    const savedPoints = localStorage.getItem('points');
+    return savedPoints ? parseInt(savedPoints) : 0;  // Загрузка points из локального хранилища
+  });
   const [username, setUsername] = useState<string | null>(null);
   const [userId, setUserId] = useState<number | null>(null);
 
@@ -93,6 +96,7 @@ const App: React.FC = () => {
         }
         if (data.points !== undefined) {
           setPoints(data.points);
+          localStorage.setItem('points', data.points.toString()); // Сохранение points в локальное хранилище
         }
       })
       .catch((error) => console.error('Ошибка при получении данных с сервера:', error));
@@ -107,12 +111,19 @@ const App: React.FC = () => {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({ userId, points }),
+        }).then((response) => {
+          if (!response.ok) {
+            throw new Error(`Ошибка HTTP: ${response.status}`);
+          }
+          return response.json();
+        }).then(() => {
+          localStorage.setItem('points', points.toString()); // Сохранение points в локальное хранилище
         }).catch((error) => {
           console.error('Ошибка при сохранении очков:', error);
         });
       };
 
-      savePoints(); // Сохраняем очки каждый раз, когда они изменяются
+      savePoints();
     }
   }, [points, userId]);
 
@@ -235,7 +246,7 @@ const App: React.FC = () => {
 
       <div className="flex-grow mt-4 relative">
         <div className="px-4 mt-4 flex justify-center">
-          <div className="px-4 py-2 flex items-center space-x-2">
+          <div className="px-4 py-2 flex items.center space-x-2">
             <img src={dollarCoin} alt="Dollar Coin" className="w-10 h-10" />
             <p className="text-4xl text-yellow-400">{Math.floor(points).toLocaleString()}</p>
           </div>
@@ -296,7 +307,7 @@ const App: React.FC = () => {
           <h2 className="text-xl font-bold text-yellow-400 mb-1">
             {isMultitap ? 'Multitap' : 'Tap increase'}
           </h2>
-          <p className="text-sm text-gray-400 mb-2">Level {currentLevel}</p>
+          <p className="text-sm text.gray-400 mb-2">Level {currentLevel}</p>
           <p className="text-sm text-gray-300 text-center mb-4">
             {description}
           </p>
@@ -346,7 +357,7 @@ const App: React.FC = () => {
             className="w-full bg-gray-700 rounded-lg p-4"
             onClick={() => setSelectedUpgrade('tapIncrease')}
           >
-            <div className="flex justify-between items-center">
+            <div className="flex justify-between items.center">
               <span className="text-gray-300 font-semibold">Tap increase</span>
               <span className="text-yellow-400 font-bold">Level {tapIncreaseLevel}</span>
             </div>
@@ -398,7 +409,7 @@ const App: React.FC = () => {
             )}
           </button>
           <button
-            className={`text-center flex flex-col items.center relative ${
+            className={`text-center flex flex-col items-center relative ${
               currentPage === 'mine' ? 'text-yellow-400' : 'text-gray-300'
             }`}
             onClick={() => {
