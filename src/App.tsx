@@ -18,9 +18,9 @@ const RECOVERY_RATE = 1000;
 
 const App: React.FC = () => {
   const [tapProfit, setTapProfit] = useState(1);
-  const [tapProfitLevel, setTapProfitLevel] = useState(1);
-  const [maxClicks, setMaxClicks] = useState(1000);
-  const [tapIncreaseLevel, setTapIncreaseLevel] = useState(1);
+  const [tapProfitLevel, setTapProfitLevel] = useState<number>(1);
+  const [maxClicks, setMaxClicks] = useState<number>(1000);
+  const [tapIncreaseLevel, setTapIncreaseLevel] = useState<number>(1);
   const [remainingClicks, setRemainingClicks] = useState(maxClicks);
   const [points, setPoints] = useState<number>(() => {
     const savedPoints = localStorage.getItem('points');
@@ -209,9 +209,9 @@ const App: React.FC = () => {
       setTapProfitLevel((prevLevel) => {
         const newLevel = prevLevel + 1;
         setTapProfit(tapProfitLevels[newLevel - 1].profit);
+        saveUpgradeData(); // Сохранение данных после обновления уровня
         return newLevel;
       });
-      saveUpgradeData();
     }
   };
 
@@ -223,9 +223,9 @@ const App: React.FC = () => {
         const newLevel = prevLevel + 1;
         setMaxClicks(tapIncreaseLevels[newLevel - 1].taps);
         setRemainingClicks(tapIncreaseLevels[newLevel - 1].taps);
+        saveUpgradeData(); // Сохранение данных после обновления уровня
         return newLevel;
       });
-      saveUpgradeData();
     }
   };
 
