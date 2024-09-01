@@ -18,10 +18,10 @@ const RECOVERY_RATE = 1000;
 
 const App: React.FC = () => {
   const [tapProfit, setTapProfit] = useState(1);
-  const [tapProfitLevel, setTapProfitLevel] = useState<number>(1);
-  const [maxClicks, setMaxClicks] = useState<number>(1000);
-  const [tapIncreaseLevel, setTapIncreaseLevel] = useState<number>(1);
-  const [remainingClicks, setRemainingClicks] = useState(maxClicks);
+  const [tapProfitLevel, setTapProfitLevel] = useState<number | null>(null);
+  const [maxClicks, setMaxClicks] = useState<number | null>(null);
+  const [tapIncreaseLevel, setTapIncreaseLevel] = useState<number | null>(null);
+  const [remainingClicks, setRemainingClicks] = useState<number>(1000);
   const [points, setPoints] = useState<number>(() => {
     const savedPoints = localStorage.getItem('points');
     return savedPoints ? parseInt(savedPoints) : 0;
@@ -74,7 +74,12 @@ const App: React.FC = () => {
 
   useEffect(() => {
     const recoveryInterval = setInterval(() => {
-      setRemainingClicks((prevClicks: number) => Math.min(prevClicks + 1, maxClicks));
+      setRemainingClicks((prevClicks: number) => {
+        if (maxClicks !== null) {
+          return Math.min(prevClicks + 1, maxClicks);
+        }
+        return prevClicks;
+      });
     }, RECOVERY_RATE);
 
     return () => clearInterval(recoveryInterval);
@@ -112,11 +117,11 @@ const App: React.FC = () => {
         }
         if (data.tapProfitLevel !== undefined) {
           setTapProfitLevel(data.tapProfitLevel);
-          setTapProfit(tapProfitLevels[data.tapProfitLevel - 1].profit); // обновляем tapProfit на основе загруженного уровня
+          setTapProfit(tapProfitLevels[data.tapProfitLevel - 1].profit);
         }
         if (data.tapIncreaseLevel !== undefined) {
           setTapIncreaseLevel(data.tapIncreaseLevel);
-          setMaxClicks(tapIncreaseLevels[data.tapIncreaseLevel - 1].taps); // обновляем maxClicks на основе загруженного уровня
+          setMaxClicks(tapIncreaseLevels[data.tapIncreaseLevel - 1].taps);
           setRemainingClicks(tapIncreaseLevels[data.tapIncreaseLevel - 1].taps);
         }
       })
@@ -151,7 +156,7 @@ const App: React.FC = () => {
 
   const handleMainButtonClick = useCallback((e: React.TouchEvent<HTMLDivElement>) => {
     const touches = e.touches;
-    if (remainingClicks > 0 && touches.length <= 5) {
+    if (remainingClicks > 0 && touches.length <= 5 && tapProfit !== null) {
       setRemainingClicks((prevClicks: number) => prevClicks - touches.length);
       setPoints((prevPoints) => prevPoints + tapProfit * touches.length);
 
@@ -203,29 +208,33 @@ const App: React.FC = () => {
   };
 
   const upgradeTapProfit = () => {
-    const nextLevelData = tapProfitLevels[tapProfitLevel];
-    if (nextLevelData && points >= nextLevelData.cost) {
-      setPoints((prevPoints) => prevPoints - nextLevelData.cost);
-      setTapProfitLevel((prevLevel) => {
-        const newLevel = prevLevel + 1;
-        setTapProfit(tapProfitLevels[newLevel - 1].profit);
-        saveUpgradeData(); // Сохранение данных после обновления уровня
-        return newLevel;
-      });
+    if (tapProfitLevel !== null) {
+      const nextLevelData = tapProfitLevels[tapProfitLevel];
+      if (nextLevelData && points >= nextLevelData.cost) {
+        setPoints((prevPoints) => prevPoints - nextLevelData.cost);
+        setTapProfitLevel((prevLevel) => {
+          const newLevel = prevLevel! + 1;
+          setTapProfit(tapProfitLevels[newLevel - 1].profit);
+          saveUpgradeData(); // Сохранение данных после обновления уровня
+          return newLevel;
+        });
+      }
     }
   };
 
   const upgradeTapIncrease = () => {
-    const nextLevelData = tapIncreaseLevels[tapIncreaseLevel];
-    if (nextLevelData && points >= nextLevelData.cost) {
-      setPoints((prevPoints) => prevPoints - nextLevelData.cost);
-      setTapIncreaseLevel((prevLevel) => {
-        const newLevel = prevLevel + 1;
-        setMaxClicks(tapIncreaseLevels[newLevel - 1].taps);
-        setRemainingClicks(tapIncreaseLevels[newLevel - 1].taps);
-        saveUpgradeData(); // Сохранение данных после обновления уровня
-        return newLevel;
-      });
+    if (tapIncreaseLevel !== null) {
+      const nextLevelData = tapIncreaseLevels[tapIncreaseLevel];
+      if (nextLevelData && points >= nextLevelData.cost) {
+        setPoints((prevPoints) => prevPoints - nextLevelData.cost);
+        setTapIncreaseLevel((prevLevel) => {
+          const newLevel = prevLevel! + 1;
+          setMaxClicks(tapIncreaseLevels[newLevel - 1].taps);
+          setRemainingClicks(tapIncreaseLevels[newLevel - 1].taps);
+          saveUpgradeData(); // Сохранение данных после обновления уровня
+          return newLevel;
+        });
+      }
     }
   };
 
@@ -270,7 +279,7 @@ const App: React.FC = () => {
             'Increases the maximum number of taps that can be made at a time. This improvement will allow you to play longer without having to wait for clicks to be restored.'}
         </p>
         <p className="text-center text-gray-300 mb-4">Current Level: {selectedUpgrade === 'multitap' ? tapProfitLevel : tapIncreaseLevel}</p>
-        {selectedUpgrade === 'multitap' && tapProfitLevel < 10 && (
+        {selectedUpgrade === 'multitap' && tapProfitLevel !== null && tapProfitLevel < 10 && (
           <button
             onClick={upgradeTapProfit}
             disabled={points < tapProfitLevels[tapProfitLevel].cost}
@@ -281,7 +290,7 @@ const App: React.FC = () => {
             Upgrade for {tapProfitLevels[tapProfitLevel].cost} coins
           </button>
         )}
-        {selectedUpgrade === 'tapIncrease' && tapIncreaseLevel < 10 && (
+        {selectedUpgrade === 'tapIncrease' && tapIncreaseLevel !== null && tapIncreaseLevel < 10 && (
           <button
             onClick={upgradeTapIncrease}
             disabled={points < tapIncreaseLevels[tapIncreaseLevel].cost}
@@ -292,7 +301,7 @@ const App: React.FC = () => {
             Upgrade for {tapIncreaseLevels[tapIncreaseLevel].cost} coins
           </button>
         )}
-        {(selectedUpgrade === 'multitap' && tapProfitLevel >= 10) || (selectedUpgrade === 'tapIncrease' && tapIncreaseLevel >= 10) ? (
+        {(selectedUpgrade === 'multitap' && tapProfitLevel !== null && tapProfitLevel >= 10) || (selectedUpgrade === 'tapIncrease' && tapIncreaseLevel !== null && tapIncreaseLevel >= 10) ? (
           <p className="text-center text-yellow-400 mt-4">Max Level Reached</p>
         ) : null}
         <button className="w-full py-2 mt-4 bg-gray-700 text-white rounded-lg" onClick={() => setSelectedUpgrade(null)}>Close</button>
@@ -361,13 +370,14 @@ const App: React.FC = () => {
           <div className="w-[calc(100%-50px)] h-[10px] bg-gray-600 rounded-md overflow-hidden">
             <div
               className="h-full bg-yellow-400 transition-all duration-200 ease-linear"
-              style={{ width: `${(remainingClicks / maxClicks) * 100}%` }}
-            ></div>
+              style={{ width: `${(remainingClicks / (maxClicks || 1)) * 100}%` }}
+              ></div>
           </div>
         </div>
       </div>
     </>
   );
+
 
   const renderBoostContent = () => (
     <>
