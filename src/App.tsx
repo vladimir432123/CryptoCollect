@@ -112,7 +112,7 @@ const App: React.FC = () => {
         });
       };
 
-      savePoints();
+      savePoints(); // Сохраняем очки каждый раз, когда они изменяются
     }
   }, [points, userId]);
 
@@ -398,7 +398,7 @@ const App: React.FC = () => {
             )}
           </button>
           <button
-            className={`text-center flex flex-col items-center relative ${
+            className={`text-center flex flex-col items.center relative ${
               currentPage === 'mine' ? 'text-yellow-400' : 'text-gray-300'
             }`}
             onClick={() => {
