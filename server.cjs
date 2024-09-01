@@ -186,9 +186,10 @@ app.post('/save-data', (req, res) => {
             return res.status(500).json({ error: 'Server error' });
         }
         console.log('Данные успешно сохранены для пользователя с ID:', userId);
-        res.json({ success: true });
+        res.json({ success: true, tapProfitLevel, tapIncreaseLevel });
     });
 });
+
 
 app.post('/webhook', (req, res) => {
     console.log('Получен запрос на /webhook:', req.body);
