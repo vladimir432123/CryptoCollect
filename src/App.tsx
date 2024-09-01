@@ -213,15 +213,24 @@ const App: React.FC = () => {
     const nextLevelData = tapProfitLevels[tapProfitLevel];
     if (nextLevelData && points >= nextLevelData.cost) {
         const newLevel = tapProfitLevel + 1;
-        setTapProfit(tapProfitLevels[newLevel - 1].profit);
         setPoints((prevPoints) => prevPoints - nextLevelData.cost);
 
         try {
+            // Сначала обновляем состояние
+            setTapProfitLevel(newLevel);
+            setTapProfit(tapProfitLevels[newLevel - 1].profit);
+
+            // Затем сохраняем данные
             await saveUpgradeData(); // Сохранение данных после обновления уровня
-            setTapProfitLevel(newLevel); // Обновляем уровень после успешного сохранения
+
             console.log('Уровень tapProfit успешно увеличен до:', newLevel);
         } catch (error) {
             console.error('Ошибка при сохранении данных:', error);
+
+            // В случае ошибки откатываем уровень и профит обратно
+            setTapProfitLevel(tapProfitLevel);
+            setTapProfit(tapProfitLevels[tapProfitLevel - 1].profit);
+            setPoints((prevPoints) => prevPoints + nextLevelData.cost);
         }
     } else {
         console.error('Недостаточно очков для улучшения или достигнут максимальный уровень.');
@@ -232,21 +241,32 @@ const upgradeTapIncrease = async () => {
     const nextLevelData = tapIncreaseLevels[tapIncreaseLevel];
     if (nextLevelData && points >= nextLevelData.cost) {
         const newLevel = tapIncreaseLevel + 1;
-        setMaxClicks(tapIncreaseLevels[newLevel - 1].taps);
-        setRemainingClicks(tapIncreaseLevels[newLevel - 1].taps);
         setPoints((prevPoints) => prevPoints - nextLevelData.cost);
 
         try {
+            // Сначала обновляем состояние
+            setTapIncreaseLevel(newLevel);
+            setMaxClicks(tapIncreaseLevels[newLevel - 1].taps);
+            setRemainingClicks(tapIncreaseLevels[newLevel - 1].taps);
+
+            // Затем сохраняем данные
             await saveUpgradeData(); // Сохранение данных после обновления уровня
-            setTapIncreaseLevel(newLevel); // Обновляем уровень после успешного сохранения
+
             console.log('Уровень tapIncrease успешно увеличен до:', newLevel);
         } catch (error) {
             console.error('Ошибка при сохранении данных:', error);
+
+            // В случае ошибки откатываем уровень и клики обратно
+            setTapIncreaseLevel(tapIncreaseLevel);
+            setMaxClicks(tapIncreaseLevels[tapIncreaseLevel - 1].taps);
+            setRemainingClicks(tapIncreaseLevels[tapIncreaseLevel - 1].taps);
+            setPoints((prevPoints) => prevPoints + nextLevelData.cost);
         }
     } else {
         console.error('Недостаточно очков для улучшения или достигнут максимальный уровень.');
     }
 };
+
 
   const renderUpgradeOption = (type: 'multitap' | 'tapIncrease') => {
     const isMultitap = type === 'multitap';
