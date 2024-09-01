@@ -4,9 +4,9 @@ import Hamster from './icons/Hamster';
 import { dollarCoin } from './images';
 import Mine from './icons/Mine';
 import Friends from './icons/Friends';
-import MineContent from './MineContent'; // Adjust the path as necessary
-import { FaTasks } from 'react-icons/fa'; // Импортируем иконку задач
-import WebApp from '@twa-dev/sdk'; // Правильный импорт WebApp
+import MineContent from './MineContent';
+import { FaTasks } from 'react-icons/fa';
+import WebApp from '@twa-dev/sdk';
 
 const Farm: React.FC<{ className?: string }> = ({ className }) => (
   <svg className={className} viewBox="0 0 24 24" fill="currentColor">
@@ -14,7 +14,7 @@ const Farm: React.FC<{ className?: string }> = ({ className }) => (
   </svg>
 );
 
-const RECOVERY_RATE = 1000; // 1 клик в секунду (1000 мс)
+const RECOVERY_RATE = 1000;
 
 const App: React.FC = () => {
   const [tapProfit, setTapProfit] = useState(1);
@@ -119,10 +119,13 @@ const App: React.FC = () => {
         if (data.tapProfitLevel !== undefined) {
           setTapProfitLevel(data.tapProfitLevel);
           localStorage.setItem('tapProfitLevel', data.tapProfitLevel.toString());
+          setTapProfit(tapProfitLevels[data.tapProfitLevel - 1].profit); // обновляем tapProfit на основе загруженного уровня
         }
         if (data.tapIncreaseLevel !== undefined) {
           setTapIncreaseLevel(data.tapIncreaseLevel);
           localStorage.setItem('tapIncreaseLevel', data.tapIncreaseLevel.toString());
+          setMaxClicks(tapIncreaseLevels[data.tapIncreaseLevel - 1].taps); // обновляем maxClicks на основе загруженного уровня
+          setRemainingClicks(tapIncreaseLevels[data.tapIncreaseLevel - 1].taps);
         }
       })
       .catch((error) => console.error('Ошибка при получении данных с сервера:', error));
@@ -214,23 +217,94 @@ const App: React.FC = () => {
   };
 
   const upgradeTapProfit = () => {
-    const nextLevel = tapProfitLevels[tapProfitLevel];
-    if (nextLevel && points >= nextLevel.cost) {
-      setPoints((prevPoints) => prevPoints - nextLevel.cost);
+    const nextLevelData = tapProfitLevels[tapProfitLevel];
+    if (nextLevelData && points >= nextLevelData.cost) {
+      setPoints((prevPoints) => prevPoints - nextLevelData.cost);
       setTapProfitLevel((prevLevel) => prevLevel + 1);
-      setTapProfit(nextLevel.profit);
+      setTapProfit(nextLevelData.profit);
     }
   };
 
   const upgradeTapIncrease = () => {
-    const nextLevel = tapIncreaseLevels[tapIncreaseLevel];
-    if (nextLevel && points >= nextLevel.cost) {
-      setPoints((prevPoints) => prevPoints - nextLevel.cost);
+    const nextLevelData = tapIncreaseLevels[tapIncreaseLevel];
+    if (nextLevelData && points >= nextLevelData.cost) {
+      setPoints((prevPoints) => prevPoints - nextLevelData.cost);
       setTapIncreaseLevel((prevLevel) => prevLevel + 1);
-      setMaxClicks(nextLevel.taps);
-      setRemainingClicks(nextLevel.taps);
+      setMaxClicks(nextLevelData.taps);
+      setRemainingClicks(nextLevelData.taps);
     }
   };
+
+  const renderUpgradeOption = (type: 'multitap' | 'tapIncrease') => {
+    const isMultitap = type === 'multitap';
+    const currentLevel = isMultitap ? tapProfitLevel : tapIncreaseLevel;
+
+    const description = isMultitap
+      ? 'Increases the profit for each tap, allowing you to accumulate coins faster. This improvement will help you reach new levels faster and earn more points.'
+      : 'Increases the maximum number of taps that can be made at a time. This improvement will allow you to play longer without having to wait for clicks to be restored.';
+
+    return (
+      <button
+        key={type}
+        className="w-full h-24 bg-gradient-to-r from-gray-700 to-gray-600 rounded-lg shadow-lg overflow-hidden relative mt-4"
+        onClick={() => setSelectedUpgrade(type)}
+      >
+        <div className="absolute top-0 left-0 w-full h-full bg-yellow-400 opacity-10"></div>
+        <div className="flex flex-col justify-between h-full p-4">
+          <div className="flex justify-between items-start">
+            <span className="text-lg font-semibold text-gray-300">{isMultitap ? 'Multitap' : 'Tap increase'}</span>
+            <span className="text-xs font-medium text-yellow-400 bg-gray-800 px-2 py-1 rounded-full">Level {currentLevel}</span>
+          </div>
+          <div className="flex justify-between items-end">
+            <span className="text-sm text-gray-400">{description}</span>
+            <svg className="w-6 h-6 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+            </svg>
+          </div>
+        </div>
+      </button>
+    );
+  };
+
+  const renderUpgradeMenu = () => (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-end justify-center z-50" onClick={() => setSelectedUpgrade(null)}>
+      <div className="bg-gray-800 w-full max-w-md p-6 rounded-t-lg animate-slide-up" onClick={(e) => e.stopPropagation()}>
+        <h2 className="text-center text-xl text-white mb-4">{selectedUpgrade === 'multitap' ? 'Multitap' : 'Tap Increase'}</h2>
+        <p className="text-center text-gray-400 mb-4">
+          {selectedUpgrade === 'multitap' ? 
+            'Increases the profit for each tap, allowing you to accumulate coins faster. This improvement will help you reach new levels faster and earn more points.' :
+            'Increases the maximum number of taps that can be made at a time. This improvement will allow you to play longer without having to wait for clicks to be restored.'}
+        </p>
+        <p className="text-center text-gray-300 mb-4">Current Level: {selectedUpgrade === 'multitap' ? tapProfitLevel : tapIncreaseLevel}</p>
+        {selectedUpgrade === 'multitap' && tapProfitLevel < 10 && (
+          <button
+            onClick={upgradeTapProfit}
+            disabled={points < tapProfitLevels[tapProfitLevel].cost}
+            className={`w-full py-3 bg-yellow-500 text-black rounded-lg ${
+              points >= tapProfitLevels[tapProfitLevel].cost ? 'hover:bg-yellow-600' : 'opacity-50 cursor-not-allowed'
+            }`}
+          >
+            Upgrade for {tapProfitLevels[tapProfitLevel].cost} coins
+          </button>
+        )}
+        {selectedUpgrade === 'tapIncrease' && tapIncreaseLevel < 10 && (
+          <button
+            onClick={upgradeTapIncrease}
+            disabled={points < tapIncreaseLevels[tapIncreaseLevel].cost}
+            className={`w-full py-3 bg-yellow-500 text-black rounded-lg ${
+              points >= tapIncreaseLevels[tapIncreaseLevel].cost ? 'hover:bg-yellow-600' : 'opacity-50 cursor-not-allowed'
+            }`}
+          >
+            Upgrade for {tapIncreaseLevels[tapIncreaseLevel].cost} coins
+          </button>
+        )}
+        {(selectedUpgrade === 'multitap' && tapProfitLevel >= 10) || (selectedUpgrade === 'tapIncrease' && tapIncreaseLevel >= 10) ? (
+          <p className="text-center text-yellow-400 mt-4">Max Level Reached</p>
+        ) : null}
+        <button className="w-full py-2 mt-4 bg-gray-700 text-white rounded-lg" onClick={() => setSelectedUpgrade(null)}>Close</button>
+      </div>
+    </div>
+  );
 
   const renderUserInfo = () => (
     <div className="px-4 z-10 pt-4">
@@ -301,90 +375,15 @@ const App: React.FC = () => {
     </>
   );
 
-  const renderUpgradeMenu = (type: 'multitap' | 'tapIncrease') => {
-    const isMultitap = type === 'multitap';
-    const currentLevel = isMultitap ? tapProfitLevel : tapIncreaseLevel;
-    const maxLevel = 10;
-    const nextLevel = isMultitap ? tapProfitLevels[currentLevel] : tapIncreaseLevels[currentLevel];
-    const upgradeFunction = isMultitap ? upgradeTapProfit : upgradeTapIncrease;
-
-    const description = isMultitap
-      ? 'Increases the profit for each tap, allowing you to accumulate coins faster. This improvement will help you reach new levels faster and earn more points.'
-      : 'Increases the maximum number of taps that can be made at a time. This improvement will allow you to play longer without having to wait for clicks to be restored.';
-
-    return (
-      <div className="fixed inset-0 flex items-center justify-center z-50">
-        <div className="bg-gray-800 rounded-lg p-6 shadow-lg w-full max-w-sm mx-auto">
-          <h2 className="text-xl font-bold text-yellow-400 mb-4 text-center">
-            {isMultitap ? 'Multitap' : 'Tap increase'} Upgrade
-          </h2>
-          <p className="text-gray-300 mb-4 text-center">{description}</p>
-          <p className="text-gray-300 mb-4 text-center">Current Level: {currentLevel}</p>
-          <p className="text-gray-300 mb-4 text-center">Next Level Cost: {nextLevel.cost}</p>
-          {currentLevel < maxLevel ? (
-            <button
-              onClick={upgradeFunction}
-              disabled={points < nextLevel.cost}
-              className={`w-full py-3 rounded-lg font-bold text-center transition-colors ${
-                points >= nextLevel.cost
-                  ? 'bg-yellow-400 text-gray-900 hover:bg-yellow-500'
-                  : 'bg-gray-600 text-gray-400 cursor-not-allowed'
-              }`}
-            >
-              Upgrade for {nextLevel.cost} coins
-            </button>
-          ) : (
-            <div className="text-yellow-400 font-bold text-center">MAX LEVEL</div>
-          )}
-          <button
-            onClick={() => setSelectedUpgrade(null)}
-            className="mt-4 w-full py-3 bg-gray-700 text-gray-300 rounded-lg"
-          >
-            Close
-          </button>
-        </div>
-      </div>
-    );
-  };
-
-  const renderBoostMenu = () => (
-    <div className="absolute inset-0 bg-gray-800 z-50 flex flex-col">
+  const renderBoostContent = () => (
+    <>
       {renderUserInfo()}
-      <div className="w-full h-px bg-gray-600 mt-4"></div>
-      <div className="flex-grow flex flex-col items-center justify-start p-4 space-y-5">
-        <div
-          className="w-full bg-gray-700 rounded-lg p-4"
-          onClick={() => setSelectedUpgrade('multitap')}
-        >
-          <div className="flex justify-between items-center">
-            <span className="text-gray-300 font-semibold">Multitap</span>
-            <span className="text-yellow-400 font-bold">Level {tapProfitLevel}</span>
-          </div>
-          <p className="text-sm text-gray-400 mt-2">
-            Increases the profit for each tap, allowing you to accumulate coins faster.
-          </p>
-        </div>
-        <div
-          className="w-full bg-gray-700 rounded-lg p-4"
-          onClick={() => setSelectedUpgrade('tapIncrease')}
-        >
-          <div className="flex justify-between items-center">
-            <span className="text-gray-300 font-semibold">Tap increase</span>
-            <span className="text-yellow-400 font-bold">Level {tapIncreaseLevel}</span>
-          </div>
-          <p className="text-sm text-gray-400 mt-2">
-            Increases the maximum number of taps that can be made at a time.
-          </p>
-        </div>
+      <div className="px-4 mt-4">
+        <div className="h-px bg-gray-600 my-4"></div>
+        {renderUpgradeOption('multitap')}
+        {renderUpgradeOption('tapIncrease')}
       </div>
-      {selectedUpgrade && renderUpgradeMenu(selectedUpgrade as 'multitap' | 'tapIncrease')}
-      {selectedUpgrade && (
-        <div
-          className="fixed inset-0 bg-black bg-opacity-50 z-40"
-          onClick={() => setSelectedUpgrade(null)}
-        ></div>
-      )}
-    </div>
+    </>
   );
 
   return (
@@ -399,8 +398,8 @@ const App: React.FC = () => {
             setSelectedUpgrade={setSelectedUpgrade}
           />
         )}
-        {isBoostMenuOpen && renderBoostMenu()}
-  
+        {isBoostMenuOpen && renderBoostContent()}
+        {selectedUpgrade && renderUpgradeMenu()}
         <div className="absolute bottom-0 left-0 right-0 bg-gray-700 rounded-t-2xl flex justify-around items-center text-xs py-4 px-2 z-50">
           <button
             className={`text-center flex flex-col items-center relative ${
@@ -441,7 +440,7 @@ const App: React.FC = () => {
             Tasks
           </div>
         </div>
-  
+
         {clicks.map((click) => (
           <div
             key={click.id}
@@ -454,6 +453,6 @@ const App: React.FC = () => {
       </div>
     </div>
   );
-}
+};
 
 export default App;
