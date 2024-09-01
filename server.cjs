@@ -187,9 +187,26 @@ app.post('/save-data', (req, res) => {
         }
 
         console.log('Данные успешно сохранены для пользователя с ID:', userId);
-        res.json({ success: true, tapProfitLevel, tapIncreaseLevel });
+
+        // Возвращаем обновленные данные обратно на клиент
+        const fetchUpdatedData = 'SELECT points, tapProfitLevel, tapIncreaseLevel FROM user WHERE telegram_id = ?';
+        db.query(fetchUpdatedData, [userId], (err, results) => {
+            if (err) {
+                console.error('Ошибка при получении обновленных данных:', err);
+                return res.status(500).json({ error: 'Server error' });
+            }
+
+            const updatedData = results[0];
+            res.json({
+                success: true,
+                points: updatedData.points,
+                tapProfitLevel: updatedData.tapProfitLevel,
+                tapIncreaseLevel: updatedData.tapIncreaseLevel,
+            });
+        });
     });
 });
+
 
 
 
