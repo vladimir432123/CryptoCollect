@@ -168,15 +168,11 @@ app.post('/save-data', (req, res) => {
     const { userId, points, tapProfitLevel, tapIncreaseLevel } = req.body;
 
     if (!userId || points === undefined || tapProfitLevel === undefined || tapIncreaseLevel === undefined) {
+        console.log('Ошибка: Недостаточно данных для сохранения');
         return res.status(400).json({ error: 'Missing required fields' });
     }
 
-    console.log('Сохранение данных пользователя:', {
-        userId,
-        points,
-        tapProfitLevel,
-        tapIncreaseLevel
-    });
+    console.log(`Получен POST-запрос для userId: ${userId}, points: ${points}, tapProfitLevel: ${tapProfitLevel}, tapIncreaseLevel: ${tapIncreaseLevel}`);
 
     const query = `
         UPDATE user 
@@ -187,10 +183,9 @@ app.post('/save-data', (req, res) => {
     db.query(query, [points, tapProfitLevel, tapIncreaseLevel, userId], (err, results) => {
         if (err) {
             console.error('Ошибка при сохранении данных:', err);
-            return res.status(500).json({ error: 'Ошибка сервера' });
+            return res.status(500).json({ error: 'Server error' });
         }
-
-        console.log('Данные успешно сохранены');
+        console.log('Данные успешно сохранены для пользователя с ID:', userId);
         res.json({ success: true });
     });
 });
