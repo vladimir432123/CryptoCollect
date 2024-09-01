@@ -204,12 +204,40 @@ const App: React.FC = () => {
     setIsBoostMenuOpen(!isBoostMenuOpen);
   };
 
+  const saveUpgradeData = useCallback(() => {
+    if (userId !== null) {
+      fetch('/save-data', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId,
+          points,
+          tapProfitLevel,
+          tapIncreaseLevel,
+        }),
+      }).then((response) => {
+        if (!response.ok) {
+          throw new Error(`Ошибка HTTP: ${response.status}`);
+        }
+        return response.json();
+      }).catch((error) => {
+        console.error('Ошибка при сохранении данных:', error);
+      });
+    }
+  }, [userId, points, tapProfitLevel, tapIncreaseLevel]);
+
   const upgradeTapProfit = () => {
     const nextLevelData = tapProfitLevels[tapProfitLevel];
     if (nextLevelData && points >= nextLevelData.cost) {
       setPoints((prevPoints) => prevPoints - nextLevelData.cost);
-      setTapProfitLevel((prevLevel) => prevLevel + 1);
-      setTapProfit(nextLevelData.profit);
+      setTapProfitLevel((prevLevel) => {
+        const newLevel = prevLevel + 1;
+        setTapProfit(tapProfitLevels[newLevel - 1].profit);
+        return newLevel;
+      });
+      saveUpgradeData();
     }
   };
 
@@ -217,9 +245,13 @@ const App: React.FC = () => {
     const nextLevelData = tapIncreaseLevels[tapIncreaseLevel];
     if (nextLevelData && points >= nextLevelData.cost) {
       setPoints((prevPoints) => prevPoints - nextLevelData.cost);
-      setTapIncreaseLevel((prevLevel) => prevLevel + 1);
-      setMaxClicks(nextLevelData.taps);
-      setRemainingClicks(nextLevelData.taps);
+      setTapIncreaseLevel((prevLevel) => {
+        const newLevel = prevLevel + 1;
+        setMaxClicks(tapIncreaseLevels[newLevel - 1].taps);
+        setRemainingClicks(tapIncreaseLevels[newLevel - 1].taps);
+        return newLevel;
+      });
+      saveUpgradeData();
     }
   };
 
