@@ -94,32 +94,39 @@ bot.start(async (ctx) => {
     const telegramId = ctx.message.from.id;
     const username = ctx.message.from.username || `user_${telegramId}`;
 
-    console.log('Обработка команды /start для пользователя:', telegramId);
-
     const sessionToken = generateSessionToken(telegramId);
 
-    db.query(
-        'INSERT INTO user (telegram_id, username, session_token) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE username = IFNULL(VALUES(username), username), auth_date = NOW(), session_token = VALUES(session_token)', 
-        [telegramId, username, sessionToken], 
-        (err, results) => {
-            if (err) {
-                console.error('Ошибка базы данных при обработке команды /start:', err);
-                return ctx.reply('Произошла ошибка, попробуйте позже.');
-            }
+    // Проверяем, есть ли уже пользователь в базе данных
+    db.query('SELECT points FROM user WHERE telegram_id = ?', [telegramId], (err, results) => {
+        if (err) {
+            return ctx.reply('Произошла ошибка, попробуйте позже.');
+        }
 
-            console.log('Сгенерирован токен сессии:', sessionToken);
-
-            const miniAppUrl = `https://t.me/cryptocollect_bot?startapp=${telegramId}&tgWebApp=true&token=${sessionToken}`;
-
-            ctx.reply(
-                'Добро пожаловать! Нажмите на кнопку ниже, чтобы открыть приложение:',
-                Markup.inlineKeyboard([
-                    Markup.button.url('Открыть приложение', miniAppUrl)
-                ])
+        if (results.length > 0) {
+            // Пользователь существует, обновляем токен сессии
+            db.query(
+                'UPDATE user SET session_token = ?, auth_date = NOW() WHERE telegram_id = ?',
+                [sessionToken, telegramId]
+            );
+        } else {
+            // Новый пользователь, добавляем его в базу данных с подарком в 10,000 points
+            db.query(
+                'INSERT INTO user (telegram_id, username, session_token, points) VALUES (?, ?, ?, 10000)',
+                [telegramId, username, sessionToken]
             );
         }
-    );
+
+        const miniAppUrl = `https://t.me/cryptocollect_bot?startapp=${telegramId}&tgWebApp=true&token=${sessionToken}`;
+
+        ctx.reply(
+            'Добро пожаловать! Нажмите на кнопку ниже, чтобы открыть приложение:',
+            Markup.inlineKeyboard([
+                Markup.button.url('Открыть приложение', miniAppUrl)
+            ])
+        );
+    });
 });
+
 
 app.get('/app', async (req, res) => {
     const userId = req.query.userId;
