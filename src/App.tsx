@@ -129,7 +129,7 @@ const App: React.FC = () => {
         }
       })
       .catch((error) => console.error('Ошибка при получении данных с сервера:', error));
-  }, []);
+  }, [tapProfitLevels, tapIncreaseLevels]);
 
   useEffect(() => {
     if (userId !== null) {
