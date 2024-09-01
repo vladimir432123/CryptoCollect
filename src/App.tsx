@@ -15,7 +15,7 @@ const Farm: React.FC<{ className?: string }> = ({ className }) => (
   </svg>
 );
 
-const RECOVERY_RATE = 1000;
+const RECOVERY_RATE = 1000; // Восстановление одного клика в секунду
 
 const App: React.FC = () => {
   const [tapProfit, setTapProfit] = useState(1);
@@ -119,14 +119,18 @@ const App: React.FC = () => {
         if (data.tapIncreaseLevel !== undefined) {
           setTapIncreaseLevel(data.tapIncreaseLevel);
           setMaxClicks(tapIncreaseLevels[data.tapIncreaseLevel - 1].taps);
-          setRemainingClicks(data.remainingClicks); // Устанавливаем восстановленные клики
+          const clicksToRestore = Math.min(
+            maxClicks,
+            data.remainingClicks + Math.floor((Date.now() - new Date(data.lastLogoutTime).getTime()) / 1000)
+          );
+          setRemainingClicks(clicksToRestore); // Восстанавливаем количество кликов
         }
       })
       .finally(() => {
         setLoading(false);
       })
       .catch((error) => console.error('Ошибка при получении данных с сервера:', error));
-  }, [tapProfitLevels, tapIncreaseLevels]);
+  }, [tapProfitLevels, tapIncreaseLevels, maxClicks]);
 
   useEffect(() => {
     const handleBeforeUnload = () => {
