@@ -314,7 +314,11 @@ const App: React.FC = () => {
       : 'Increases the maximum number of taps that can be made at a time. This improvement will allow you to play longer without having to wait for clicks to be restored.';
 
     return (
-      <div className={`upgrade-menu ${selectedUpgrade ? 'open' : ''}`}>
+      <div className={`fixed bottom-0 left-0 right-0 bg-gray-800 p-4 z-40 transition-transform duration-1000 ease-out ${
+          selectedUpgrade ? 'translate-y-0' : 'translate-y-full'
+        }`}
+        style={{ height: 'calc(60% - 0px)', borderTopLeftRadius: '1rem', borderTopRightRadius: '1rem' }}
+      >
         <div className="flex flex-col items-center">
           <div className="upgrade-title">
             {isMultitap ? 'Multitap' : 'Tap increase'}
@@ -339,7 +343,8 @@ const App: React.FC = () => {
         </div>
       </div>
     );
-  };
+};
+
 
   const renderBoostMenu = () => {
     const closeUpgradeMenu = () => setSelectedUpgrade(null);
