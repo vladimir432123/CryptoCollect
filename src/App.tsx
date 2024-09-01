@@ -15,14 +15,14 @@ const Farm: React.FC<{ className?: string }> = ({ className }) => (
   </svg>
 );
 
-const RECOVERY_RATE = 1000; // Восстановление одного клика в секунду
+const RECOVERY_RATE = 1000;
 
 const App: React.FC = () => {
   const [tapProfit, setTapProfit] = useState(1);
   const [tapProfitLevel, setTapProfitLevel] = useState<number>(1);
   const [maxClicks, setMaxClicks] = useState<number>(1000);
   const [tapIncreaseLevel, setTapIncreaseLevel] = useState<number>(1);
-  const [remainingClicks, setRemainingClicks] = useState(maxClicks);
+  const [remainingClicks, setRemainingClicks] = useState<number>(maxClicks);
   const [points, setPoints] = useState<number>(() => {
     const savedPoints = localStorage.getItem('points');
     return savedPoints ? parseInt(savedPoints) : 0;
@@ -119,18 +119,24 @@ const App: React.FC = () => {
         if (data.tapIncreaseLevel !== undefined) {
           setTapIncreaseLevel(data.tapIncreaseLevel);
           setMaxClicks(tapIncreaseLevels[data.tapIncreaseLevel - 1].taps);
-          const clicksToRestore = Math.min(
-            maxClicks,
-            data.remainingClicks + Math.floor((Date.now() - new Date(data.lastLogoutTime).getTime()) / 1000)
-          );
-          setRemainingClicks(clicksToRestore); // Восстанавливаем количество кликов
+
+          // Рассчитываем клики на основе времени
+          if (data.lastLogout) {
+            const lastLogout = new Date(data.lastLogout);
+            const now = new Date();
+            const timeDiff = Math.floor((now.getTime() - lastLogout.getTime()) / 1000); // разница в секундах
+            const recoveredClicks = Math.min(maxClicks, data.remainingClicks + Math.floor(timeDiff / RECOVERY_RATE));
+            setRemainingClicks(recoveredClicks);
+          } else {
+            setRemainingClicks(tapIncreaseLevels[data.tapIncreaseLevel - 1].taps);
+          }
         }
       })
       .finally(() => {
         setLoading(false);
       })
       .catch((error) => console.error('Ошибка при получении данных с сервера:', error));
-  }, [tapProfitLevels, tapIncreaseLevels, maxClicks]);
+  }, [tapProfitLevels, tapIncreaseLevels]);
 
   useEffect(() => {
     const handleBeforeUnload = () => {
@@ -140,7 +146,11 @@ const App: React.FC = () => {
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ userId }),
+          body: JSON.stringify({ 
+            userId, 
+            remainingClicks, 
+            lastLogout: new Date().toISOString() 
+          }),
         }).catch((error) => console.error('Ошибка при отправке времени выхода:', error));
       }
     };
@@ -150,7 +160,7 @@ const App: React.FC = () => {
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload);
     };
-  }, [userId]);
+  }, [userId, remainingClicks]);
 
   const saveUpgradeData = useCallback(async (newTapProfitLevel: number, newTapIncreaseLevel: number) => {
     if (userId !== null) {
@@ -166,6 +176,7 @@ const App: React.FC = () => {
                     points,
                     tapProfitLevel: newTapProfitLevel,
                     tapIncreaseLevel: newTapIncreaseLevel,
+                    remainingClicks,
                 }),
             });
 
@@ -187,7 +198,7 @@ const App: React.FC = () => {
     } else {
         console.log('userId is null, POST-запрос не отправлен');
     }
-}, [userId, points]);
+  }, [userId, points, remainingClicks]);
 
 const upgradeTapProfit = async () => {
   const nextLevelData = tapProfitLevels[tapProfitLevel];
