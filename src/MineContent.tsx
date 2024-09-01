@@ -7,15 +7,18 @@ interface MineContentProps {
   setPoints: (points: number | ((prevPoints: number) => number)) => void;
   selectedUpgrade: string | null;
   setSelectedUpgrade: (upgrade: string | null) => void;
-  renderUpgradeMenu: (type: 'multitap' | 'tapIncrease') => JSX.Element;
 }
 
 const farmLevelMultipliers = [1, 1.2, 1.2, 1.2, 1.2, 1.2];
 
-const MineContent: React.FC<MineContentProps> = ({ points, setPoints }) => {
+const MineContent: React.FC<MineContentProps> = ({
+  points,
+  setPoints,
+  selectedUpgrade,
+  setSelectedUpgrade,
+}) => {
   const [isUpgradeMenuOpen, setIsUpgradeMenuOpen] = useState(false);
   const [isFarmLevelMenuOpen, setIsFarmLevelMenuOpen] = useState(false);
-  const [selectedUpgrade, setSelectedUpgrade] = useState<string | null>(null);
   const [upgrades, setUpgrades] = useState<{ [key: string]: number }>({});
   const [totalIncome, setTotalIncome] = useState<number>(0);
   const [farmLevel, setFarmLevel] = useState<number>(0);
@@ -67,7 +70,8 @@ const MineContent: React.FC<MineContentProps> = ({ points, setPoints }) => {
       const currentLevel = upgrades[selectedUpgrade] || 1;
       if (currentLevel < 10) {
         const nextLevel = currentLevel + 1;
-        const upgradeData = upgradeLevels[selectedUpgrade as keyof typeof upgradeLevels][nextLevel - 1];
+        const upgradeData =
+          upgradeLevels[selectedUpgrade as keyof typeof upgradeLevels][nextLevel - 1];
         if (points >= upgradeData.cost) {
           setUpgrades((prevUpgrades) => ({
             ...prevUpgrades,
@@ -151,7 +155,7 @@ const MineContent: React.FC<MineContentProps> = ({ points, setPoints }) => {
           </div>
         </div>
       </div>
-      <div className="mt-5 px-4 grid grid-cols-2 gap-2.5">
+      <div className="mt-5 px-4 grid grid-cols-2 gap-2.5 scrollable-upgrades">
         {[
           'speedBoost',
           'doubleCoins',
