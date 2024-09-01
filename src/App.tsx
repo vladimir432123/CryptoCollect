@@ -147,7 +147,9 @@ const App: React.FC = () => {
             const result = await response.json();
             if (result.success) {
                 console.log('POST-запрос успешно отправлен и данные сохранены.');
-                // Локально обновляем состояния только после успешного сохранения на сервере
+
+                // Обновляем состояния на основе данных, полученных с сервера
+                setPoints(result.points);
                 setTapProfitLevel(result.tapProfitLevel);
                 setTapIncreaseLevel(result.tapIncreaseLevel);
             } else {
@@ -160,6 +162,25 @@ const App: React.FC = () => {
         console.log('userId is null, POST-запрос не отправлен');
     }
 }, [userId, points, tapProfitLevel, tapIncreaseLevel]);
+
+const upgradeTapProfit = async () => {
+    const nextLevelData = tapProfitLevels[tapProfitLevel];
+    if (nextLevelData && points >= nextLevelData.cost) {
+        setPoints(points - nextLevelData.cost);
+        setTapProfitLevel(tapProfitLevel + 1);
+        await saveUpgradeData(); // Сохранение данных после обновления уровня
+    }
+};
+
+const upgradeTapIncrease = async () => {
+    const nextLevelData = tapIncreaseLevels[tapIncreaseLevel];
+    if (nextLevelData && points >= nextLevelData.cost) {
+        setPoints(points - nextLevelData.cost);
+        setTapIncreaseLevel(tapIncreaseLevel + 1);
+        await saveUpgradeData(); // Сохранение данных после обновления уровня
+    }
+};
+
 
   const handleMainButtonClick = useCallback((e: React.TouchEvent<HTMLDivElement>) => {
     const touches = e.touches;
@@ -214,28 +235,7 @@ const App: React.FC = () => {
     setIsBoostMenuOpen(!isBoostMenuOpen);
   };
 
-  const upgradeTapProfit = async () => {
-    const nextLevelData = tapProfitLevels[tapProfitLevel];
-    if (nextLevelData && points >= nextLevelData.cost) {
-        setPoints(points - nextLevelData.cost);
-        setTapProfitLevel(tapProfitLevel + 1);
-        setTapProfit(tapProfitLevels[tapProfitLevel].profit); // обновляем прибыль
 
-        await saveUpgradeData();
-    }
-};
-
-const upgradeTapIncrease = async () => {
-    const nextLevelData = tapIncreaseLevels[tapIncreaseLevel];
-    if (nextLevelData && points >= nextLevelData.cost) {
-        setPoints(points - nextLevelData.cost);
-        setTapIncreaseLevel(tapIncreaseLevel + 1);
-        setMaxClicks(tapIncreaseLevels[tapIncreaseLevel].taps); // обновляем максимальные клики
-        setRemainingClicks(tapIncreaseLevels[tapIncreaseLevel].taps);
-
-        await saveUpgradeData();
-    }
-};
 
   const renderUpgradeOption = (type: 'multitap' | 'tapIncrease') => {
     const isMultitap = type === 'multitap';
