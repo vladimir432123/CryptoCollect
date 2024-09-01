@@ -18,15 +18,9 @@ const RECOVERY_RATE = 1000;
 
 const App: React.FC = () => {
   const [tapProfit, setTapProfit] = useState(1);
-  const [tapProfitLevel, setTapProfitLevel] = useState<number>(() => {
-    const savedLevel = localStorage.getItem('tapProfitLevel');
-    return savedLevel ? parseInt(savedLevel) : 1;
-  });
+  const [tapProfitLevel, setTapProfitLevel] = useState(1);
   const [maxClicks, setMaxClicks] = useState(1000);
-  const [tapIncreaseLevel, setTapIncreaseLevel] = useState<number>(() => {
-    const savedLevel = localStorage.getItem('tapIncreaseLevel');
-    return savedLevel ? parseInt(savedLevel) : 1;
-  });
+  const [tapIncreaseLevel, setTapIncreaseLevel] = useState(1);
   const [remainingClicks, setRemainingClicks] = useState(maxClicks);
   const [points, setPoints] = useState<number>(() => {
     const savedPoints = localStorage.getItem('points');
@@ -118,12 +112,10 @@ const App: React.FC = () => {
         }
         if (data.tapProfitLevel !== undefined) {
           setTapProfitLevel(data.tapProfitLevel);
-          localStorage.setItem('tapProfitLevel', data.tapProfitLevel.toString());
           setTapProfit(tapProfitLevels[data.tapProfitLevel - 1].profit); // обновляем tapProfit на основе загруженного уровня
         }
         if (data.tapIncreaseLevel !== undefined) {
           setTapIncreaseLevel(data.tapIncreaseLevel);
-          localStorage.setItem('tapIncreaseLevel', data.tapIncreaseLevel.toString());
           setMaxClicks(tapIncreaseLevels[data.tapIncreaseLevel - 1].taps); // обновляем maxClicks на основе загруженного уровня
           setRemainingClicks(tapIncreaseLevels[data.tapIncreaseLevel - 1].taps);
         }
@@ -150,10 +142,6 @@ const App: React.FC = () => {
             throw new Error(`Ошибка HTTP: ${response.status}`);
           }
           return response.json();
-        }).then(() => {
-          localStorage.setItem('points', points.toString());
-          localStorage.setItem('tapProfitLevel', tapProfitLevel.toString());
-          localStorage.setItem('tapIncreaseLevel', tapIncreaseLevel.toString());
         }).catch((error) => {
           console.error('Ошибка при сохранении данных:', error);
         });
