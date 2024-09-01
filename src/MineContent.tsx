@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { upgradeLevels } from './upgrades';
 import UpgradeNotification from './UpgradeNotification';
+import './minecontent.css';
 
 interface MineContentProps {
   points: number;
@@ -11,18 +12,14 @@ interface MineContentProps {
 
 const farmLevelMultipliers = [1, 1.2, 1.2, 1.2, 1.2, 1.2];
 
-const MineContent: React.FC<MineContentProps> = ({
-  points,
-  setPoints,
-  selectedUpgrade,
-  setSelectedUpgrade,
-}) => {
+const MineContent: React.FC<MineContentProps> = ({ points, setPoints }) => {
   const [isUpgradeMenuOpen, setIsUpgradeMenuOpen] = useState(false);
   const [isFarmLevelMenuOpen, setIsFarmLevelMenuOpen] = useState(false);
+  const [selectedUpgrade, setSelectedUpgrade] = useState<string | null>(null);
   const [upgrades, setUpgrades] = useState<{ [key: string]: number }>({});
   const [totalIncome, setTotalIncome] = useState<number>(0);
   const [farmLevel, setFarmLevel] = useState<number>(0);
-  const [notificationMessage, setNotificationMessage] = useState<string | null>(null); // Состояние для сообщения уведомления
+  const [notificationMessage, setNotificationMessage] = useState<string | null>(null);
 
   useEffect(() => {
     const savedUpgrades = localStorage.getItem('upgrades');
@@ -70,8 +67,7 @@ const MineContent: React.FC<MineContentProps> = ({
       const currentLevel = upgrades[selectedUpgrade] || 1;
       if (currentLevel < 10) {
         const nextLevel = currentLevel + 1;
-        const upgradeData =
-          upgradeLevels[selectedUpgrade as keyof typeof upgradeLevels][nextLevel - 1];
+        const upgradeData = upgradeLevels[selectedUpgrade as keyof typeof upgradeLevels][nextLevel - 1];
         if (points >= upgradeData.cost) {
           setUpgrades((prevUpgrades) => ({
             ...prevUpgrades,
@@ -81,8 +77,8 @@ const MineContent: React.FC<MineContentProps> = ({
             setTotalIncome(totalIncome + upgradeData.profit);
           }
           setPoints(points - upgradeData.cost);
-          setNotificationMessage(`Upgraded ${selectedUpgrade} to level ${nextLevel}`); // Устанавливаем сообщение уведомления
-          closeUpgradeMenu(); // Закрываем меню после улучшения
+          setNotificationMessage(`Upgraded ${selectedUpgrade} to level ${nextLevel}`);
+          closeUpgradeMenu();
         } else {
           alert('Not enough points to upgrade');
         }
@@ -106,7 +102,7 @@ const MineContent: React.FC<MineContentProps> = ({
         setFarmLevel(nextLevel);
         setPoints(points - upgradeData.cost);
         setTotalIncome(totalIncome * farmLevelMultipliers[nextLevel]);
-        setNotificationMessage(`Upgraded Farm Level to ${nextLevel}`); // Устанавливаем сообщение уведомления
+        setNotificationMessage(`Upgraded Farm Level to ${nextLevel}`);
       } else {
         alert('Not enough points to upgrade');
       }
@@ -115,7 +111,7 @@ const MineContent: React.FC<MineContentProps> = ({
 
   return (
     <>
-      {notificationMessage && <UpgradeNotification message={notificationMessage} />} {/* Отображаем уведомление */}
+      {notificationMessage && <UpgradeNotification message={notificationMessage} />}
       <div className="px-4 z-10 pt-4">
         <div className="flex items-center space-x-2">
           <div className="p-1 rounded-lg bg-gray-800"></div>
