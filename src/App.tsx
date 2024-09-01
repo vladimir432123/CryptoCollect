@@ -214,7 +214,17 @@ const App: React.FC = () => {
     if (nextLevelData && points >= nextLevelData.cost) {
         const newLevel = tapProfitLevel + 1;
         setTapProfit(tapProfitLevels[newLevel - 1].profit);
-        await saveUpgradeData(); // Сохранение данных после обновления уровня
+        setPoints((prevPoints) => prevPoints - nextLevelData.cost);
+
+        try {
+            await saveUpgradeData(); // Сохранение данных после обновления уровня
+            setTapProfitLevel(newLevel); // Обновляем уровень после успешного сохранения
+            console.log('Уровень tapProfit успешно увеличен до:', newLevel);
+        } catch (error) {
+            console.error('Ошибка при сохранении данных:', error);
+        }
+    } else {
+        console.error('Недостаточно очков для улучшения или достигнут максимальный уровень.');
     }
 };
 
@@ -224,7 +234,17 @@ const upgradeTapIncrease = async () => {
         const newLevel = tapIncreaseLevel + 1;
         setMaxClicks(tapIncreaseLevels[newLevel - 1].taps);
         setRemainingClicks(tapIncreaseLevels[newLevel - 1].taps);
-        await saveUpgradeData(); // Сохранение данных после обновления уровня
+        setPoints((prevPoints) => prevPoints - nextLevelData.cost);
+
+        try {
+            await saveUpgradeData(); // Сохранение данных после обновления уровня
+            setTapIncreaseLevel(newLevel); // Обновляем уровень после успешного сохранения
+            console.log('Уровень tapIncrease успешно увеличен до:', newLevel);
+        } catch (error) {
+            console.error('Ошибка при сохранении данных:', error);
+        }
+    } else {
+        console.error('Недостаточно очков для улучшения или достигнут максимальный уровень.');
     }
 };
 
