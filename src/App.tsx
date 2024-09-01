@@ -371,13 +371,12 @@ const App: React.FC = () => {
             <div
               className="h-full bg-yellow-400 transition-all duration-200 ease-linear"
               style={{ width: `${(remainingClicks / (maxClicks || 1)) * 100}%` }}
-              ></div>
+            ></div>
           </div>
         </div>
       </div>
     </>
   );
-
 
   const renderBoostContent = () => (
     <>
