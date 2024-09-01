@@ -7,14 +7,14 @@ import Friends from './icons/Friends';
 import MineContent from './MineContent';
 import { FaTasks } from 'react-icons/fa';
 import WebApp from '@twa-dev/sdk';
+import LoadingScreen from './LoadingScreen.tsx'; // Импортируем новый компонент
+
 
 const Farm: React.FC<{ className?: string }> = ({ className }) => (
   <svg className={className} viewBox="0 0 24 24" fill="currentColor">
     <path d="M1 22h22V8l-11-6-11 6v14zm2-2v-9h18v9H3zm9-4.5a2.5 2.5 0 100-5 2.5 2.5 0 000 5z" />
   </svg>
 );
-
-const RECOVERY_RATE = 1000;
 
 const App: React.FC = () => {
   const [tapProfit, setTapProfit] = useState(1);
@@ -28,11 +28,13 @@ const App: React.FC = () => {
   });
   const [username, setUsername] = useState<string | null>(null);
   const [userId, setUserId] = useState<number | null>(null);
+  const [loading, setLoading] = useState(true); // Добавляем состояние для загрузочного экрана
 
   const [clicks, setClicks] = useState<{ id: number, x: number, y: number, profit: number }[]>([]);
   const [isBoostMenuOpen, setIsBoostMenuOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState('farm');
   const [selectedUpgrade, setSelectedUpgrade] = useState<string | null>(null);
+  const RECOVERY_RATE = 1000; // Восстанавливаем RECOVERY_RATE
 
   const tapProfitLevels = useMemo(() => [
     { level: 1, profit: 1, cost: 1000 },
@@ -120,6 +122,9 @@ const App: React.FC = () => {
           setRemainingClicks(tapIncreaseLevels[data.tapIncreaseLevel - 1].taps);
         }
       })
+      .finally(() => {
+        setLoading(false); // Убираем экран загрузки после получения всех данных
+      })
       .catch((error) => console.error('Ошибка при получении данных с сервера:', error));
   }, [tapProfitLevels, tapIncreaseLevels]);
 
@@ -183,6 +188,7 @@ const upgradeTapIncrease = async () => {
       await saveUpgradeData(tapProfitLevel, newLevel); // Сохранение данных после обновления уровня
   }
 };
+
   const handleMainButtonClick = useCallback((e: React.TouchEvent<HTMLDivElement>) => {
     const touches = e.touches;
     if (remainingClicks > 0 && touches.length <= 5) {
@@ -235,9 +241,6 @@ const upgradeTapIncrease = async () => {
   const toggleBoostMenu = () => {
     setIsBoostMenuOpen(!isBoostMenuOpen);
   };
-
-
-
 
   const renderUpgradeOption = (type: 'multitap' | 'tapIncrease') => {
     const isMultitap = type === 'multitap';
@@ -392,70 +395,74 @@ const upgradeTapIncrease = async () => {
 
   return (
     <div className="min-h-screen flex justify-center items-center bg-gray-900">
-      <div className="w-full max-w-[390px] h-screen font-bold flex flex-col relative overflow-hidden bg-gray-800">
-        {currentPage === 'farm' && !isBoostMenuOpen && renderMainContent()}
-        {currentPage === 'mine' && (
-          <MineContent
-            points={points}
-            setPoints={setPoints}
-            selectedUpgrade={selectedUpgrade}
-            setSelectedUpgrade={setSelectedUpgrade}
-            username={username || 'Гость'} // Передаем username в MineContent
-          />
-        )}
-        {isBoostMenuOpen && renderBoostContent()}
-        {selectedUpgrade && renderUpgradeMenu()}
-        <div className="absolute bottom-0 left-0 right-0 bg-gray-700 rounded-t-2xl flex justify-around items-center text-xs py-4 px-2 z-50">
-          <button
-            className={`text-center flex flex-col items-center relative ${
-              currentPage === 'farm' ? 'text-yellow-400' : 'text-gray-300'
-            }`}
-            onClick={() => {
-              setCurrentPage('farm');
-              setIsBoostMenuOpen(false);
-            }}
-          >
-            <Farm className="w-6 h-6 mb-1" />
-            Farm
-            {currentPage === 'farm' && (
-              <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-1 h-1 bg-yellow-400 rounded-full"></div>
-            )}
-          </button>
-          <button
-            className={`text-center flex flex-col items-center relative ${
-              currentPage === 'mine' ? 'text-yellow-400' : 'text-gray-300'
-            }`}
-            onClick={() => {
-              setCurrentPage('mine');
-              setIsBoostMenuOpen(false);
-            }}
-          >
-            <Mine className="w-6 h-6 mb-1" />
-            Mine
-            {currentPage === 'mine' && (
-              <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-1 h-1 bg-yellow-400 rounded-full"></div>
-            )}
-          </button>
-          <button className="text-center text-gray-300 flex flex-col items-center">
-            <Friends className="w-6 h-6 mb-1" />
-            Friends
-          </button>
-          <div className="text-center text-gray-300 flex flex-col items-center">
-            <FaTasks className="w-6 h-6 mb-1" />
-            Tasks
+      {loading ? (
+        <LoadingScreen />
+      ) : (
+        <div className="w-full max-w-[390px] h-screen font-bold flex flex-col relative overflow-hidden bg-gray-800">
+          {currentPage === 'farm' && !isBoostMenuOpen && renderMainContent()}
+          {currentPage === 'mine' && (
+            <MineContent
+              points={points}
+              setPoints={setPoints}
+              selectedUpgrade={selectedUpgrade}
+              setSelectedUpgrade={setSelectedUpgrade}
+              username={username || 'Гость'} // Передаем username в MineContent
+            />
+          )}
+          {isBoostMenuOpen && renderBoostContent()}
+          {selectedUpgrade && renderUpgradeMenu()}
+          <div className="absolute bottom-0 left-0 right-0 bg-gray-700 rounded-t-2xl flex justify-around items-center text-xs py-4 px-2 z-50">
+            <button
+              className={`text-center flex flex-col items-center relative ${
+                currentPage === 'farm' ? 'text-yellow-400' : 'text-gray-300'
+              }`}
+              onClick={() => {
+                setCurrentPage('farm');
+                setIsBoostMenuOpen(false);
+              }}
+            >
+              <Farm className="w-6 h-6 mb-1" />
+              Farm
+              {currentPage === 'farm' && (
+                <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-1 h-1 bg-yellow-400 rounded-full"></div>
+              )}
+            </button>
+            <button
+              className={`text-center flex flex-col items-center relative ${
+                currentPage === 'mine' ? 'text-yellow-400' : 'text-gray-300'
+              }`}
+              onClick={() => {
+                setCurrentPage('mine');
+                setIsBoostMenuOpen(false);
+              }}
+            >
+              <Mine className="w-6 h-6 mb-1" />
+              Mine
+              {currentPage === 'mine' && (
+                <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-1 h-1 bg-yellow-400 rounded-full"></div>
+              )}
+            </button>
+            <button className="text-center text-gray-300 flex flex-col items-center">
+              <Friends className="w-6 h-6 mb-1" />
+              Friends
+            </button>
+            <div className="text-center text-gray-300 flex flex-col items-center">
+              <FaTasks className="w-6 h-6 mb-1" />
+              Tasks
+            </div>
           </div>
-        </div>
 
-        {clicks.map((click) => (
-          <div
-            key={click.id}
-            className="clicked-number"
-            style={{ top: click.y, left: click.x }}
-          >
-            +{click.profit}
-          </div>
-        ))}
-      </div>
+          {clicks.map((click) => (
+            <div
+              key={click.id}
+              className="clicked-number"
+              style={{ top: click.y, left: click.x }}
+            >
+              +{click.profit}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 };
