@@ -1,5 +1,5 @@
 export const upgradeLevels = {
-  speedBoost: [
+  upgrade1: [
     { level: 1, cost: 1000, profit: 600 },
     { level: 2, cost: 2000, profit: 800 },
     { level: 3, cost: 4000, profit: 1400 },
@@ -11,7 +11,7 @@ export const upgradeLevels = {
     { level: 9, cost: 256000, profit: 21000 },
     { level: 10, cost: 512000, profit: 34000 },
   ],
-  doubleCoins: [
+  upgrade2: [
     { level: 1, cost: 1500, profit: 700 },
     { level: 2, cost: 3000, profit: 1000 },
     { level: 3, cost: 6000, profit: 1800 },
@@ -23,7 +23,7 @@ export const upgradeLevels = {
     { level: 9, cost: 384000, profit: 24000 },
     { level: 10, cost: 768000, profit: 38000 },
   ],
-  autoClicker: [
+  upgrade3: [
     { level: 1, cost: 2000, profit: 800 },
     { level: 2, cost: 4000, profit: 1200 },
     { level: 3, cost: 8000, profit: 2200 },
@@ -35,7 +35,7 @@ export const upgradeLevels = {
     { level: 9, cost: 512000, profit: 32000 },
     { level: 10, cost: 1024000, profit: 50000 },
   ],
-  extraLife: [
+  upgrade4: [
     { level: 1, cost: 2500, profit: 900 },
     { level: 2, cost: 5000, profit: 1400 },
     { level: 3, cost: 10000, profit: 2600 },
@@ -47,7 +47,7 @@ export const upgradeLevels = {
     { level: 9, cost: 640000, profit: 40000 },
     { level: 10, cost: 1280000, profit: 60000 },
   ],
-  megaTap: [
+  upgrade5: [
     { level: 1, cost: 3000, profit: 1000 },
     { level: 2, cost: 6000, profit: 1600 },
     { level: 3, cost: 12000, profit: 3000 },
@@ -59,7 +59,7 @@ export const upgradeLevels = {
     { level: 9, cost: 768000, profit: 48000 },
     { level: 10, cost: 1536000, profit: 75000 },
   ],
-  coinMagnet: [
+  upgrade6: [
     { level: 1, cost: 3500, profit: 1100 },
     { level: 2, cost: 7000, profit: 1800 },
     { level: 3, cost: 14000, profit: 3400 },
@@ -71,7 +71,7 @@ export const upgradeLevels = {
     { level: 9, cost: 896000, profit: 56000 },
     { level: 10, cost: 1792000, profit: 88000 },
   ],
-  timeWarp: [
+  upgrade7: [
     { level: 1, cost: 4000, profit: 1200 },
     { level: 2, cost: 8000, profit: 2000 },
     { level: 3, cost: 16000, profit: 3800 },
@@ -83,7 +83,7 @@ export const upgradeLevels = {
     { level: 9, cost: 1024000, profit: 64000 },
     { level: 10, cost: 2048000, profit: 100000 },
   ],
-  luckySpin: [
+  upgrade8: [
     { level: 1, cost: 4500, profit: 1300 },
     { level: 2, cost: 9000, profit: 2200 },
     { level: 3, cost: 18000, profit: 4200 },
@@ -96,11 +96,11 @@ export const upgradeLevels = {
     { level: 10, cost: 2304000, profit: 110000 },
   ],
 
-farmLevel: [
-  { level: 1, cost: 10000 },
-  { level: 2, cost: 20000 },
-  { level: 3, cost: 30000 },
-  { level: 4, cost: 40000 },
-  { level: 5, cost: 50000 },
-],
+  farmlevel: [
+    { level: 1, cost: 10000 },
+    { level: 2, cost: 20000 },
+    { level: 3, cost: 30000 },
+    { level: 4, cost: 40000 },
+    { level: 5, cost: 50000 },
+  ],
 };
