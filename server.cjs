@@ -228,6 +228,7 @@ app.post('/update-clicks', (req, res) => {
     const { userId, remainingClicks } = req.body;
 
     if (!userId || remainingClicks === undefined) {
+        console.log('Ошибка: Недостаточно данных для обновления кликов');
         return res.status(400).json({ error: 'Missing required fields' });
     }
 
@@ -237,7 +238,7 @@ app.post('/update-clicks', (req, res) => {
         WHERE telegram_id = ?
     `;
 
-    db.query(query, [remainingClicks, userId], (err, results) => {
+    db.query(query, [remainingClicks, userId], (err) => {
         if (err) {
             console.error('Ошибка при обновлении кликов:', err);
             return res.status(500).json({ error: 'Server error' });
@@ -245,9 +246,13 @@ app.post('/update-clicks', (req, res) => {
 
         console.log('Клики успешно обновлены для пользователя с ID:', userId);
 
-        res.json({ success: true, remainingClicks });
+        res.json({
+            success: true,
+            remainingClicks,
+        });
     });
 });
+
 
 app.post('/webhook', (req, res) => {
     console.log('Получен запрос на /webhook:', req.body);
