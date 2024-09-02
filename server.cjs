@@ -174,24 +174,12 @@ app.get('/app', async (req, res) => {
             }
             if (results.length > 0) {
                 const userData = results[0];
-                const lastLogout = userData.last_logout ? new Date(userData.last_logout).getTime() : null;
-                const now = Date.now();
-
-                let restoredClicks = 0;
-
-                if (lastLogout) {
-                    const timeDifference = Math.floor((now - lastLogout) / 1000);
-                    restoredClicks = Math.min(Math.floor(timeDifference), userData.tapIncreaseLevel * 500); 
-                }
-
-                const remainingClicks = Math.min(userData.remainingClicks + restoredClicks, userData.tapIncreaseLevel * 500);
-
                 return res.json({
                     username: userData.username,
                     points: userData.points,
                     tapProfitLevel: userData.tapProfitLevel,
                     tapIncreaseLevel: userData.tapIncreaseLevel,
-                    remainingClicks,
+                    remainingClicks: userData.remainingClicks,
                 });
             } else {
                 console.error('Пользователь не найден с User ID:', userId);
@@ -205,24 +193,23 @@ app.get('/app', async (req, res) => {
 });
 
 
-
 app.post('/save-data', (req, res) => {
-    const { userId, points, tapProfitLevel, tapIncreaseLevel } = req.body;
+    const { userId, points, tapProfitLevel, tapIncreaseLevel, remainingClicks } = req.body;
 
-    if (!userId || points === undefined || tapProfitLevel === undefined || tapIncreaseLevel === undefined) {
+    if (!userId || points === undefined || tapProfitLevel === undefined || tapIncreaseLevel === undefined || remainingClicks === undefined) {
         console.log('Ошибка: Недостаточно данных для сохранения');
         return res.status(400).json({ error: 'Missing required fields' });
     }
 
-    console.log(`Получен POST-запрос для userId: ${userId}, points: ${points}, tapProfitLevel: ${tapProfitLevel}, tapIncreaseLevel: ${tapIncreaseLevel}`);
+    console.log(`Получен POST-запрос для userId: ${userId}, points: ${points}, tapProfitLevel: ${tapProfitLevel}, tapIncreaseLevel: ${tapIncreaseLevel}, remainingClicks: ${remainingClicks}`);
 
     const query = `
         UPDATE user 
-        SET points = ?, tapProfitLevel = ?, tapIncreaseLevel = ?
+        SET points = ?, tapProfitLevel = ?, tapIncreaseLevel = ?, remainingClicks = ?
         WHERE telegram_id = ?
     `;
 
-    db.query(query, [points, tapProfitLevel, tapIncreaseLevel, userId], (err, results) => {
+    db.query(query, [points, tapProfitLevel, tapIncreaseLevel, remainingClicks, userId], (err, results) => {
         if (err) {
             console.error('Ошибка при сохранении данных:', err);
             return res.status(500).json({ error: 'Server error' });
@@ -235,6 +222,7 @@ app.post('/save-data', (req, res) => {
             points,
             tapProfitLevel,
             tapIncreaseLevel,
+            remainingClicks,
         });
     });
 });
