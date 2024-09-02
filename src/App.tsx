@@ -128,7 +128,7 @@ const App: React.FC = () => {
                 setMaxClicks(tapIncreaseLevels[data.tapIncreaseLevel - 1].taps);
             }
             if (data.remainingClicks !== undefined) {
-                setRemainingClicks(data.remainingClicks); // Устанавливаем загруженные клики с учетом восстановления
+                setRemainingClicks(data.remainingClicks); // Устанавливаем загруженные клики
             }
         })
         .finally(() => {
@@ -136,7 +136,6 @@ const App: React.FC = () => {
         })
         .catch((error) => console.error('Ошибка при получении данных с сервера:', error));
 }, [tapProfitLevels, tapIncreaseLevels]);
-
 
   useEffect(() => {
     const handleBeforeUnload = () => {
