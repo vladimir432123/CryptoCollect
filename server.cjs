@@ -170,29 +170,14 @@ app.get('/app', async (req, res) => {
             }
             if (results.length > 0) {
                 const userData = results[0];
-                const now = new Date().getTime();
-                const lastLogout = new Date(userData.last_logout).getTime();
-                const timeDifferenceInSeconds = Math.floor((now - lastLogout) / 1000);
-
-                const clicksToRestore = Math.min(
-                    Math.floor(timeDifferenceInSeconds), 
-                    userData.tapIncreaseLevel * 500 // Задайте ваш лимит восстановления
-                );
-
-                const updatedClicks = Math.min(
-                    userData.remainingClicks + clicksToRestore,
-                    userData.tapIncreaseLevel * 500 // Максимум кликов
-                );
-
                 return res.json({
                     username: userData.username,
                     points: userData.points,
                     tapProfitLevel: userData.tapProfitLevel,
                     tapIncreaseLevel: userData.tapIncreaseLevel,
-                    remainingClicks: updatedClicks, // Отправляем обновленное значение кликов
+                    remainingClicks: userData.remainingClicks,
                     lastLogout: userData.last_logout
                 });
-
             } else {
                 console.error('Пользователь не найден с User ID:', userId);
                 return res.status(404).json({ error: 'Пользователь не найден' });
@@ -204,43 +189,45 @@ app.get('/app', async (req, res) => {
     }
 });
 
+app.post('/save-data', (req, res) => {
+    const { userId, points, tapProfitLevel, tapIncreaseLevel, remainingClicks } = req.body;
 
-app.post('/update-clicks', (req, res) => {
-    const { userId, remainingClicks } = req.body;
-
-    if (!userId || remainingClicks === undefined) {
-        console.log('Ошибка: Недостаточно данных для обновления кликов');
+    if (!userId || points === undefined || tapProfitLevel === undefined || tapIncreaseLevel === undefined || remainingClicks === undefined) {
+        console.log('Ошибка: Недостаточно данных для сохранения');
         return res.status(400).json({ error: 'Missing required fields' });
     }
 
+    console.log(`Получен POST-запрос для userId: ${userId}, points: ${points}, tapProfitLevel: ${tapProfitLevel}, tapIncreaseLevel: ${tapIncreaseLevel}, remainingClicks: ${remainingClicks}`);
+
     const query = `
         UPDATE user 
-        SET remainingClicks = ?
+        SET points = ?, tapProfitLevel = ?, tapIncreaseLevel = ?, remainingClicks = ?
         WHERE telegram_id = ?
     `;
 
-    db.query(query, [remainingClicks, userId], (err) => {
+    db.query(query, [points, tapProfitLevel, tapIncreaseLevel, remainingClicks, userId], (err, results) => {
         if (err) {
-            console.error('Ошибка при обновлении кликов:', err);
+            console.error('Ошибка при сохранении данных:', err);
             return res.status(500).json({ error: 'Server error' });
         }
 
-        console.log('Клики успешно обновлены для пользователя с ID:', userId);
+        console.log('Данные успешно сохранены для пользователя с ID:', userId);
 
         res.json({
             success: true,
+            points,
+            tapProfitLevel,
+            tapIncreaseLevel,
             remainingClicks,
         });
     });
 });
-
 
 // Новый маршрут для обновления количества кликов
 app.post('/update-clicks', (req, res) => {
     const { userId, remainingClicks } = req.body;
 
     if (!userId || remainingClicks === undefined) {
-        console.log('Ошибка: Недостаточно данных для обновления кликов');
         return res.status(400).json({ error: 'Missing required fields' });
     }
 
@@ -250,7 +237,7 @@ app.post('/update-clicks', (req, res) => {
         WHERE telegram_id = ?
     `;
 
-    db.query(query, [remainingClicks, userId], (err) => {
+    db.query(query, [remainingClicks, userId], (err, results) => {
         if (err) {
             console.error('Ошибка при обновлении кликов:', err);
             return res.status(500).json({ error: 'Server error' });
@@ -258,13 +245,9 @@ app.post('/update-clicks', (req, res) => {
 
         console.log('Клики успешно обновлены для пользователя с ID:', userId);
 
-        res.json({
-            success: true,
-            remainingClicks,
-        });
+        res.json({ success: true, remainingClicks });
     });
 });
-
 
 app.post('/webhook', (req, res) => {
     console.log('Получен запрос на /webhook:', req.body);
