@@ -41,7 +41,12 @@ db.query(`
         points INT DEFAULT 10000,
         tapProfitLevel INT DEFAULT 1,
         tapIncreaseLevel INT DEFAULT 1
+        ALTER TABLE user ADD COLUMN last_logout TIMESTAMP NULL DEFAULT NULL;
+        
+
     )
+
+    
 `, (err) => {
     if (err) {
         console.error('Ошибка создания таблицы:', err);
@@ -128,7 +133,7 @@ bot.start(async (ctx) => {
 
 
 app.post('/logout', (req, res) => {
-    const { userId } = req.body;
+    const { userId, remainingClicks, lastLogout } = req.body;
     
     if (!userId) {
         return res.status(400).json({ error: 'Missing userId' });
@@ -136,11 +141,11 @@ app.post('/logout', (req, res) => {
 
     const query = `
         UPDATE user
-        SET last_logout = NOW()
+        SET last_logout = ?, remainingClicks = ?
         WHERE telegram_id = ?
     `;
 
-    db.query(query, [userId], (err) => {
+    db.query(query, [lastLogout, remainingClicks, userId], (err) => {
         if (err) {
             console.error('Ошибка при обновлении времени выхода:', err);
             return res.status(500).json({ error: 'Server error' });
