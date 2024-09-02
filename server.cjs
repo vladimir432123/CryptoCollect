@@ -40,13 +40,10 @@ db.query(`
         session_token VARCHAR(255),
         points INT DEFAULT 10000,
         tapProfitLevel INT DEFAULT 1,
-        tapIncreaseLevel INT DEFAULT 1
-        ALTER TABLE user ADD COLUMN last_logout TIMESTAMP NULL DEFAULT NULL;
-        
-
+        tapIncreaseLevel INT DEFAULT 1,
+        remainingClicks INT DEFAULT 1000,
+        last_logout TIMESTAMP NULL DEFAULT NULL
     )
-
-    
 `, (err) => {
     if (err) {
         console.error('Ошибка создания таблицы:', err);
@@ -115,7 +112,7 @@ bot.start(async (ctx) => {
             );
         } else {
             db.query(
-                'INSERT INTO user (telegram_id, username, session_token, points) VALUES (?, ?, ?, 10000)',
+                'INSERT INTO user (telegram_id, username, session_token, points, remainingClicks) VALUES (?, ?, ?, 10000, 1000)',
                 [telegramId, username, sessionToken]
             );
         }
@@ -130,7 +127,6 @@ bot.start(async (ctx) => {
         );
     });
 });
-
 
 app.post('/logout', (req, res) => {
     const { userId, remainingClicks, lastLogout } = req.body;
@@ -180,6 +176,7 @@ app.get('/app', async (req, res) => {
                     tapProfitLevel: userData.tapProfitLevel,
                     tapIncreaseLevel: userData.tapIncreaseLevel,
                     remainingClicks: userData.remainingClicks,
+                    lastLogout: userData.last_logout
                 });
             } else {
                 console.error('Пользователь не найден с User ID:', userId);
@@ -191,7 +188,6 @@ app.get('/app', async (req, res) => {
         res.status(500).json({ error: 'Ошибка сервера' });
     }
 });
-
 
 app.post('/save-data', (req, res) => {
     const { userId, points, tapProfitLevel, tapIncreaseLevel, remainingClicks } = req.body;
@@ -226,9 +222,6 @@ app.post('/save-data', (req, res) => {
         });
     });
 });
-
-
-
 
 app.post('/webhook', (req, res) => {
     console.log('Получен запрос на /webhook:', req.body);
