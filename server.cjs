@@ -255,6 +255,7 @@ app.post('/update-clicks', (req, res) => {
 });
 
 
+
 app.post('/webhook', (req, res) => {
     console.log('Получен запрос на /webhook:', req.body);
     bot.handleUpdate(req.body)
