@@ -160,7 +160,8 @@ const App: React.FC = () => {
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload);
     };
-  }, [userId, remainingClicks]);
+}, [userId, remainingClicks]);
+
 
   const saveUpgradeData = useCallback(async (newTapProfitLevel: number, newTapIncreaseLevel: number) => {
     if (userId !== null) {
