@@ -170,14 +170,29 @@ app.get('/app', async (req, res) => {
             }
             if (results.length > 0) {
                 const userData = results[0];
+                const now = new Date().getTime();
+                const lastLogout = new Date(userData.last_logout).getTime();
+                const timeDifferenceInSeconds = Math.floor((now - lastLogout) / 1000);
+
+                const clicksToRestore = Math.min(
+                    Math.floor(timeDifferenceInSeconds), 
+                    userData.tapIncreaseLevel * 500 // Задайте ваш лимит восстановления
+                );
+
+                const updatedClicks = Math.min(
+                    userData.remainingClicks + clicksToRestore,
+                    userData.tapIncreaseLevel * 500 // Максимум кликов
+                );
+
                 return res.json({
                     username: userData.username,
                     points: userData.points,
                     tapProfitLevel: userData.tapProfitLevel,
                     tapIncreaseLevel: userData.tapIncreaseLevel,
-                    remainingClicks: userData.remainingClicks,
+                    remainingClicks: updatedClicks, // Отправляем обновленное значение кликов
                     lastLogout: userData.last_logout
                 });
+
             } else {
                 console.error('Пользователь не найден с User ID:', userId);
                 return res.status(404).json({ error: 'Пользователь не найден' });
@@ -188,6 +203,7 @@ app.get('/app', async (req, res) => {
         res.status(500).json({ error: 'Ошибка сервера' });
     }
 });
+
 
 app.post('/save-data', (req, res) => {
     const { userId, points, tapProfitLevel, tapIncreaseLevel, remainingClicks } = req.body;
