@@ -137,29 +137,31 @@ const App: React.FC = () => {
         .catch((error) => console.error('Ошибка при получении данных с сервера:', error));
 }, [tapProfitLevels, tapIncreaseLevels]);
 
-  useEffect(() => {
-    const handleBeforeUnload = () => {
+useEffect(() => {
+  const handleBeforeUnload = () => {
       if (userId !== null) {
-        fetch('/logout', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ 
-            userId, 
-            remainingClicks, 
-            lastLogout: new Date().toISOString() 
-          }),
-        }).catch((error) => console.error('Ошибка при отправке времени выхода:', error));
+          fetch('/logout', {
+              method: 'POST',
+              headers: {
+                  'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                  userId,
+                  remainingClicks,
+                  points, // Добавляем points в запрос
+                  lastLogout: new Date().toISOString()
+              }),
+          }).catch((error) => console.error('Ошибка при отправке времени выхода:', error));
       }
-    };
+  };
 
-    window.addEventListener('beforeunload', handleBeforeUnload);
+  window.addEventListener('beforeunload', handleBeforeUnload);
 
-    return () => {
+  return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload);
-    };
-}, [userId, remainingClicks]);
+  };
+}, [userId, remainingClicks, points]);
+
 
 const updateRemainingClicks = async (newRemainingClicks: number) => {
   if (userId !== null) {
@@ -250,37 +252,60 @@ const upgradeTapIncrease = async () => {
   }
 };
 
-  const handleMainButtonClick = useCallback((e: React.TouchEvent<HTMLDivElement>) => {
-    const touches = e.touches;
-    if (remainingClicks > 0 && touches.length <= 5) {
+const handleMainButtonClick = useCallback(async (e: React.TouchEvent<HTMLDivElement>) => {
+  const touches = e.touches;
+  if (remainingClicks > 0 && touches.length <= 5) {
       const newRemainingClicks = remainingClicks - touches.length;
       setRemainingClicks(newRemainingClicks);
       updateRemainingClicks(newRemainingClicks);
       
-      setPoints((prevPoints) => prevPoints + tapProfit * touches.length);
+      const newPoints = points + tapProfit * touches.length;
+      setPoints(newPoints);
+
+      // Сохраняем обновленные points на сервер
+      if (userId !== null) {
+          try {
+              await fetch('/save-data', {
+                  method: 'POST',
+                  headers: {
+                      'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify({
+                      userId,
+                      points: newPoints,
+                      tapProfitLevel,
+                      tapIncreaseLevel,
+                      remainingClicks: newRemainingClicks,
+                  }),
+              });
+          } catch (error) {
+              console.error('Ошибка при сохранении данных:', error);
+          }
+      }
 
       const newClicks = Array.from(touches).map((touch) => ({
-        id: Date.now() + touch.identifier,
-        x: touch.clientX,
-        y: touch.clientY,
-        profit: tapProfit,
+          id: Date.now() + touch.identifier,
+          x: touch.clientX,
+          y: touch.clientY,
+          profit: tapProfit,
       }));
 
       setClicks((prevClicks) => [...prevClicks, ...newClicks]);
 
       setTimeout(() => {
-        setClicks((prevClicks) =>
-          prevClicks.filter((click) => !newClicks.some((newClick) => newClick.id === click.id))
-        );
+          setClicks((prevClicks) =>
+              prevClicks.filter((click) => !newClicks.some((newClick) => newClick.id === click.id))
+          );
       }, 1000);
 
       const button = e.currentTarget;
       button.classList.add('clicked');
       setTimeout(() => {
-        button.classList.remove('clicked');
+          button.classList.remove('clicked');
       }, 200);
-    }
-  }, [remainingClicks, tapProfit]);
+  }
+}, [remainingClicks, tapProfit, points, userId, tapProfitLevel, tapIncreaseLevel]);
+
 
   const calculateProgress = useMemo(() => {
     if (levelIndex >= levelNames.length - 1) {
