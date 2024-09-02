@@ -128,37 +128,7 @@ const App: React.FC = () => {
             setLoading(false);
         })
         .catch((error) => console.error('Ошибка при получении данных с сервера:', error));
-  }, [tapProfitLevels, tapIncreaseLevels]);
-
-  const updateRemainingClicks = useCallback(async (newRemainingClicks: number) => {
-    if (userId !== null) {
-      try {
-        const response = await fetch('/update-clicks', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            userId,
-            remainingClicks: newRemainingClicks,
-          }),
-        });
-
-        if (!response.ok) {
-          throw new Error(`Ошибка HTTP: ${response.status}`);
-        }
-
-        const result = await response.json();
-        if (result.success) {
-          console.log('Количество кликов успешно обновлено на сервере.');
-        } else {
-          console.error('Ошибка при обновлении кликов на сервере:', result.error);
-        }
-      } catch (error) {
-        console.error('Ошибка при обновлении кликов:', error);
-      }
-    }
-  }, [userId]);
+}, [tapProfitLevels, tapIncreaseLevels]);
 
   useEffect(() => {
     const handleBeforeUnload = () => {
@@ -182,69 +152,99 @@ const App: React.FC = () => {
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload);
     };
-  }, [userId, remainingClicks]);
+}, [userId, remainingClicks]);
 
-  const saveUpgradeData = useCallback(async (newTapProfitLevel: number, newTapIncreaseLevel: number) => {
-    if (userId !== null) {
-        try {
-            console.log('Отправка POST-запроса для сохранения данных...');
-            const response = await fetch('/save-data', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    userId,
-                    points,
-                    tapProfitLevel: newTapProfitLevel,
-                    tapIncreaseLevel: newTapIncreaseLevel,
-                    remainingClicks, // Сохранение оставшихся кликов
-                }),
-            });
+const updateRemainingClicks = useCallback((newRemainingClicks: number) => {
+  if (userId !== null) {
+    fetch('/update-clicks', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        userId,
+        remainingClicks: newRemainingClicks,
+      }),
+    })
+    .then(response => {
+      if (!response.ok) {
+        throw new Error(`Ошибка HTTP: ${response.status}`);
+      }
+      return response.json();
+    })
+    .then(result => {
+      if (result.success) {
+        console.log('Количество кликов успешно обновлено в базе данных');
+      } else {
+        console.error('Ошибка при обновлении кликов на сервере:', result.error);
+      }
+    })
+    .catch(error => console.error('Ошибка при обновлении кликов:', error));
+  }
+}, [userId]);
 
-            if (!response.ok) {
-                throw new Error(`Ошибка HTTP: ${response.status}`);
-            }
+const saveUpgradeData = useCallback(async (newTapProfitLevel: number, newTapIncreaseLevel: number) => {
+  if (userId !== null) {
+      try {
+          console.log('Отправка POST-запроса для сохранения данных...');
+          const response = await fetch('/save-data', {
+              method: 'POST',
+              headers: {
+                  'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                  userId,
+                  points,
+                  tapProfitLevel: newTapProfitLevel,
+                  tapIncreaseLevel: newTapIncreaseLevel,
+                  remainingClicks, // Сохранение оставшихся кликов
+              }),
+          });
 
-            const result = await response.json();
-            if (result.success) {
-                console.log('POST-запрос успешно отправлен и данные сохранены.');
-                setTapProfitLevel(result.tapProfitLevel);
-                setTapIncreaseLevel(result.tapIncreaseLevel);
-                setRemainingClicks(result.remainingClicks); // Обновляем состояние после сохранения
-            } else {
-                console.error('Ошибка при сохранении данных на сервере:', result.error);
-            }
-        } catch (error) {
-            console.error('Ошибка при сохранении данных:', error);
-        }
-    } else {
-        console.log('userId is null, POST-запрос не отправлен');
-    }
-  }, [userId, points, remainingClicks]);
+          if (!response.ok) {
+              throw new Error(`Ошибка HTTP: ${response.status}`);
+          }
 
-  const upgradeTapProfit = async () => {
-    const nextLevelData = tapProfitLevels[tapProfitLevel];
-    if (nextLevelData && points >= nextLevelData.cost) {
-        const newLevel = tapProfitLevel + 1;
-        setTapProfit(tapProfitLevels[newLevel - 1].profit);
-        setPoints(prevPoints => prevPoints - nextLevelData.cost);
+          const result = await response.json();
+          if (result.success) {
+              console.log('POST-запрос успешно отправлен и данные сохранены.');
+              setTapProfitLevel(result.tapProfitLevel);
+              setTapIncreaseLevel(result.tapIncreaseLevel);
+              setRemainingClicks(result.remainingClicks); // Обновляем состояние после сохранения
+          } else {
+              console.error('Ошибка при сохранении данных на сервере:', result.error);
+          }
+      } catch (error) {
+          console.error('Ошибка при сохранении данных:', error);
+      }
+  } else {
+      console.log('userId is null, POST-запрос не отправлен');
+  }
+}, [userId, points, remainingClicks]);
 
-        await saveUpgradeData(newLevel, tapIncreaseLevel);
-    }
-  };
 
-  const upgradeTapIncrease = async () => {
-    const nextLevelData = tapIncreaseLevels[tapIncreaseLevel];
-    if (nextLevelData && points >= nextLevelData.cost) {
-        const newLevel = tapIncreaseLevel + 1;
-        setMaxClicks(tapIncreaseLevels[newLevel - 1].taps);
-        setRemainingClicks(tapIncreaseLevels[newLevel - 1].taps);
-        setPoints(prevPoints => prevPoints - nextLevelData.cost);
+const upgradeTapProfit = async () => {
+  const nextLevelData = tapProfitLevels[tapProfitLevel];
+  if (nextLevelData && points >= nextLevelData.cost) {
+      const newLevel = tapProfitLevel + 1;
+      setTapProfit(tapProfitLevels[newLevel - 1].profit);
+      setPoints(prevPoints => prevPoints - nextLevelData.cost);
 
-        await saveUpgradeData(tapProfitLevel, newLevel);
-    }
-  };
+      await saveUpgradeData(newLevel, tapIncreaseLevel);
+  }
+};
+
+const upgradeTapIncrease = async () => {
+  const nextLevelData = tapIncreaseLevels[tapIncreaseLevel];
+  if (nextLevelData && points >= nextLevelData.cost) {
+      const newLevel = tapIncreaseLevel + 1;
+      setMaxClicks(tapIncreaseLevels[newLevel - 1].taps);
+      setRemainingClicks(tapIncreaseLevels[newLevel - 1].taps);
+      setPoints(prevPoints => prevPoints - nextLevelData.cost);
+
+      await saveUpgradeData(tapProfitLevel, newLevel);
+  }
+};
 
   const handleMainButtonClick = useCallback((e: React.TouchEvent<HTMLDivElement>) => {
     const touches = e.touches;
@@ -253,7 +253,7 @@ const App: React.FC = () => {
       setRemainingClicks(newRemainingClicks);
       setPoints((prevPoints) => prevPoints + tapProfit * touches.length);
 
-      updateRemainingClicks(newRemainingClicks); // Обновление кликов на сервере
+      updateRemainingClicks(newRemainingClicks); // Обновляем значение в базе данных
 
       const newClicks = Array.from(touches).map((touch) => ({
         id: Date.now() + touch.identifier,
