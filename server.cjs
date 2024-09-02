@@ -205,39 +205,35 @@ app.get('/app', async (req, res) => {
 });
 
 
-app.post('/save-data', (req, res) => {
-    const { userId, points, tapProfitLevel, tapIncreaseLevel, remainingClicks } = req.body;
+app.post('/update-clicks', (req, res) => {
+    const { userId, remainingClicks } = req.body;
 
-    if (!userId || points === undefined || tapProfitLevel === undefined || tapIncreaseLevel === undefined || remainingClicks === undefined) {
-        console.log('Ошибка: Недостаточно данных для сохранения');
+    if (!userId || remainingClicks === undefined) {
+        console.log('Ошибка: Недостаточно данных для обновления кликов');
         return res.status(400).json({ error: 'Missing required fields' });
     }
 
-    console.log(`Получен POST-запрос для userId: ${userId}, points: ${points}, tapProfitLevel: ${tapProfitLevel}, tapIncreaseLevel: ${tapIncreaseLevel}, remainingClicks: ${remainingClicks}`);
-
     const query = `
         UPDATE user 
-        SET points = ?, tapProfitLevel = ?, tapIncreaseLevel = ?, remainingClicks = ?
+        SET remainingClicks = ?
         WHERE telegram_id = ?
     `;
 
-    db.query(query, [points, tapProfitLevel, tapIncreaseLevel, remainingClicks, userId], (err, results) => {
+    db.query(query, [remainingClicks, userId], (err) => {
         if (err) {
-            console.error('Ошибка при сохранении данных:', err);
+            console.error('Ошибка при обновлении кликов:', err);
             return res.status(500).json({ error: 'Server error' });
         }
 
-        console.log('Данные успешно сохранены для пользователя с ID:', userId);
+        console.log('Клики успешно обновлены для пользователя с ID:', userId);
 
         res.json({
             success: true,
-            points,
-            tapProfitLevel,
-            tapIncreaseLevel,
             remainingClicks,
         });
     });
 });
+
 
 // Новый маршрут для обновления количества кликов
 app.post('/update-clicks', (req, res) => {
