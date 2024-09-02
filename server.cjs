@@ -31,7 +31,7 @@ db.connect((err) => {
     console.log('Успешное подключение к базе данных');
 });
 
-db.query(`
+db.query(
     CREATE TABLE IF NOT EXISTS user (
         id INT AUTO_INCREMENT PRIMARY KEY,
         telegram_id BIGINT UNIQUE,
@@ -44,7 +44,7 @@ db.query(`
         remainingClicks INT DEFAULT 1000,
         last_logout TIMESTAMP NULL DEFAULT NULL
     )
-`, (err) => {
+, (err) => {
     if (err) {
         console.error('Ошибка создания таблицы:', err);
     } else {
@@ -96,7 +96,7 @@ function validateSessionToken(token) {
 
 bot.start(async (ctx) => {
     const telegramId = ctx.message.from.id;
-    const username = ctx.message.from.username || `user_${telegramId}`;
+    const username = ctx.message.from.username || user_${telegramId};
 
     const sessionToken = generateSessionToken(telegramId);
 
@@ -117,7 +117,7 @@ bot.start(async (ctx) => {
             );
         }
 
-        const miniAppUrl = `https://t.me/cryptocollect_bot?startapp=${telegramId}&tgWebApp=true&token=${sessionToken}`;
+        const miniAppUrl = https://t.me/cryptocollect_bot?startapp=${telegramId}&tgWebApp=true&token=${sessionToken};
 
         ctx.reply(
             'Добро пожаловать! Нажмите на кнопку ниже, чтобы открыть приложение:',
@@ -135,11 +135,11 @@ app.post('/logout', (req, res) => {
         return res.status(400).json({ error: 'Missing userId' });
     }
 
-    const query = `
+    const query = 
         UPDATE user
         SET last_logout = ?, remainingClicks = ?
         WHERE telegram_id = ?
-    `;
+    ;
 
     db.query(query, [lastLogout, remainingClicks, userId], (err) => {
         if (err) {
@@ -197,13 +197,13 @@ app.post('/save-data', (req, res) => {
         return res.status(400).json({ error: 'Missing required fields' });
     }
 
-    console.log(`Получен POST-запрос для userId: ${userId}, points: ${points}, tapProfitLevel: ${tapProfitLevel}, tapIncreaseLevel: ${tapIncreaseLevel}, remainingClicks: ${remainingClicks}`);
+    console.log(Получен POST-запрос для userId: ${userId}, points: ${points}, tapProfitLevel: ${tapProfitLevel}, tapIncreaseLevel: ${tapIncreaseLevel}, remainingClicks: ${remainingClicks});
 
-    const query = `
+    const query = 
         UPDATE user 
         SET points = ?, tapProfitLevel = ?, tapIncreaseLevel = ?, remainingClicks = ?
         WHERE telegram_id = ?
-    `;
+    ;
 
     db.query(query, [points, tapProfitLevel, tapIncreaseLevel, remainingClicks, userId], (err, results) => {
         if (err) {
@@ -220,32 +220,6 @@ app.post('/save-data', (req, res) => {
             tapIncreaseLevel,
             remainingClicks,
         });
-    });
-});
-
-// Новый маршрут для обновления количества кликов
-app.post('/update-clicks', (req, res) => {
-    const { userId, remainingClicks } = req.body;
-
-    if (!userId || remainingClicks === undefined) {
-        return res.status(400).json({ error: 'Missing required fields' });
-    }
-
-    const query = `
-        UPDATE user 
-        SET remainingClicks = ?
-        WHERE telegram_id = ?
-    `;
-
-    db.query(query, [remainingClicks, userId], (err, results) => {
-        if (err) {
-            console.error('Ошибка при обновлении кликов:', err);
-            return res.status(500).json({ error: 'Server error' });
-        }
-
-        console.log('Клики успешно обновлены для пользователя с ID:', userId);
-
-        res.json({ success: true, remainingClicks });
     });
 });
 
@@ -270,7 +244,7 @@ const startServer = async () => {
         console.log('Webhook успешно установлен:', webhookUrl);
 
         app.listen(port, () => {
-            console.log(`Сервер запущен на порту ${port}`);
+            console.log(Сервер запущен на порту ${port});
         });
     } catch (err) {
         console.error('Ошибка установки вебхука:', err);
