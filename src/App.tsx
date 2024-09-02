@@ -15,8 +15,7 @@ const Farm: React.FC<{ className?: string }> = ({ className }) => (
   </svg>
 );
 
-const RECOVERY_RATE = 1000; // Количество миллисекунд для восстановления одного клика
-const RECOVERY_AMOUNT = 1;  // Количество восстанавливаемых кликов каждую секунду
+const RECOVERY_RATE = 1000;
 
 const App: React.FC = () => {
   const [tapProfit, setTapProfit] = useState(1);
@@ -77,13 +76,7 @@ const App: React.FC = () => {
 
   useEffect(() => {
     const recoveryInterval = setInterval(() => {
-      setRemainingClicks((prevClicks: number) => {
-        const newClicks = Math.min(prevClicks + RECOVERY_AMOUNT, maxClicks);
-        if (newClicks !== prevClicks) {
-          updateRemainingClicks(newClicks);
-        }
-        return newClicks;
-      });
+      setRemainingClicks((prevClicks: number) => Math.min(prevClicks + 1, maxClicks));
     }, RECOVERY_RATE);
 
     return () => clearInterval(recoveryInterval);
@@ -161,35 +154,34 @@ const App: React.FC = () => {
     };
 }, [userId, remainingClicks]);
 
-const updateRemainingClicks = async (newRemainingClicks: number) => {
+const updateRemainingClicks = useCallback((newRemainingClicks: number) => {
   if (userId !== null) {
-    try {
-      const response = await fetch('/update-clicks', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          userId,
-          remainingClicks: newRemainingClicks,
-        }),
-      });
-
+    fetch('/update-clicks', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        userId,
+        remainingClicks: newRemainingClicks,
+      }),
+    })
+    .then(response => {
       if (!response.ok) {
         throw new Error(`Ошибка HTTP: ${response.status}`);
       }
-
-      const result = await response.json();
+      return response.json();
+    })
+    .then(result => {
       if (result.success) {
-        console.log('Клики успешно обновлены на сервере.');
+        console.log('Количество кликов успешно обновлено в базе данных');
       } else {
         console.error('Ошибка при обновлении кликов на сервере:', result.error);
       }
-    } catch (error) {
-      console.error('Ошибка при обновлении кликов:', error);
-    }
+    })
+    .catch(error => console.error('Ошибка при обновлении кликов:', error));
   }
-};
+}, [userId]);
 
 const saveUpgradeData = useCallback(async (newTapProfitLevel: number, newTapIncreaseLevel: number) => {
   if (userId !== null) {
@@ -205,7 +197,7 @@ const saveUpgradeData = useCallback(async (newTapProfitLevel: number, newTapIncr
                   points,
                   tapProfitLevel: newTapProfitLevel,
                   tapIncreaseLevel: newTapIncreaseLevel,
-                  remainingClicks: maxClicks, // Полностью заполняем клики до максимума
+                  remainingClicks, // Сохранение оставшихся кликов
               }),
           });
 
@@ -228,7 +220,8 @@ const saveUpgradeData = useCallback(async (newTapProfitLevel: number, newTapIncr
   } else {
       console.log('userId is null, POST-запрос не отправлен');
   }
-}, [userId, points, maxClicks]);
+}, [userId, points, remainingClicks]);
+
 
 const upgradeTapProfit = async () => {
   const nextLevelData = tapProfitLevels[tapProfitLevel];
@@ -246,7 +239,10 @@ const upgradeTapIncrease = async () => {
   if (nextLevelData && points >= nextLevelData.cost) {
       const newLevel = tapIncreaseLevel + 1;
       setMaxClicks(tapIncreaseLevels[newLevel - 1].taps);
-      await saveUpgradeData(tapProfitLevel, newLevel); // Устанавливаем клики на максимум при прокачке
+      setRemainingClicks(tapIncreaseLevels[newLevel - 1].taps);
+      setPoints(prevPoints => prevPoints - nextLevelData.cost);
+
+      await saveUpgradeData(tapProfitLevel, newLevel);
   }
 };
 
@@ -255,9 +251,9 @@ const upgradeTapIncrease = async () => {
     if (remainingClicks > 0 && touches.length <= 5) {
       const newRemainingClicks = remainingClicks - touches.length;
       setRemainingClicks(newRemainingClicks);
-      updateRemainingClicks(newRemainingClicks);
-      
       setPoints((prevPoints) => prevPoints + tapProfit * touches.length);
+
+      updateRemainingClicks(newRemainingClicks); // Обновляем значение в базе данных
 
       const newClicks = Array.from(touches).map((touch) => ({
         id: Date.now() + touch.identifier,
@@ -280,7 +276,7 @@ const upgradeTapIncrease = async () => {
         button.classList.remove('clicked');
       }, 200);
     }
-  }, [remainingClicks, tapProfit]);
+  }, [remainingClicks, tapProfit, updateRemainingClicks]);
 
   const calculateProgress = useMemo(() => {
     if (levelIndex >= levelNames.length - 1) {
