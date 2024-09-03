@@ -31,6 +31,7 @@ db.connect((err) => {
     console.log('Успешное подключение к базе данных');
 });
 
+// Создание/обновление таблицы 'user' в базе данных
 db.query(`
     CREATE TABLE IF NOT EXISTS user (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -42,7 +43,16 @@ db.query(`
         tapProfitLevel INT DEFAULT 1,
         tapIncreaseLevel INT DEFAULT 1,
         remainingClicks INT DEFAULT 1000,
-        last_logout TIMESTAMP NULL DEFAULT NULL
+        last_logout TIMESTAMP NULL DEFAULT NULL,
+        upgrade1 INT DEFAULT 1,
+        upgrade2 INT DEFAULT 1,
+        upgrade3 INT DEFAULT 1,
+        upgrade4 INT DEFAULT 1,
+        upgrade5 INT DEFAULT 1,
+        upgrade6 INT DEFAULT 1,
+        upgrade7 INT DEFAULT 1,
+        upgrade8 INT DEFAULT 1,
+        farmLevel INT DEFAULT 1
     )
 `, (err) => {
     if (err) {
@@ -150,7 +160,7 @@ app.post('/logout', (req, res) => {
     });
 });
 
-// Обработка входа в приложение и восстановление кликов
+// Обработка входа в приложение и восстановление данных
 app.get('/app', async (req, res) => {
     const userId = req.query.userId;
 
@@ -176,7 +186,16 @@ app.get('/app', async (req, res) => {
                     tapProfitLevel: userData.tapProfitLevel,
                     tapIncreaseLevel: userData.tapIncreaseLevel,
                     remainingClicks: userData.remainingClicks,
-                    lastLogout: userData.last_logout
+                    lastLogout: userData.last_logout,
+                    upgrade1: userData.upgrade1,
+                    upgrade2: userData.upgrade2,
+                    upgrade3: userData.upgrade3,
+                    upgrade4: userData.upgrade4,
+                    upgrade5: userData.upgrade5,
+                    upgrade6: userData.upgrade6,
+                    upgrade7: userData.upgrade7,
+                    upgrade8: userData.upgrade8,
+                    farmLevel: userData.farmLevel
                 });
             } else {
                 console.error('Пользователь не найден с User ID:', userId);
@@ -190,22 +209,64 @@ app.get('/app', async (req, res) => {
 });
 
 app.post('/save-data', (req, res) => {
-    const { userId, points, tapProfitLevel, tapIncreaseLevel, remainingClicks } = req.body;
+    const { 
+        userId, 
+        points, 
+        tapProfitLevel, 
+        tapIncreaseLevel, 
+        remainingClicks, 
+        upgrade1, 
+        upgrade2, 
+        upgrade3, 
+        upgrade4, 
+        upgrade5, 
+        upgrade6, 
+        upgrade7, 
+        upgrade8, 
+        farmLevel 
+    } = req.body;
 
     if (!userId || points === undefined || tapProfitLevel === undefined || tapIncreaseLevel === undefined || remainingClicks === undefined) {
         console.log('Ошибка: Недостаточно данных для сохранения');
         return res.status(400).json({ error: 'Missing required fields' });
     }
 
-    console.log(`Получен POST-запрос для userId: ${userId}, points: ${points}, tapProfitLevel: ${tapProfitLevel}, tapIncreaseLevel: ${tapIncreaseLevel}, remainingClicks: ${remainingClicks}`);
+    console.log(`Получен POST-запрос для userId: ${userId}`);
 
     const query = `
         UPDATE user 
-        SET points = ?, tapProfitLevel = ?, tapIncreaseLevel = ?, remainingClicks = ?
+        SET points = ?, 
+            tapProfitLevel = ?, 
+            tapIncreaseLevel = ?, 
+            remainingClicks = ?, 
+            upgrade1 = ?, 
+            upgrade2 = ?, 
+            upgrade3 = ?, 
+            upgrade4 = ?, 
+            upgrade5 = ?, 
+            upgrade6 = ?, 
+            upgrade7 = ?, 
+            upgrade8 = ?, 
+            farmLevel = ?
         WHERE telegram_id = ?
     `;
 
-    db.query(query, [points, tapProfitLevel, tapIncreaseLevel, remainingClicks, userId], (err, results) => {
+    db.query(query, [
+        points, 
+        tapProfitLevel, 
+        tapIncreaseLevel, 
+        remainingClicks, 
+        upgrade1, 
+        upgrade2, 
+        upgrade3, 
+        upgrade4, 
+        upgrade5, 
+        upgrade6, 
+        upgrade7, 
+        upgrade8, 
+        farmLevel, 
+        userId
+    ], (err, results) => {
         if (err) {
             console.error('Ошибка при сохранении данных:', err);
             return res.status(500).json({ error: 'Server error' });
@@ -219,10 +280,18 @@ app.post('/save-data', (req, res) => {
             tapProfitLevel,
             tapIncreaseLevel,
             remainingClicks,
+            upgrade1,
+            upgrade2,
+            upgrade3,
+            upgrade4,
+            upgrade5,
+            upgrade6,
+            upgrade7,
+            upgrade8,
+            farmLevel
         });
     });
 });
-
 
 // Новый маршрут для обновления количества кликов
 app.post('/update-clicks', (req, res) => {
@@ -253,7 +322,6 @@ app.post('/update-clicks', (req, res) => {
         });
     });
 });
-
 
 
 app.post('/webhook', (req, res) => {
