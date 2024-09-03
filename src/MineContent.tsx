@@ -56,7 +56,6 @@ const MineContent: React.FC<MineContentProps> = ({ points, setPoints, username, 
         .catch((error) => console.error('Ошибка загрузки данных:', error));
     }
   }, [userId]);
-  
 
   const calculateTotalIncome = (upgrades: { [key: string]: number }, farmLevel: number): number => {
     let income = 0;
@@ -101,21 +100,21 @@ const MineContent: React.FC<MineContentProps> = ({ points, setPoints, username, 
       if (currentLevel < 10) {
         const nextLevel = currentLevel + 1;
         const upgradeData = upgradeLevels[selectedUpgrade as keyof typeof upgradeLevels][nextLevel - 1];
-  
+
         if (points >= upgradeData.cost) {
           setUpgrades((prevUpgrades) => ({
             ...prevUpgrades,
             [selectedUpgrade]: nextLevel,
           }));
-  
+
           if ('profit' in upgradeData) {
             setTotalIncome(totalIncome + upgradeData.profit);
           }
-  
+
           setPoints(points - upgradeData.cost);
           setNotificationMessage(`Upgraded ${selectedUpgrade} to level ${nextLevel}`);
           closeUpgradeMenu();
-  
+
           // Сохранение данных на сервере
           fetch('/save-data', {
             method: 'POST',
@@ -148,7 +147,6 @@ const MineContent: React.FC<MineContentProps> = ({ points, setPoints, username, 
       }
     }
   };
-  
 
   const handleFarmLevelClick = () => {
     setIsFarmLevelMenuOpen(true);
@@ -217,7 +215,7 @@ const MineContent: React.FC<MineContentProps> = ({ points, setPoints, username, 
         <div className="flex items-center space-x-2">
           <div className="p-1 rounded-lg bg-gray-800"></div>
           <div>
-            <p className="text-sm text-gray-300">{username ? username : 'Гость'}</p> {/* Используем username */}
+            <p className="text-sm text-gray-300">{username ? username : 'Гость'}</p>
           </div>
         </div>
       </div>
@@ -257,7 +255,7 @@ const MineContent: React.FC<MineContentProps> = ({ points, setPoints, username, 
           <button
             key={index}
             className="w-[100%] h-[100px] bg-gray-700 rounded-lg flex flex-col items-center justify-center bg-cover bg-center"
-            style={{ backgroundImage: 'url(/path/to/placeholder.png)' }} // Заглушка для фона
+            style={{ backgroundImage: 'url(/path/to/placeholder.png)' }}
             onClick={() => handleUpgradeClick(upgrade)}
           >
             <span className="text-sm text-white">{upgrade}</span>
