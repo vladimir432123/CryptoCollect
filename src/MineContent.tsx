@@ -8,7 +8,7 @@ interface MineContentProps {
   setPoints: (points: number | ((prevPoints: number) => number)) => void;
   selectedUpgrade: string | null;
   setSelectedUpgrade: (upgrade: string | null) => void;
-  username: string | null; // Добавляем новый пропс для имени пользователя
+  username: string | null;
   userId: number | null;
 }
 
@@ -70,11 +70,12 @@ const MineContent: React.FC<MineContentProps> = ({ points, setPoints, username, 
 
   useEffect(() => {
     const incomePerSecond = totalIncome / 3600;
-    const interval = setInterval(() => {
-      setPoints((prevPoints: number) => prevPoints + incomePerSecond);
-    }, 1000);
-
-    return () => clearInterval(interval);
+    if (totalIncome > 0) {
+      const interval = setInterval(() => {
+        setPoints((prevPoints: number) => prevPoints + incomePerSecond);
+      }, 1000);
+      return () => clearInterval(interval);
+    }
   }, [totalIncome, setPoints]);
 
   const handleUpgradeClick = (upgrade: string) => {
@@ -138,18 +139,23 @@ const MineContent: React.FC<MineContentProps> = ({ points, setPoints, username, 
               farmLevel: farmLevel || 1,
             }),
           })
-            .then((response) => {
-              if (!response.ok) {
-                throw new Error(`Ошибка HTTP: ${response.status}`);
-              }
-              return response.json();
-            })
-            .then((data) => {
-              if (data.success) {
-                console.log('Улучшение успешно сохранено.');
-              }
-            })
-            .catch((error) => console.error('Ошибка сохранения улучшения:', error));
+          .then((response) => {
+            if (!response.ok) {
+              throw new Error(`Ошибка HTTP: ${response.status}`);
+            }
+            return response.json();
+          })
+          .then((data) => {
+            if (data.success) {
+              console.log('Улучшение успешно сохранено.');
+            } else {
+              console.error('Ошибка на сервере: данные не были сохранены');
+            }
+          })
+          .catch((error) => {
+            console.error('Ошибка сохранения улучшения:', error);
+            alert('Ошибка сохранения данных. Попробуйте снова.');
+          });
         } else {
           alert('Not enough points to upgrade');
         }
@@ -184,17 +190,7 @@ const MineContent: React.FC<MineContentProps> = ({ points, setPoints, username, 
           body: JSON.stringify({
             userId,
             points: points - upgradeData.cost,
-            tapProfitLevel: upgrades['tapProfitLevel'] || 1,
-            tapIncreaseLevel: upgrades['tapIncreaseLevel'] || 1,
-            remainingClicks: upgrades['remainingClicks'] || 1000,
-            upgrade1: upgrades.upgrade1 || 1,
-            upgrade2: upgrades.upgrade2 || 1,
-            upgrade3: upgrades.upgrade3 || 1,
-            upgrade4: upgrades.upgrade4 || 1,
-            upgrade5: upgrades.upgrade5 || 1,
-            upgrade6: upgrades.upgrade6 || 1,
-            upgrade7: upgrades.upgrade7 || 1,
-            upgrade8: upgrades.upgrade8 || 1,
+            ...upgrades,
             farmLevel: nextLevel,
           }),
         })
