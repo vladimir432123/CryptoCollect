@@ -9,33 +9,64 @@ interface MineContentProps {
   selectedUpgrade: string | null;
   setSelectedUpgrade: (upgrade: string | null) => void;
   username: string | null; // Добавляем новый пропс для имени пользователя
+  userId: number | null;
 }
 
 const farmLevelMultipliers = [1, 1.2, 1.2, 1.2, 1.2, 1.2];
 
-const MineContent: React.FC<MineContentProps> = ({ points, setPoints, username }) => {
+const MineContent: React.FC<MineContentProps> = ({ points, setPoints, username, userId }) => {
   const [isUpgradeMenuOpen, setIsUpgradeMenuOpen] = useState(false);
   const [isFarmLevelMenuOpen, setIsFarmLevelMenuOpen] = useState(false);
   const [selectedUpgrade, setSelectedUpgrade] = useState<string | null>(null);
-  const [upgrades, setUpgrades] = useState<{ [key: string]: number }>({});
+  const [upgrades, setUpgrades] = useState<{ [key: string]: number }>({
+    upgrade1: 1, upgrade2: 1, upgrade3: 1, upgrade4: 1,
+    upgrade5: 1, upgrade6: 1, upgrade7: 1, upgrade8: 1
+  });
   const [totalIncome, setTotalIncome] = useState<number>(0);
-  const [farmLevel, setFarmLevel] = useState<number>(0);
+  const [farmLevel, setFarmLevel] = useState<number>(1);
   const [notificationMessage, setNotificationMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    const savedUpgrades = localStorage.getItem('upgrades');
-    const savedTotalIncome = localStorage.getItem('totalIncome');
-    const savedFarmLevel = localStorage.getItem('farmLevel');
-    if (savedUpgrades) setUpgrades(JSON.parse(savedUpgrades));
-    if (savedTotalIncome) setTotalIncome(Number(savedTotalIncome));
-    if (savedFarmLevel) setFarmLevel(Number(savedFarmLevel));
-  }, []);
+    if (userId !== null) {
+      fetch(`/app?userId=${userId}`)
+        .then((response) => response.json())
+        .then((data) => {
+          setUpgrades({
+            upgrade1: data.upgrade1,
+            upgrade2: data.upgrade2,
+            upgrade3: data.upgrade3,
+            upgrade4: data.upgrade4,
+            upgrade5: data.upgrade5,
+            upgrade6: data.upgrade6,
+            upgrade7: data.upgrade7,
+            upgrade8: data.upgrade8
+          });
+          setFarmLevel(data.farmLevel);
+          setTotalIncome(calculateTotalIncome({
+            upgrade1: data.upgrade1,
+            upgrade2: data.upgrade2,
+            upgrade3: data.upgrade3,
+            upgrade4: data.upgrade4,
+            upgrade5: data.upgrade5,
+            upgrade6: data.upgrade6,
+            upgrade7: data.upgrade7,
+            upgrade8: data.upgrade8
+          }, data.farmLevel));
+        })
+        .catch((error) => console.error('Ошибка загрузки данных:', error));
+    }
+  }, [userId]);
 
-  useEffect(() => {
-    localStorage.setItem('upgrades', JSON.stringify(upgrades));
-    localStorage.setItem('totalIncome', totalIncome.toString());
-    localStorage.setItem('farmLevel', farmLevel.toString());
-  }, [upgrades, totalIncome, farmLevel]);
+  const calculateTotalIncome = (upgrades: { [key: string]: number }, farmLevel: number): number => {
+    let income = 0;
+    for (const [key, level] of Object.entries(upgrades)) {
+      const upgradeLevel = upgradeLevels[key as keyof typeof upgradeLevels][level - 1];
+      if ('profit' in upgradeLevel) {
+        income += upgradeLevel.profit;
+      }
+    }
+    return income * farmLevelMultipliers[farmLevel];
+  };
 
   useEffect(() => {
     const incomePerSecond = totalIncome / 3600;
@@ -69,14 +100,18 @@ const MineContent: React.FC<MineContentProps> = ({ points, setPoints, username }
       if (currentLevel < 10) {
         const nextLevel = currentLevel + 1;
         const upgradeData = upgradeLevels[selectedUpgrade as keyof typeof upgradeLevels][nextLevel - 1];
+  
         if (points >= upgradeData.cost) {
           setUpgrades((prevUpgrades) => ({
             ...prevUpgrades,
             [selectedUpgrade]: nextLevel,
           }));
+  
+          // Проверяем, существует ли свойство 'profit'
           if ('profit' in upgradeData) {
             setTotalIncome(totalIncome + upgradeData.profit);
           }
+  
           setPoints(points - upgradeData.cost);
           setNotificationMessage(`Upgraded ${selectedUpgrade} to level ${nextLevel}`);
           closeUpgradeMenu();
@@ -86,6 +121,7 @@ const MineContent: React.FC<MineContentProps> = ({ points, setPoints, username }
       }
     }
   };
+  
 
   const handleFarmLevelClick = () => {
     setIsFarmLevelMenuOpen(true);
@@ -96,14 +132,40 @@ const MineContent: React.FC<MineContentProps> = ({ points, setPoints, username }
   };
 
   const handleFarmUpgrade = () => {
-    if (farmLevel < 5) {
+    if (farmLevel < 5 && userId !== null) {
       const nextLevel = farmLevel + 1;
       const upgradeData = upgradeLevels.farmlevel[nextLevel - 1];
       if (points >= upgradeData.cost) {
         setFarmLevel(nextLevel);
         setPoints(points - upgradeData.cost);
-        setTotalIncome(totalIncome * farmLevelMultipliers[nextLevel]);
+        setTotalIncome(calculateTotalIncome(upgrades, nextLevel));
         setNotificationMessage(`Upgraded Farm Level to ${nextLevel}`);
+
+        // Сохранение изменений на сервере
+        fetch('/save-data', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            userId,
+            points: points - upgradeData.cost,
+            ...upgrades,
+            farmLevel: nextLevel,
+          }),
+        })
+          .then((response) => {
+            if (!response.ok) {
+              throw new Error(`Ошибка HTTP: ${response.status}`);
+            }
+            return response.json();
+          })
+          .then((data) => {
+            if (data.success) {
+              console.log('Уровень фермы успешно сохранен.');
+            }
+          })
+          .catch((error) => console.error('Ошибка сохранения уровня фермы:', error));
       } else {
         alert('Not enough points to upgrade');
       }
