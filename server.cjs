@@ -215,15 +215,15 @@ app.post('/save-data', (req, res) => {
         tapProfitLevel, 
         tapIncreaseLevel, 
         remainingClicks, 
-        upgrade1, 
-        upgrade2, 
-        upgrade3, 
-        upgrade4, 
-        upgrade5, 
-        upgrade6, 
-        upgrade7, 
-        upgrade8, 
-        farmLevel 
+        upgrade1 = 1, 
+        upgrade2 = 1, 
+        upgrade3 = 1, 
+        upgrade4 = 1, 
+        upgrade5 = 1, 
+        upgrade6 = 1, 
+        upgrade7 = 1, 
+        upgrade8 = 1, 
+        farmLevel = 1 
     } = req.body;
 
     if (!userId || points === undefined || tapProfitLevel === undefined || tapIncreaseLevel === undefined || remainingClicks === undefined) {
@@ -292,6 +292,7 @@ app.post('/save-data', (req, res) => {
         });
     });
 });
+
 
 // Новый маршрут для обновления количества кликов
 app.post('/update-clicks', (req, res) => {
