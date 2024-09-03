@@ -56,7 +56,7 @@ const MineContent: React.FC<MineContentProps> = ({ points, setPoints, username, 
         .catch((error) => console.error('Ошибка загрузки данных:', error));
     }
   }, [userId]);
-
+  
 
   const calculateTotalIncome = (upgrades: { [key: string]: number }, farmLevel: number): number => {
     let income = 0;
@@ -108,7 +108,6 @@ const MineContent: React.FC<MineContentProps> = ({ points, setPoints, username, 
             [selectedUpgrade]: nextLevel,
           }));
   
-          // Проверяем, существует ли свойство 'profit'
           if ('profit' in upgradeData) {
             setTotalIncome(totalIncome + upgradeData.profit);
           }
@@ -116,6 +115,33 @@ const MineContent: React.FC<MineContentProps> = ({ points, setPoints, username, 
           setPoints(points - upgradeData.cost);
           setNotificationMessage(`Upgraded ${selectedUpgrade} to level ${nextLevel}`);
           closeUpgradeMenu();
+  
+          // Сохранение данных на сервере
+          fetch('/save-data', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              userId,
+              points: points - upgradeData.cost,
+              ...upgrades,
+              [selectedUpgrade]: nextLevel,
+              farmLevel,
+            }),
+          })
+            .then((response) => {
+              if (!response.ok) {
+                throw new Error(`Ошибка HTTP: ${response.status}`);
+              }
+              return response.json();
+            })
+            .then((data) => {
+              if (data.success) {
+                console.log('Улучшение успешно сохранено.');
+              }
+            })
+            .catch((error) => console.error('Ошибка сохранения улучшения:', error));
         } else {
           alert('Not enough points to upgrade');
         }
