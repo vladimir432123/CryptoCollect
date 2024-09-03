@@ -294,6 +294,7 @@ app.post('/save-data', (req, res) => {
 });
 
 
+
 // Новый маршрут для обновления количества кликов
 app.post('/update-clicks', (req, res) => {
     const { userId, remainingClicks } = req.body;
