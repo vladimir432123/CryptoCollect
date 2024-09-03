@@ -32,30 +32,31 @@ const MineContent: React.FC<MineContentProps> = ({ points, setPoints, username, 
         .then((response) => response.json())
         .then((data) => {
           setUpgrades({
-            upgrade1: data.upgrade1,
-            upgrade2: data.upgrade2,
-            upgrade3: data.upgrade3,
-            upgrade4: data.upgrade4,
-            upgrade5: data.upgrade5,
-            upgrade6: data.upgrade6,
-            upgrade7: data.upgrade7,
-            upgrade8: data.upgrade8
+            upgrade1: data.upgrade1 || 1,
+            upgrade2: data.upgrade2 || 1,
+            upgrade3: data.upgrade3 || 1,
+            upgrade4: data.upgrade4 || 1,
+            upgrade5: data.upgrade5 || 1,
+            upgrade6: data.upgrade6 || 1,
+            upgrade7: data.upgrade7 || 1,
+            upgrade8: data.upgrade8 || 1
           });
-          setFarmLevel(data.farmLevel);
+          setFarmLevel(data.farmLevel || 1);
           setTotalIncome(calculateTotalIncome({
-            upgrade1: data.upgrade1,
-            upgrade2: data.upgrade2,
-            upgrade3: data.upgrade3,
-            upgrade4: data.upgrade4,
-            upgrade5: data.upgrade5,
-            upgrade6: data.upgrade6,
-            upgrade7: data.upgrade7,
-            upgrade8: data.upgrade8
-          }, data.farmLevel));
+            upgrade1: data.upgrade1 || 1,
+            upgrade2: data.upgrade2 || 1,
+            upgrade3: data.upgrade3 || 1,
+            upgrade4: data.upgrade4 || 1,
+            upgrade5: data.upgrade5 || 1,
+            upgrade6: data.upgrade6 || 1,
+            upgrade7: data.upgrade7 || 1,
+            upgrade8: data.upgrade8 || 1
+          }, data.farmLevel || 1));
         })
         .catch((error) => console.error('Ошибка загрузки данных:', error));
     }
   }, [userId]);
+
 
   const calculateTotalIncome = (upgrades: { [key: string]: number }, farmLevel: number): number => {
     let income = 0;
