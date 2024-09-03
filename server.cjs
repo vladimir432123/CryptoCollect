@@ -210,27 +210,27 @@ app.get('/app', async (req, res) => {
 
 app.post('/save-data', (req, res) => {
     const { 
-        userId, 
-        points, 
-        tapProfitLevel, 
-        tapIncreaseLevel, 
-        remainingClicks, 
-        upgrade1 = 1, 
-        upgrade2 = 1, 
-        upgrade3 = 1, 
-        upgrade4 = 1, 
-        upgrade5 = 1, 
-        upgrade6 = 1, 
-        upgrade7 = 1, 
-        upgrade8 = 1, 
-        farmLevel = 1 
+      userId, 
+      points, 
+      tapProfitLevel = 1, 
+      tapIncreaseLevel = 1, 
+      remainingClicks = 1000, 
+      upgrade1 = 1, 
+      upgrade2 = 1, 
+      upgrade3 = 1, 
+      upgrade4 = 1, 
+      upgrade5 = 1, 
+      upgrade6 = 1, 
+      upgrade7 = 1, 
+      upgrade8 = 1, 
+      farmLevel = 1 
     } = req.body;
-
+  
     if (!userId || points === undefined || tapProfitLevel === undefined || tapIncreaseLevel === undefined || remainingClicks === undefined) {
         console.log('Ошибка: Недостаточно данных для сохранения');
         return res.status(400).json({ error: 'Missing required fields' });
     }
-
+  
     console.log(`Получен POST-запрос для userId: ${userId}`);
 
     const query = `
@@ -292,8 +292,6 @@ app.post('/save-data', (req, res) => {
         });
     });
 });
-
-
 
 // Новый маршрут для обновления количества кликов
 app.post('/update-clicks', (req, res) => {
