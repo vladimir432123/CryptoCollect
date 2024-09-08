@@ -252,12 +252,36 @@ const upgradeTapProfit = async () => {
   const nextLevelData = tapProfitLevels[tapProfitLevel];
   if (nextLevelData && points >= nextLevelData.cost) {
       const newLevel = tapProfitLevel + 1;
-      setTapProfit(tapProfitLevels[newLevel - 1].profit);
-      setPoints(prevPoints => prevPoints - nextLevelData.cost);
+      try {
+          const response = await fetch('/save-data', {
+              method: 'POST',
+              headers: {
+                  'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                  userId,
+                  points: points - nextLevelData.cost,
+                  tapProfitLevel: newLevel,
+                  tapIncreaseLevel, 
+                  remainingClicks: maxClicks,
+              }),
+          });
 
-      await saveUpgradeData(newLevel, tapIncreaseLevel);
+          if (!response.ok) throw new Error('Ошибка при сохранении на сервере');
+
+          const data = await response.json();
+          if (data.success) {
+              setTapProfit(tapProfitLevels[newLevel - 1].profit);
+              setPoints(prevPoints => prevPoints - nextLevelData.cost);
+              setTapProfitLevel(newLevel);
+              localStorage.setItem('tapProfitLevel', newLevel.toString());
+          }
+      } catch (error) {
+          console.error('Ошибка при сохранении улучшения:', error);
+      }
   }
 };
+
 
 const upgradeTapIncrease = async () => {
   const nextLevelData = tapIncreaseLevels[tapIncreaseLevel];
