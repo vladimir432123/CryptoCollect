@@ -122,7 +122,7 @@ const MineContent: React.FC<MineContentProps> = ({ points, setPoints, username, 
       if (currentLevel < 10) {
         const nextLevel = currentLevel + 1;
         const upgradeData = upgradeLevels[selectedUpgrade as keyof Upgrades][nextLevel - 1];
-
+  
         if (points >= upgradeData.cost) {
           try {
             const response = await fetch('/save-data', {
@@ -138,9 +138,9 @@ const MineContent: React.FC<MineContentProps> = ({ points, setPoints, username, 
                 farmLevel,
               }),
             });
-
-            if (!response.ok) throw new Error(`Ошибка HTTP: ${response.status}`);
-
+  
+            if (!response.ok) throw new Error('Ошибка при сохранении на сервере');
+  
             const data = await response.json();
             if (data.success) {
               setUpgrades((prevUpgrades) => ({
@@ -149,19 +149,17 @@ const MineContent: React.FC<MineContentProps> = ({ points, setPoints, username, 
               }));
               setPoints(points - upgradeData.cost);
               localStorage.setItem(selectedUpgrade, nextLevel.toString());
-              setNotificationMessage(`Upgraded ${selectedUpgrade} to level ${nextLevel}`);
-              closeUpgradeMenu();
             }
           } catch (error) {
             console.error('Ошибка при сохранении улучшения:', error);
-            alert('Ошибка сохранения данных. Попробуйте снова.');
           }
         } else {
-          alert('Not enough points to upgrade');
+          alert('Недостаточно очков для улучшения');
         }
       }
     }
   };
+  
 
   const handleFarmLevelClick = () => {
     setIsFarmLevelMenuOpen(true);
