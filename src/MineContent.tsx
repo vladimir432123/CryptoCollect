@@ -44,10 +44,48 @@ const MineContent: React.FC<MineContentProps> = ({ points, setPoints, username, 
   };
 
   const saveUpgradesToLocalStorage = (upgrades: Upgrades, farmLevel: number) => {
-    Object.keys(upgrades).forEach((key) => {
-      localStorage.setItem(key, upgrades[key as keyof Upgrades].toString());
-    });
-    localStorage.setItem('farmLevel', farmLevel.toString());
+    try {
+      Object.keys(upgrades).forEach((key) => {
+        localStorage.setItem(key, upgrades[key as keyof Upgrades].toString());
+      });
+      localStorage.setItem('farmLevel', farmLevel.toString());
+    } catch (error) {
+      console.error('Ошибка сохранения в локальное хранилище:', error);
+    }
+  };
+
+  const syncLocalWithServer = async () => {
+    try {
+      const response = await fetch(`/app?userId=${userId}`);
+      const data = await response.json();
+
+      const serverUpgrades: Upgrades = {
+        upgrade1: data.upgrade1 || 1,
+        upgrade2: data.upgrade2 || 1,
+        upgrade3: data.upgrade3 || 1,
+        upgrade4: data.upgrade4 || 1,
+        upgrade5: data.upgrade5 || 1,
+        upgrade6: data.upgrade6 || 1,
+        upgrade7: data.upgrade7 || 1,
+        upgrade8: data.upgrade8 || 1,
+      };
+
+      const localUpgrades = loadUpgradesFromLocalStorage();
+
+      // Сравнение данных между сервером и локальным хранилищем
+      const areUpgradesDifferent = Object.keys(serverUpgrades).some(
+        (key) => serverUpgrades[key as keyof Upgrades] !== localUpgrades[key as keyof Upgrades]
+      );
+
+      if (areUpgradesDifferent || data.farmLevel !== parseInt(localStorage.getItem('farmLevel') || '1')) {
+        // Если есть различия, обновляем локальные данные
+        saveUpgradesToLocalStorage(serverUpgrades, data.farmLevel || 1);
+        setUpgrades(serverUpgrades);
+        setFarmLevel(data.farmLevel || 1);
+      }
+    } catch (error) {
+      console.error('Ошибка синхронизации с сервером:', error);
+    }
   };
 
   const [upgrades, setUpgrades] = useState<Upgrades>(() => loadUpgradesFromLocalStorage());
@@ -59,33 +97,7 @@ const MineContent: React.FC<MineContentProps> = ({ points, setPoints, username, 
 
   useEffect(() => {
     if (userId !== null) {
-      const loadData = async () => {
-        try {
-          const response = await fetch(`/app?userId=${userId}`);
-          const data = await response.json();
-
-          const updatedUpgrades: Upgrades = {
-            upgrade1: data.upgrade1 || 1,
-            upgrade2: data.upgrade2 || 1,
-            upgrade3: data.upgrade3 || 1,
-            upgrade4: data.upgrade4 || 1,
-            upgrade5: data.upgrade5 || 1,
-            upgrade6: data.upgrade6 || 1,
-            upgrade7: data.upgrade7 || 1,
-            upgrade8: data.upgrade8 || 1,
-          };
-          setUpgrades(updatedUpgrades);
-          const updatedFarmLevel = data.farmLevel || 1;
-          setFarmLevel(updatedFarmLevel);
-
-          saveUpgradesToLocalStorage(updatedUpgrades, updatedFarmLevel);
-          setTotalIncome(calculateTotalIncome(updatedUpgrades, updatedFarmLevel));
-        } catch (error) {
-          console.error('Ошибка загрузки данных:', error);
-        }
-      };
-
-      loadData();
+      syncLocalWithServer();
     }
   }, [userId]);
 
