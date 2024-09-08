@@ -160,7 +160,6 @@ app.post('/logout', (req, res) => {
     });
 });
 
-// Обработка входа в приложение и восстановление данных
 app.get('/app', async (req, res) => {
     const userId = req.query.userId;
 
@@ -231,8 +230,6 @@ app.post('/save-data', (req, res) => {
         return res.status(400).json({ error: 'Missing required fields' });
     }
   
-    console.log(`Получен POST-запрос для userId: ${userId}`);
-
     const query = `
         UPDATE user 
         SET points = ?, 
@@ -293,7 +290,6 @@ app.post('/save-data', (req, res) => {
     });
 });
 
-// Новый маршрут для обновления количества кликов
 app.post('/update-clicks', (req, res) => {
     const { userId, remainingClicks } = req.body;
 
@@ -322,7 +318,6 @@ app.post('/update-clicks', (req, res) => {
         });
     });
 });
-
 
 app.post('/webhook', (req, res) => {
     console.log('Получен запрос на /webhook:', req.body);
