@@ -252,6 +252,7 @@ const upgradeTapProfit = async () => {
   const nextLevelData = tapProfitLevels[tapProfitLevel];
   if (nextLevelData && points >= nextLevelData.cost) {
       const newLevel = tapProfitLevel + 1;
+
       try {
           const response = await fetch('/save-data', {
               method: 'POST',
@@ -271,6 +272,7 @@ const upgradeTapProfit = async () => {
 
           const data = await response.json();
           if (data.success) {
+              // Обновляем состояние только после успешного ответа от сервера
               setTapProfit(tapProfitLevels[newLevel - 1].profit);
               setPoints(prevPoints => prevPoints - nextLevelData.cost);
               setTapProfitLevel(newLevel);
@@ -278,9 +280,11 @@ const upgradeTapProfit = async () => {
           }
       } catch (error) {
           console.error('Ошибка при сохранении улучшения:', error);
+          alert('Ошибка при обновлении улучшения. Попробуйте снова.');
       }
   }
 };
+
 
 
 const upgradeTapIncrease = async () => {
