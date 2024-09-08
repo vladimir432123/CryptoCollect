@@ -12,7 +12,6 @@ interface MineContentProps {
   userId: number | null;
 }
 
-// Обновляем тип для поддержки динамической индексации
 type Upgrades = {
   upgrade1: number;
   upgrade2: number;
@@ -31,7 +30,6 @@ const MineContent: React.FC<MineContentProps> = ({ points, setPoints, username, 
   const [isFarmLevelMenuOpen, setIsFarmLevelMenuOpen] = useState(false);
   const [selectedUpgrade, setSelectedUpgrade] = useState<string | null>(null);
 
-  // Обновляем и сохраняем улучшения
   const [upgrades, setUpgrades] = useState<Upgrades>({
     upgrade1: parseInt(localStorage.getItem('upgrade1') || '1'),
     upgrade2: parseInt(localStorage.getItem('upgrade2') || '1'),
@@ -69,10 +67,10 @@ const MineContent: React.FC<MineContentProps> = ({ points, setPoints, username, 
           setTotalIncome(calculateTotalIncome(updatedUpgrades, data.farmLevel || 1));
 
           // Сохранение данных в локальное хранилище
-          localStorage.setItem('farmLevel', (data.farmLevel || '1').toString());
           Object.keys(updatedUpgrades).forEach((key) => {
             localStorage.setItem(key, updatedUpgrades[key as keyof Upgrades].toString());
           });
+          localStorage.setItem('farmLevel', (data.farmLevel || '1').toString());
         })
         .catch((error) => console.error('Ошибка загрузки данных:', error));
     }
@@ -109,7 +107,6 @@ const MineContent: React.FC<MineContentProps> = ({ points, setPoints, username, 
     setSelectedUpgrade(null);
   };
 
-  // Здесь мы добавляем недостающую функцию handleOverlayClick
   const handleOverlayClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (e.target === e.currentTarget) {
       closeUpgradeMenu();
@@ -125,6 +122,9 @@ const MineContent: React.FC<MineContentProps> = ({ points, setPoints, username, 
         const upgradeData = upgradeLevels[selectedUpgrade as keyof Upgrades][nextLevel - 1];
 
         if (points >= upgradeData.cost) {
+          // Сохраняем текущий уровень в локальное хранилище перед отправкой на сервер
+          localStorage.setItem(selectedUpgrade, nextLevel.toString());
+
           try {
             const response = await fetch('/save-data', {
               method: 'POST',
@@ -144,15 +144,18 @@ const MineContent: React.FC<MineContentProps> = ({ points, setPoints, username, 
 
             const data = await response.json();
             if (data.success) {
-              // Обновляем состояние только после успешного ответа от сервера
               setUpgrades((prevUpgrades) => ({
                 ...prevUpgrades,
                 [selectedUpgrade]: nextLevel,
               }));
               setPoints(points - upgradeData.cost);
               localStorage.setItem(selectedUpgrade, nextLevel.toString());
+            } else {
+              localStorage.setItem(selectedUpgrade, currentLevel.toString());
+              alert('Ошибка при обновлении. Пожалуйста, повторите попытку.');
             }
           } catch (error) {
+            localStorage.setItem(selectedUpgrade, currentLevel.toString());
             console.error('Ошибка при сохранении улучшения:', error);
             alert('Ошибка при обновлении улучшения. Попробуйте снова.');
           }
@@ -200,13 +203,15 @@ const MineContent: React.FC<MineContentProps> = ({ points, setPoints, username, 
             localStorage.setItem('farmLevel', nextLevel.toString());
             setNotificationMessage(`Upgraded Farm Level to ${nextLevel}`);
             closeFarmLevelMenu();
+          } else {
+            alert('Ошибка при обновлении уровня фермы. Пожалуйста, повторите попытку.');
           }
         } catch (error) {
           console.error('Ошибка сохранения уровня фермы:', error);
           alert('Ошибка сохранения данных. Попробуйте снова.');
         }
       } else {
-        alert('Not enough points to upgrade');
+        alert('Недостаточно очков для улучшения');
       }
     }
   };
