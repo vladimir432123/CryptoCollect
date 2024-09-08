@@ -20,9 +20,18 @@ const RECOVERY_AMOUNT = 1;  // Количество восстанавливае
 
 const App: React.FC = () => {
   const [tapProfit, setTapProfit] = useState(1);
-  const [tapProfitLevel, setTapProfitLevel] = useState<number>(1);
-  const [maxClicks, setMaxClicks] = useState<number>(1000);
-  const [tapIncreaseLevel, setTapIncreaseLevel] = useState<number>(1);
+  const [tapProfitLevel, setTapProfitLevel] = useState<number>(() => {
+    const savedLevel = localStorage.getItem('tapProfitLevel');
+    return savedLevel ? parseInt(savedLevel) : 1;
+  });
+  const [maxClicks, setMaxClicks] = useState<number>(() => {
+    const savedMaxClicks = localStorage.getItem('maxClicks');
+    return savedMaxClicks ? parseInt(savedMaxClicks) : 1000;
+  });
+  const [tapIncreaseLevel, setTapIncreaseLevel] = useState<number>(() => {
+    const savedLevel = localStorage.getItem('tapIncreaseLevel');
+    return savedLevel ? parseInt(savedLevel) : 1;
+  });
   const [remainingClicks, setRemainingClicks] = useState<number>(maxClicks);
   const [points, setPoints] = useState<number>(() => {
     const savedPoints = localStorage.getItem('points');
@@ -122,10 +131,13 @@ const App: React.FC = () => {
             if (data.tapProfitLevel !== undefined) {
                 setTapProfitLevel(data.tapProfitLevel);
                 setTapProfit(tapProfitLevels[data.tapProfitLevel - 1].profit);
+                localStorage.setItem('tapProfitLevel', data.tapProfitLevel.toString());
             }
             if (data.tapIncreaseLevel !== undefined) {
                 setTapIncreaseLevel(data.tapIncreaseLevel);
                 setMaxClicks(tapIncreaseLevels[data.tapIncreaseLevel - 1].taps);
+                localStorage.setItem('tapIncreaseLevel', data.tapIncreaseLevel.toString());
+                localStorage.setItem('maxClicks', tapIncreaseLevels[data.tapIncreaseLevel - 1].taps.toString());
             }
             if (data.remainingClicks !== undefined) {
                 setRemainingClicks(data.remainingClicks); // Устанавливаем загруженные клики
@@ -161,7 +173,6 @@ const App: React.FC = () => {
       window.removeEventListener('beforeunload', handleBeforeUnload);
     };
   }, [userId, remainingClicks, points]);
-
 
 const updateRemainingClicks = async (newRemainingClicks: number) => {
   if (userId !== null) {
@@ -221,6 +232,11 @@ const saveUpgradeData = useCallback(async (newTapProfitLevel: number, newTapIncr
               setTapProfitLevel(result.tapProfitLevel);
               setTapIncreaseLevel(result.tapIncreaseLevel);
               setRemainingClicks(result.remainingClicks); // Обновляем состояние после сохранения
+
+              // Резервное сохранение
+              localStorage.setItem('tapProfitLevel', result.tapProfitLevel.toString());
+              localStorage.setItem('tapIncreaseLevel', result.tapIncreaseLevel.toString());
+              localStorage.setItem('maxClicks', tapIncreaseLevels[result.tapIncreaseLevel - 1].taps.toString());
           } else {
               console.error('Ошибка при сохранении данных на сервере:', result.error);
           }
@@ -230,7 +246,7 @@ const saveUpgradeData = useCallback(async (newTapProfitLevel: number, newTapIncr
   } else {
       console.log('userId is null, POST-запрос не отправлен');
   }
-}, [userId, points, maxClicks]);
+}, [userId, points, maxClicks, tapIncreaseLevels]);
 
 const upgradeTapProfit = async () => {
   const nextLevelData = tapProfitLevels[tapProfitLevel];
@@ -262,7 +278,9 @@ const handleMainButtonClick = useCallback(async (e: React.TouchEvent<HTMLDivElem
       const newPoints = points + tapProfit * touches.length;
       setPoints(newPoints);
 
-      // Сохраняем обновленные points на сервер
+      // Сохраняем обновленные points на сервер и в локальном хранилище
+      localStorage.setItem('points', newPoints.toString());
+
       if (userId !== null) {
           try {
               await fetch('/save-data', {
