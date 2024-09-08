@@ -30,7 +30,7 @@ const MineContent: React.FC<MineContentProps> = ({ points, setPoints, username, 
   const [isUpgradeMenuOpen, setIsUpgradeMenuOpen] = useState(false);
   const [isFarmLevelMenuOpen, setIsFarmLevelMenuOpen] = useState(false);
   const [selectedUpgrade, setSelectedUpgrade] = useState<string | null>(null);
-  
+
   // Обновляем и сохраняем улучшения
   const [upgrades, setUpgrades] = useState<Upgrades>({
     upgrade1: parseInt(localStorage.getItem('upgrade1') || '1'),
@@ -42,7 +42,7 @@ const MineContent: React.FC<MineContentProps> = ({ points, setPoints, username, 
     upgrade7: parseInt(localStorage.getItem('upgrade7') || '1'),
     upgrade8: parseInt(localStorage.getItem('upgrade8') || '1'),
   });
-  
+
   const [totalIncome, setTotalIncome] = useState<number>(0);
   const [farmLevel, setFarmLevel] = useState<number>(() => {
     return parseInt(localStorage.getItem('farmLevel') || '1');
@@ -109,6 +109,7 @@ const MineContent: React.FC<MineContentProps> = ({ points, setPoints, username, 
     setSelectedUpgrade(null);
   };
 
+  // Здесь мы добавляем недостающую функцию handleOverlayClick
   const handleOverlayClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (e.target === e.currentTarget) {
       closeUpgradeMenu();
@@ -122,7 +123,7 @@ const MineContent: React.FC<MineContentProps> = ({ points, setPoints, username, 
       if (currentLevel < 10) {
         const nextLevel = currentLevel + 1;
         const upgradeData = upgradeLevels[selectedUpgrade as keyof Upgrades][nextLevel - 1];
-  
+
         if (points >= upgradeData.cost) {
           try {
             const response = await fetch('/save-data', {
@@ -138,9 +139,9 @@ const MineContent: React.FC<MineContentProps> = ({ points, setPoints, username, 
                 farmLevel,
               }),
             });
-  
+
             if (!response.ok) throw new Error('Ошибка при сохранении на сервере');
-  
+
             const data = await response.json();
             if (data.success) {
               // Обновляем состояние только после успешного ответа от сервера
@@ -161,8 +162,6 @@ const MineContent: React.FC<MineContentProps> = ({ points, setPoints, username, 
       }
     }
   };
-  
-  
 
   const handleFarmLevelClick = () => {
     setIsFarmLevelMenuOpen(true);
