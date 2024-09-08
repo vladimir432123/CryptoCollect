@@ -26,36 +26,47 @@ const MineContent: React.FC<MineContentProps> = ({ points, setPoints, username, 
   const [farmLevel, setFarmLevel] = useState<number>(1);
   const [notificationMessage, setNotificationMessage] = useState<string | null>(null);
 
+  // Восстановление улучшений из localStorage
   useEffect(() => {
-    if (userId !== null) {
+    const savedUpgrades = localStorage.getItem('mineUpgrades');
+    if (savedUpgrades) {
+      const parsedUpgrades = JSON.parse(savedUpgrades);
+      setUpgrades(parsedUpgrades);
+      setFarmLevel(parsedUpgrades.farmLevel || 1);
+      setTotalIncome(calculateTotalIncome(parsedUpgrades, parsedUpgrades.farmLevel || 1));
+    }
+  }, []);
+
+  // Сохранение улучшений в localStorage при изменении
+  useEffect(() => {
+    localStorage.setItem('mineUpgrades', JSON.stringify({ ...upgrades, farmLevel }));
+  }, [upgrades, farmLevel]);
+
+  // Регулярная синхронизация данных с сервером
+  useEffect(() => {
+    const syncInterval = setInterval(() => {
       fetch(`/app?userId=${userId}`)
         .then((response) => response.json())
         .then((data) => {
-          setUpgrades({
-            upgrade1: data.upgrade1 || 1,
-            upgrade2: data.upgrade2 || 1,
-            upgrade3: data.upgrade3 || 1,
-            upgrade4: data.upgrade4 || 1,
-            upgrade5: data.upgrade5 || 1,
-            upgrade6: data.upgrade6 || 1,
-            upgrade7: data.upgrade7 || 1,
-            upgrade8: data.upgrade8 || 1
-          });
-          setFarmLevel(data.farmLevel || 1);
-          setTotalIncome(calculateTotalIncome({
-            upgrade1: data.upgrade1 || 1,
-            upgrade2: data.upgrade2 || 1,
-            upgrade3: data.upgrade3 || 1,
-            upgrade4: data.upgrade4 || 1,
-            upgrade5: data.upgrade5 || 1,
-            upgrade6: data.upgrade6 || 1,
-            upgrade7: data.upgrade7 || 1,
-            upgrade8: data.upgrade8 || 1
-          }, data.farmLevel || 1));
-        })
-        .catch((error) => console.error('Ошибка загрузки данных:', error));
-    }
-  }, [userId]);
+          if (data.upgrades && JSON.stringify(data.upgrades) !== JSON.stringify(upgrades)) {
+            setUpgrades({
+              upgrade1: data.upgrade1 || 1,
+              upgrade2: data.upgrade2 || 1,
+              upgrade3: data.upgrade3 || 1,
+              upgrade4: data.upgrade4 || 1,
+              upgrade5: data.upgrade5 || 1,
+              upgrade6: data.upgrade6 || 1,
+              upgrade7: data.upgrade7 || 1,
+              upgrade8: data.upgrade8 || 1
+            });
+            setFarmLevel(data.farmLevel || 1);
+            setTotalIncome(calculateTotalIncome(data, data.farmLevel || 1));
+          }
+        });
+    }, 30000); // каждые 30 секунд
+
+    return () => clearInterval(syncInterval);
+  }, [userId, upgrades]);
 
   const calculateTotalIncome = (upgrades: { [key: string]: number }, farmLevel: number): number => {
     let income = 0;
@@ -125,9 +136,6 @@ const MineContent: React.FC<MineContentProps> = ({ points, setPoints, username, 
             body: JSON.stringify({
               userId,
               points: points - upgradeData.cost,
-              tapProfitLevel: upgrades['tapProfitLevel'] || 1,
-              tapIncreaseLevel: upgrades['tapIncreaseLevel'] || 1,
-              remainingClicks: upgrades['remainingClicks'] || 1000,
               upgrade1: upgrades.upgrade1 || 1,
               upgrade2: upgrades.upgrade2 || 1,
               upgrade3: upgrades.upgrade3 || 1,
