@@ -18,12 +18,22 @@ const MineContent: React.FC<MineContentProps> = ({ points, setPoints, username, 
   const [isUpgradeMenuOpen, setIsUpgradeMenuOpen] = useState(false);
   const [isFarmLevelMenuOpen, setIsFarmLevelMenuOpen] = useState(false);
   const [selectedUpgrade, setSelectedUpgrade] = useState<string | null>(null);
-  const [upgrades, setUpgrades] = useState<{ [key: string]: number }>({
-    upgrade1: 1, upgrade2: 1, upgrade3: 1, upgrade4: 1,
-    upgrade5: 1, upgrade6: 1, upgrade7: 1, upgrade8: 1
+  const [upgrades, setUpgrades] = useState<{ [key: string]: number }>(() => {
+    return {
+      upgrade1: parseInt(localStorage.getItem('upgrade1') || '1'),
+      upgrade2: parseInt(localStorage.getItem('upgrade2') || '1'),
+      upgrade3: parseInt(localStorage.getItem('upgrade3') || '1'),
+      upgrade4: parseInt(localStorage.getItem('upgrade4') || '1'),
+      upgrade5: parseInt(localStorage.getItem('upgrade5') || '1'),
+      upgrade6: parseInt(localStorage.getItem('upgrade6') || '1'),
+      upgrade7: parseInt(localStorage.getItem('upgrade7') || '1'),
+      upgrade8: parseInt(localStorage.getItem('upgrade8') || '1'),
+    };
   });
   const [totalIncome, setTotalIncome] = useState<number>(0);
-  const [farmLevel, setFarmLevel] = useState<number>(1);
+  const [farmLevel, setFarmLevel] = useState<number>(() => {
+    return parseInt(localStorage.getItem('farmLevel') || '1');
+  });
   const [notificationMessage, setNotificationMessage] = useState<string | null>(null);
 
   useEffect(() => {
@@ -39,7 +49,7 @@ const MineContent: React.FC<MineContentProps> = ({ points, setPoints, username, 
             upgrade5: data.upgrade5 || 1,
             upgrade6: data.upgrade6 || 1,
             upgrade7: data.upgrade7 || 1,
-            upgrade8: data.upgrade8 || 1
+            upgrade8: data.upgrade8 || 1,
           });
           setFarmLevel(data.farmLevel || 1);
           setTotalIncome(calculateTotalIncome({
@@ -50,8 +60,15 @@ const MineContent: React.FC<MineContentProps> = ({ points, setPoints, username, 
             upgrade5: data.upgrade5 || 1,
             upgrade6: data.upgrade6 || 1,
             upgrade7: data.upgrade7 || 1,
-            upgrade8: data.upgrade8 || 1
+            upgrade8: data.upgrade8 || 1,
           }, data.farmLevel || 1));
+          // Сохраняем данные в localStorage
+          localStorage.setItem('farmLevel', data.farmLevel || '1');
+          Object.keys(data).forEach(key => {
+            if (key.startsWith('upgrade')) {
+              localStorage.setItem(key, data[key] || '1');
+            }
+          });
         })
         .catch((error) => console.error('Ошибка загрузки данных:', error));
     }
@@ -116,6 +133,9 @@ const MineContent: React.FC<MineContentProps> = ({ points, setPoints, username, 
           setNotificationMessage(`Upgraded ${selectedUpgrade} to level ${nextLevel}`);
           closeUpgradeMenu();
 
+          // Сохраняем в localStorage
+          localStorage.setItem(selectedUpgrade, nextLevel.toString());
+
           // Сохранение данных на сервере
           fetch('/save-data', {
             method: 'POST',
@@ -125,18 +145,8 @@ const MineContent: React.FC<MineContentProps> = ({ points, setPoints, username, 
             body: JSON.stringify({
               userId,
               points: points - upgradeData.cost,
-              tapProfitLevel: upgrades['tapProfitLevel'] || 1,
-              tapIncreaseLevel: upgrades['tapIncreaseLevel'] || 1,
-              remainingClicks: upgrades['remainingClicks'] || 1000,
-              upgrade1: upgrades.upgrade1 || 1,
-              upgrade2: upgrades.upgrade2 || 1,
-              upgrade3: upgrades.upgrade3 || 1,
-              upgrade4: upgrades.upgrade4 || 1,
-              upgrade5: upgrades.upgrade5 || 1,
-              upgrade6: upgrades.upgrade6 || 1,
-              upgrade7: upgrades.upgrade7 || 1,
-              upgrade8: upgrades.upgrade8 || 1,
-              farmLevel: farmLevel || 1,
+              ...upgrades,
+              farmLevel,
             }),
           })
           .then((response) => {
@@ -180,6 +190,9 @@ const MineContent: React.FC<MineContentProps> = ({ points, setPoints, username, 
         setPoints(points - upgradeData.cost);
         setTotalIncome(calculateTotalIncome(upgrades, nextLevel));
         setNotificationMessage(`Upgraded Farm Level to ${nextLevel}`);
+
+        // Сохраняем в localStorage
+        localStorage.setItem('farmLevel', nextLevel.toString());
 
         // Сохранение изменений на сервере
         fetch('/save-data', {
