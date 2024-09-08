@@ -49,10 +49,13 @@ const MineContent: React.FC<MineContentProps> = ({ points, setPoints, username, 
 
   useEffect(() => {
     if (userId !== null) {
-      fetch(`/app?userId=${userId}`)
-        .then((response) => response.json())
-        .then((data) => {
-          const updatedUpgrades: Upgrades = {
+      const loadData = async () => {
+        try {
+          const response = await fetch(`/app?userId=${userId}`);
+          const data = await response.json();
+          
+          // Устанавливаем данные улучшений и фермы
+          const updatedUpgrades = {
             upgrade1: data.upgrade1 || 1,
             upgrade2: data.upgrade2 || 1,
             upgrade3: data.upgrade3 || 1,
@@ -63,18 +66,27 @@ const MineContent: React.FC<MineContentProps> = ({ points, setPoints, username, 
             upgrade8: data.upgrade8 || 1,
           };
           setUpgrades(updatedUpgrades);
-          setFarmLevel(data.farmLevel || 1);
-          setTotalIncome(calculateTotalIncome(updatedUpgrades, data.farmLevel || 1));
-
-          // Сохранение данных в локальное хранилище
-          Object.keys(updatedUpgrades).forEach((key) => {
-            localStorage.setItem(key, updatedUpgrades[key as keyof Upgrades].toString());
+          const updatedFarmLevel = data.farmLevel || 1;
+          setFarmLevel(updatedFarmLevel);
+          
+          // Сохранение в локальное хранилище
+          Object.keys(data).forEach((key) => {
+            if (data[key] !== undefined) localStorage.setItem(key, data[key]);
           });
-          localStorage.setItem('farmLevel', (data.farmLevel || '1').toString());
-        })
-        .catch((error) => console.error('Ошибка загрузки данных:', error));
+          
+          // Исправление ошибки: теперь вызываем функцию с двумя аргументами
+          setTotalIncome(calculateTotalIncome(updatedUpgrades, updatedFarmLevel));
+        } catch (error) {
+          console.error('Ошибка загрузки данных:', error);
+        }
+      };
+
+      loadData();
     }
   }, [userId]);
+
+
+
 
   const calculateTotalIncome = (upgrades: Upgrades, farmLevel: number): number => {
     let income = 0;
