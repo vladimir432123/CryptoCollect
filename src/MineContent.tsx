@@ -12,24 +12,37 @@ interface MineContentProps {
   userId: number | null;
 }
 
+// Обновляем тип для поддержки динамической индексации
+type Upgrades = {
+  upgrade1: number;
+  upgrade2: number;
+  upgrade3: number;
+  upgrade4: number;
+  upgrade5: number;
+  upgrade6: number;
+  upgrade7: number;
+  upgrade8: number;
+};
+
 const farmLevelMultipliers = [1, 1.2, 1.2, 1.2, 1.2, 1.2];
 
 const MineContent: React.FC<MineContentProps> = ({ points, setPoints, username, userId }) => {
   const [isUpgradeMenuOpen, setIsUpgradeMenuOpen] = useState(false);
   const [isFarmLevelMenuOpen, setIsFarmLevelMenuOpen] = useState(false);
   const [selectedUpgrade, setSelectedUpgrade] = useState<string | null>(null);
-  const [upgrades, setUpgrades] = useState<{ [key: string]: number }>(() => {
-    return {
-      upgrade1: parseInt(localStorage.getItem('upgrade1') || '1'),
-      upgrade2: parseInt(localStorage.getItem('upgrade2') || '1'),
-      upgrade3: parseInt(localStorage.getItem('upgrade3') || '1'),
-      upgrade4: parseInt(localStorage.getItem('upgrade4') || '1'),
-      upgrade5: parseInt(localStorage.getItem('upgrade5') || '1'),
-      upgrade6: parseInt(localStorage.getItem('upgrade6') || '1'),
-      upgrade7: parseInt(localStorage.getItem('upgrade7') || '1'),
-      upgrade8: parseInt(localStorage.getItem('upgrade8') || '1'),
-    };
+  
+  // Обновляем и сохраняем улучшения
+  const [upgrades, setUpgrades] = useState<Upgrades>({
+    upgrade1: parseInt(localStorage.getItem('upgrade1') || '1'),
+    upgrade2: parseInt(localStorage.getItem('upgrade2') || '1'),
+    upgrade3: parseInt(localStorage.getItem('upgrade3') || '1'),
+    upgrade4: parseInt(localStorage.getItem('upgrade4') || '1'),
+    upgrade5: parseInt(localStorage.getItem('upgrade5') || '1'),
+    upgrade6: parseInt(localStorage.getItem('upgrade6') || '1'),
+    upgrade7: parseInt(localStorage.getItem('upgrade7') || '1'),
+    upgrade8: parseInt(localStorage.getItem('upgrade8') || '1'),
   });
+  
   const [totalIncome, setTotalIncome] = useState<number>(0);
   const [farmLevel, setFarmLevel] = useState<number>(() => {
     return parseInt(localStorage.getItem('farmLevel') || '1');
@@ -41,7 +54,7 @@ const MineContent: React.FC<MineContentProps> = ({ points, setPoints, username, 
       fetch(`/app?userId=${userId}`)
         .then((response) => response.json())
         .then((data) => {
-          setUpgrades({
+          const updatedUpgrades: Upgrades = {
             upgrade1: data.upgrade1 || 1,
             upgrade2: data.upgrade2 || 1,
             upgrade3: data.upgrade3 || 1,
@@ -50,34 +63,25 @@ const MineContent: React.FC<MineContentProps> = ({ points, setPoints, username, 
             upgrade6: data.upgrade6 || 1,
             upgrade7: data.upgrade7 || 1,
             upgrade8: data.upgrade8 || 1,
-          });
+          };
+          setUpgrades(updatedUpgrades);
           setFarmLevel(data.farmLevel || 1);
-          setTotalIncome(calculateTotalIncome({
-            upgrade1: data.upgrade1 || 1,
-            upgrade2: data.upgrade2 || 1,
-            upgrade3: data.upgrade3 || 1,
-            upgrade4: data.upgrade4 || 1,
-            upgrade5: data.upgrade5 || 1,
-            upgrade6: data.upgrade6 || 1,
-            upgrade7: data.upgrade7 || 1,
-            upgrade8: data.upgrade8 || 1,
-          }, data.farmLevel || 1));
-          // Сохраняем данные в localStorage
-          localStorage.setItem('farmLevel', data.farmLevel || '1');
-          Object.keys(data).forEach(key => {
-            if (key.startsWith('upgrade')) {
-              localStorage.setItem(key, data[key] || '1');
-            }
+          setTotalIncome(calculateTotalIncome(updatedUpgrades, data.farmLevel || 1));
+
+          // Сохранение данных в локальное хранилище
+          localStorage.setItem('farmLevel', (data.farmLevel || '1').toString());
+          Object.keys(updatedUpgrades).forEach((key) => {
+            localStorage.setItem(key, updatedUpgrades[key as keyof Upgrades].toString());
           });
         })
         .catch((error) => console.error('Ошибка загрузки данных:', error));
     }
   }, [userId]);
 
-  const calculateTotalIncome = (upgrades: { [key: string]: number }, farmLevel: number): number => {
+  const calculateTotalIncome = (upgrades: Upgrades, farmLevel: number): number => {
     let income = 0;
     for (const [key, level] of Object.entries(upgrades)) {
-      const upgradeLevel = upgradeLevels[key as keyof typeof upgradeLevels][level - 1];
+      const upgradeLevel = upgradeLevels[key as keyof Upgrades][level - 1];
       if ('profit' in upgradeLevel) {
         income += upgradeLevel.profit;
       }
@@ -112,60 +116,46 @@ const MineContent: React.FC<MineContentProps> = ({ points, setPoints, username, 
     }
   };
 
-  const handleUpgrade = () => {
+  const handleUpgrade = async () => {
     if (selectedUpgrade) {
-      const currentLevel = upgrades[selectedUpgrade] || 1;
+      const currentLevel = upgrades[selectedUpgrade as keyof Upgrades] || 1;
       if (currentLevel < 10) {
         const nextLevel = currentLevel + 1;
-        const upgradeData = upgradeLevels[selectedUpgrade as keyof typeof upgradeLevels][nextLevel - 1];
+        const upgradeData = upgradeLevels[selectedUpgrade as keyof Upgrades][nextLevel - 1];
 
         if (points >= upgradeData.cost) {
-          setUpgrades((prevUpgrades) => ({
-            ...prevUpgrades,
-            [selectedUpgrade]: nextLevel,
-          }));
+          try {
+            const response = await fetch('/save-data', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                userId,
+                points: points - upgradeData.cost,
+                [selectedUpgrade]: nextLevel,
+                ...upgrades,
+                farmLevel,
+              }),
+            });
 
-          if ('profit' in upgradeData) {
-            setTotalIncome(totalIncome + upgradeData.profit);
-          }
+            if (!response.ok) throw new Error(`Ошибка HTTP: ${response.status}`);
 
-          setPoints(points - upgradeData.cost);
-          setNotificationMessage(`Upgraded ${selectedUpgrade} to level ${nextLevel}`);
-          closeUpgradeMenu();
-
-          // Сохраняем в localStorage
-          localStorage.setItem(selectedUpgrade, nextLevel.toString());
-
-          // Сохранение данных на сервере
-          fetch('/save-data', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              userId,
-              points: points - upgradeData.cost,
-              ...upgrades,
-              farmLevel,
-            }),
-          })
-          .then((response) => {
-            if (!response.ok) {
-              throw new Error(`Ошибка HTTP: ${response.status}`);
-            }
-            return response.json();
-          })
-          .then((data) => {
+            const data = await response.json();
             if (data.success) {
-              console.log('Улучшение успешно сохранено.');
-            } else {
-              console.error('Ошибка на сервере: данные не были сохранены');
+              setUpgrades((prevUpgrades) => ({
+                ...prevUpgrades,
+                [selectedUpgrade]: nextLevel,
+              }));
+              setPoints(points - upgradeData.cost);
+              localStorage.setItem(selectedUpgrade, nextLevel.toString());
+              setNotificationMessage(`Upgraded ${selectedUpgrade} to level ${nextLevel}`);
+              closeUpgradeMenu();
             }
-          })
-          .catch((error) => {
-            console.error('Ошибка сохранения улучшения:', error);
+          } catch (error) {
+            console.error('Ошибка при сохранении улучшения:', error);
             alert('Ошибка сохранения данных. Попробуйте снова.');
-          });
+          }
         } else {
           alert('Not enough points to upgrade');
         }
@@ -181,44 +171,40 @@ const MineContent: React.FC<MineContentProps> = ({ points, setPoints, username, 
     setIsFarmLevelMenuOpen(false);
   };
 
-  const handleFarmUpgrade = () => {
+  const handleFarmUpgrade = async () => {
     if (farmLevel < 5 && userId !== null) {
       const nextLevel = farmLevel + 1;
       const upgradeData = upgradeLevels.farmlevel[nextLevel - 1];
       if (points >= upgradeData.cost) {
-        setFarmLevel(nextLevel);
-        setPoints(points - upgradeData.cost);
-        setTotalIncome(calculateTotalIncome(upgrades, nextLevel));
-        setNotificationMessage(`Upgraded Farm Level to ${nextLevel}`);
+        try {
+          const response = await fetch('/save-data', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              userId,
+              points: points - upgradeData.cost,
+              ...upgrades,
+              farmLevel: nextLevel,
+            }),
+          });
 
-        // Сохраняем в localStorage
-        localStorage.setItem('farmLevel', nextLevel.toString());
+          if (!response.ok) throw new Error(`Ошибка HTTP: ${response.status}`);
 
-        // Сохранение изменений на сервере
-        fetch('/save-data', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            userId,
-            points: points - upgradeData.cost,
-            ...upgrades,
-            farmLevel: nextLevel,
-          }),
-        })
-          .then((response) => {
-            if (!response.ok) {
-              throw new Error(`Ошибка HTTP: ${response.status}`);
-            }
-            return response.json();
-          })
-          .then((data) => {
-            if (data.success) {
-              console.log('Уровень фермы успешно сохранен.');
-            }
-          })
-          .catch((error) => console.error('Ошибка сохранения уровня фермы:', error));
+          const data = await response.json();
+          if (data.success) {
+            setFarmLevel(nextLevel);
+            setPoints(points - upgradeData.cost);
+            setTotalIncome(calculateTotalIncome(upgrades, nextLevel));
+            localStorage.setItem('farmLevel', nextLevel.toString());
+            setNotificationMessage(`Upgraded Farm Level to ${nextLevel}`);
+            closeFarmLevelMenu();
+          }
+        } catch (error) {
+          console.error('Ошибка сохранения уровня фермы:', error);
+          alert('Ошибка сохранения данных. Попробуйте снова.');
+        }
       } else {
         alert('Not enough points to upgrade');
       }
@@ -287,7 +273,7 @@ const MineContent: React.FC<MineContentProps> = ({ points, setPoints, username, 
             onClick={() => handleUpgradeClick(upgrade)}
           >
             <span className="text-sm text-white">{upgrade}</span>
-            <span className="text-xs text-gray-300">Level {upgrades[upgrade] || 1}</span>
+            <span className="text-xs text-gray-300">Level {upgrades[upgrade as keyof Upgrades] || 1}</span>
           </button>
         ))}
       </div>
@@ -299,14 +285,14 @@ const MineContent: React.FC<MineContentProps> = ({ points, setPoints, username, 
               <div className="w-10 h-10 bg-gray-600 rounded-full"></div>
             </div>
             <h2 className="text-center text-xl text-white mb-2">{selectedUpgrade}</h2>
-            <p className="text-center text-gray-300 mb-4">Level: {upgrades[selectedUpgrade] || 1}</p>
+            <p className="text-center text-gray-300 mb-4">Level: {upgrades[selectedUpgrade as keyof Upgrades] || 1}</p>
             <p className="text-center text-gray-400 mb-4">Описание улучшения. Это улучшение поможет вам увеличить производительность и заработать больше монет.</p>
-            {upgrades[selectedUpgrade] === 10 ? (
+            {upgrades[selectedUpgrade as keyof Upgrades] === 10 ? (
               <p className="text-center text-yellow-400 mb-4">Max level</p>
             ) : (
               <>
                 <button className="w-full py-3 bg-yellow-500 text-black rounded-lg" onClick={handleUpgrade}>
-                  Улучшить ({upgradeLevels[selectedUpgrade as keyof typeof upgradeLevels][(upgrades[selectedUpgrade] || 1)].cost} монет)
+                  Улучшить ({upgradeLevels[selectedUpgrade as keyof typeof upgradeLevels][(upgrades[selectedUpgrade as keyof Upgrades] || 1)].cost} монет)
                 </button>
               </>
             )}
