@@ -75,19 +75,6 @@ const App: React.FC = () => {
 
   const [levelIndex, setLevelIndex] = useState(0);
 
-  // Восстановление данных из localStorage при загрузке
-  useEffect(() => {
-    const savedUpgrades = localStorage.getItem('upgrades');
-    if (savedUpgrades) {
-      const parsedUpgrades = JSON.parse(savedUpgrades);
-      setTapProfitLevel(parsedUpgrades.tapProfitLevel);
-      setTapIncreaseLevel(parsedUpgrades.tapIncreaseLevel);
-      setRemainingClicks(parsedUpgrades.remainingClicks);
-      setMaxClicks(tapIncreaseLevels[parsedUpgrades.tapIncreaseLevel - 1].taps);
-      setTapProfit(tapProfitLevels[parsedUpgrades.tapProfitLevel - 1].profit);
-    }
-  }, [tapProfitLevels, tapIncreaseLevels]);
-
   useEffect(() => {
     const recoveryInterval = setInterval(() => {
       setRemainingClicks((prevClicks: number) => {
@@ -149,36 +136,6 @@ const App: React.FC = () => {
         })
         .catch((error) => console.error('Ошибка при получении данных с сервера:', error));
   }, [tapProfitLevels, tapIncreaseLevels]);
-
-  // Регулярное сохранение данных в localStorage при изменении уровней
-  useEffect(() => {
-    localStorage.setItem('upgrades', JSON.stringify({
-      tapProfitLevel,
-      tapIncreaseLevel,
-      remainingClicks,
-    }));
-  }, [tapProfitLevel, tapIncreaseLevel, remainingClicks]);
-
-  // Частая синхронизация данных с сервером
-  useEffect(() => {
-    const syncInterval = setInterval(() => {
-      fetch(`/app?userId=${userId}`)
-        .then((response) => response.json())
-        .then((data) => {
-          if (data.upgrades && JSON.stringify(data.upgrades) !== JSON.stringify({
-            tapProfitLevel,
-            tapIncreaseLevel,
-            remainingClicks,
-          })) {
-            setTapProfitLevel(data.tapProfitLevel);
-            setTapIncreaseLevel(data.tapIncreaseLevel);
-            setRemainingClicks(data.remainingClicks);
-          }
-        });
-    }, 30000); // каждые 30 секунд
-
-    return () => clearInterval(syncInterval);
-  }, [userId, tapProfitLevel, tapIncreaseLevel, remainingClicks]);
 
   useEffect(() => {
     const handleBeforeUnload = () => {
@@ -348,6 +305,7 @@ const handleMainButtonClick = useCallback(async (e: React.TouchEvent<HTMLDivElem
       }, 200);
   }
 }, [remainingClicks, tapProfit, points, userId, tapProfitLevel, tapIncreaseLevel]);
+
 
   const calculateProgress = useMemo(() => {
     if (levelIndex >= levelNames.length - 1) {
