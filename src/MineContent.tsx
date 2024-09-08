@@ -143,6 +143,7 @@ const MineContent: React.FC<MineContentProps> = ({ points, setPoints, username, 
   
             const data = await response.json();
             if (data.success) {
+              // Обновляем состояние только после успешного ответа от сервера
               setUpgrades((prevUpgrades) => ({
                 ...prevUpgrades,
                 [selectedUpgrade]: nextLevel,
@@ -152,6 +153,7 @@ const MineContent: React.FC<MineContentProps> = ({ points, setPoints, username, 
             }
           } catch (error) {
             console.error('Ошибка при сохранении улучшения:', error);
+            alert('Ошибка при обновлении улучшения. Попробуйте снова.');
           }
         } else {
           alert('Недостаточно очков для улучшения');
@@ -159,6 +161,7 @@ const MineContent: React.FC<MineContentProps> = ({ points, setPoints, username, 
       }
     }
   };
+  
   
 
   const handleFarmLevelClick = () => {
