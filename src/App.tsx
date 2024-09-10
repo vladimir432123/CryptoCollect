@@ -41,6 +41,12 @@ const App: React.FC = () => {
   const [userId, setUserId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Добавляем состояния для multitap и tapIncrease
+  const [multitapLevel, setMultitapLevel] = useState<number>(() => {
+    const savedMultitap = localStorage.getItem('multitapLevel');
+    return savedMultitap ? parseInt(savedMultitap) : 1;
+  });
+
   const [clicks, setClicks] = useState<{ id: number, x: number, y: number, profit: number }[]>([]);
   const [isBoostMenuOpen, setIsBoostMenuOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState('farm');
@@ -139,6 +145,10 @@ const App: React.FC = () => {
                 localStorage.setItem('tapIncreaseLevel', data.tapIncreaseLevel.toString());
                 localStorage.setItem('maxClicks', tapIncreaseLevels[data.tapIncreaseLevel - 1].taps.toString());
             }
+            if (data.multitapLevel !== undefined) {
+                setMultitapLevel(data.multitapLevel);
+                localStorage.setItem('multitapLevel', data.multitapLevel.toString());
+            }
             if (data.remainingClicks !== undefined) {
                 setRemainingClicks(data.remainingClicks); // Устанавливаем загруженные клики
             }
@@ -204,7 +214,7 @@ const updateRemainingClicks = async (newRemainingClicks: number) => {
   }
 };
 
-const saveUpgradeData = useCallback(async (newTapProfitLevel: number, newTapIncreaseLevel: number) => {
+const saveUpgradeData = useCallback(async (newTapProfitLevel: number, newTapIncreaseLevel: number, newMultitapLevel: number) => {
   if (userId !== null) {
       try {
           console.log('Отправка POST-запроса для сохранения данных...');
@@ -218,7 +228,8 @@ const saveUpgradeData = useCallback(async (newTapProfitLevel: number, newTapIncr
                   points,
                   tapProfitLevel: newTapProfitLevel,
                   tapIncreaseLevel: newTapIncreaseLevel,
-                  remainingClicks: maxClicks, // Полностью заполняем клики до максимума
+                  multitapLevel: newMultitapLevel,  // Добавляем multitap
+                  remainingClicks: maxClicks,
               }),
           });
 
@@ -231,11 +242,13 @@ const saveUpgradeData = useCallback(async (newTapProfitLevel: number, newTapIncr
               console.log('POST-запрос успешно отправлен и данные сохранены.');
               setTapProfitLevel(result.tapProfitLevel);
               setTapIncreaseLevel(result.tapIncreaseLevel);
+              setMultitapLevel(result.multitapLevel);  // Обновляем multitap
               setRemainingClicks(result.remainingClicks); // Обновляем состояние после сохранения
 
               // Резервное сохранение
               localStorage.setItem('tapProfitLevel', result.tapProfitLevel.toString());
               localStorage.setItem('tapIncreaseLevel', result.tapIncreaseLevel.toString());
+              localStorage.setItem('multitapLevel', result.multitapLevel.toString());
               localStorage.setItem('maxClicks', tapIncreaseLevels[result.tapIncreaseLevel - 1].taps.toString());
           } else {
               console.error('Ошибка при сохранении данных на сервере:', result.error);
@@ -264,6 +277,7 @@ const upgradeTapProfit = async () => {
                   points: points - nextLevelData.cost,
                   tapProfitLevel: newLevel,
                   tapIncreaseLevel, 
+                  multitapLevel, // Сохраняем multitap
                   remainingClicks: maxClicks,
               }),
           });
@@ -286,13 +300,12 @@ const upgradeTapProfit = async () => {
 };
 
 
-
 const upgradeTapIncrease = async () => {
   const nextLevelData = tapIncreaseLevels[tapIncreaseLevel];
   if (nextLevelData && points >= nextLevelData.cost) {
       const newLevel = tapIncreaseLevel + 1;
       setMaxClicks(tapIncreaseLevels[newLevel - 1].taps);
-      await saveUpgradeData(tapProfitLevel, newLevel); // Устанавливаем клики на максимум при прокачке
+      await saveUpgradeData(tapProfitLevel, newLevel, multitapLevel); // Сохраняем multitap
   }
 };
 
@@ -321,6 +334,7 @@ const handleMainButtonClick = useCallback(async (e: React.TouchEvent<HTMLDivElem
                       points: newPoints,
                       tapProfitLevel,
                       tapIncreaseLevel,
+                      multitapLevel, // Добавляем multitap
                       remainingClicks: newRemainingClicks,
                   }),
               });
@@ -350,7 +364,7 @@ const handleMainButtonClick = useCallback(async (e: React.TouchEvent<HTMLDivElem
           button.classList.remove('clicked');
       }, 200);
   }
-}, [remainingClicks, tapProfit, points, userId, tapProfitLevel, tapIncreaseLevel]);
+}, [remainingClicks, tapProfit, points, userId, tapProfitLevel, tapIncreaseLevel, multitapLevel]);
 
 
   const calculateProgress = useMemo(() => {
