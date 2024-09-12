@@ -16,6 +16,7 @@ const farmLevelMultipliers = [1, 1.2, 1.2, 1.2, 1.2, 1.2];
 
 const MineContent: React.FC<MineContentProps> = ({ points, setPoints, username, userId }) => {
   const [isUpgradeMenuOpen, setIsUpgradeMenuOpen] = useState(false);
+  const [isFarmLevelMenuOpen, setIsFarmLevelMenuOpen] = useState(false);
   const [selectedUpgrade, setSelectedUpgrade] = useState<string | null>(null);
   const [upgrades, setUpgrades] = useState<{ [key: string]: number }>({
     upgrade1: 1, upgrade2: 1, upgrade3: 1, upgrade4: 1,
@@ -24,8 +25,7 @@ const MineContent: React.FC<MineContentProps> = ({ points, setPoints, username, 
   const [totalIncome, setTotalIncome] = useState<number>(0);
   const [farmLevel, setFarmLevel] = useState<number>(1);
   const [notificationMessage, setNotificationMessage] = useState<string | null>(null);
-  const [earnedCoins, setEarnedCoins] = useState<number>(0); // Заработанные монеты
-  const [isUpgradeView, setIsUpgradeView] = useState(false); // Переход на новую вкладку улучшений
+  const [timer, setTimer] = useState<number>(10800); // Таймер на 3 часа (10800 секунд)
 
   useEffect(() => {
     if (userId !== null) {
@@ -74,31 +74,10 @@ const MineContent: React.FC<MineContentProps> = ({ points, setPoints, username, 
     if (totalIncome > 0) {
       const interval = setInterval(() => {
         setPoints((prevPoints: number) => prevPoints + incomePerSecond);
-        setEarnedCoins((prevCoins) => prevCoins + incomePerSecond); // Обновляем заработанные монеты
       }, 1000);
       return () => clearInterval(interval);
     }
   }, [totalIncome, setPoints]);
-
-  useEffect(() => {
-    if (userId !== null) {
-      const saveIncomeToDatabase = async (income: number) => {
-        try {
-          await fetch('/save-income', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ userId, incomePerHour: income }),
-          });
-        } catch (error) {
-          console.error('Ошибка сохранения дохода:', error);
-        }
-      };
-
-      saveIncomeToDatabase(totalIncome);
-    }
-  }, [totalIncome, userId]);
 
   const handleUpgradeClick = (upgrade: string) => {
     setSelectedUpgrade(upgrade);
@@ -113,6 +92,7 @@ const MineContent: React.FC<MineContentProps> = ({ points, setPoints, username, 
   const handleOverlayClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (e.target === e.currentTarget) {
       closeUpgradeMenu();
+      closeFarmLevelMenu();
     }
   };
 
@@ -146,27 +126,37 @@ const MineContent: React.FC<MineContentProps> = ({ points, setPoints, username, 
             body: JSON.stringify({
               userId,
               points: points - upgradeData.cost,
-              ...upgrades,
+              tapProfitLevel: upgrades['tapProfitLevel'] || 1,
+              tapIncreaseLevel: upgrades['tapIncreaseLevel'] || 1,
+              remainingClicks: upgrades['remainingClicks'] || 1000,
+              upgrade1: upgrades.upgrade1 || 1,
+              upgrade2: upgrades.upgrade2 || 1,
+              upgrade3: upgrades.upgrade3 || 1,
+              upgrade4: upgrades.upgrade4 || 1,
+              upgrade5: upgrades.upgrade5 || 1,
+              upgrade6: upgrades.upgrade6 || 1,
+              upgrade7: upgrades.upgrade7 || 1,
+              upgrade8: upgrades.upgrade8 || 1,
               farmLevel: farmLevel || 1,
             }),
           })
-            .then((response) => {
-              if (!response.ok) {
-                throw new Error(`Ошибка HTTP: ${response.status}`);
-              }
-              return response.json();
-            })
-            .then((data) => {
-              if (data.success) {
-                console.log('Улучшение успешно сохранено.');
-              } else {
-                console.error('Ошибка на сервере: данные не были сохранены');
-              }
-            })
-            .catch((error) => {
-              console.error('Ошибка сохранения улучшения:', error);
-              alert('Ошибка сохранения данных. Попробуйте снова.');
-            });
+          .then((response) => {
+            if (!response.ok) {
+              throw new Error(`Ошибка HTTP: ${response.status}`);
+            }
+            return response.json();
+          })
+          .then((data) => {
+            if (data.success) {
+              console.log('Улучшение успешно сохранено.');
+            } else {
+              console.error('Ошибка на сервере: данные не были сохранены');
+            }
+          })
+          .catch((error) => {
+            console.error('Ошибка сохранения улучшения:', error);
+            alert('Ошибка сохранения данных. Попробуйте снова.');
+          });
         } else {
           alert('Not enough points to upgrade');
         }
@@ -174,9 +164,63 @@ const MineContent: React.FC<MineContentProps> = ({ points, setPoints, username, 
     }
   };
 
-  const handleUpgradeViewToggle = () => {
-    setIsUpgradeView(!isUpgradeView);
+  const handleFarmLevelClick = () => {
+    setIsFarmLevelMenuOpen(true);
   };
+
+  const closeFarmLevelMenu = () => {
+    setIsFarmLevelMenuOpen(false);
+  };
+
+  const handleFarmUpgrade = () => {
+    if (farmLevel < 5 && userId !== null) {
+      const nextLevel = farmLevel + 1;
+      const upgradeData = upgradeLevels.farmlevel[nextLevel - 1];
+      if (points >= upgradeData.cost) {
+        setFarmLevel(nextLevel);
+        setPoints(points - upgradeData.cost);
+        setTotalIncome(calculateTotalIncome(upgrades, nextLevel));
+        setNotificationMessage(`Upgraded Farm Level to ${nextLevel}`);
+
+        // Сохранение изменений на сервере
+        fetch('/save-data', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            userId,
+            points: points - upgradeData.cost,
+            ...upgrades,
+            farmLevel: nextLevel,
+          }),
+        })
+          .then((response) => {
+            if (!response.ok) {
+              throw new Error(`Ошибка HTTP: ${response.status}`);
+            }
+            return response.json();
+          })
+          .then((data) => {
+            if (data.success) {
+              console.log('Уровень фермы успешно сохранен.');
+            }
+          })
+          .catch((error) => console.error('Ошибка сохранения уровня фермы:', error));
+      } else {
+        alert('Not enough points to upgrade');
+      }
+    }
+  };
+
+  useEffect(() => {
+    if (timer > 0) {
+      const interval = setInterval(() => {
+        setTimer(timer - 1);
+      }, 1000);
+      return () => clearInterval(interval);
+    }
+  }, [timer]);
 
   const upgradesList = [
     'upgrade1',
@@ -189,33 +233,9 @@ const MineContent: React.FC<MineContentProps> = ({ points, setPoints, username, 
     'upgrade8',
   ];
 
-  useEffect(() => {
-    const enterTime = new Date().toISOString();
-
-    if (userId !== null) {
-      fetch('/save-entry-exit-time', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId, enterTime }),
-      }).catch(err => console.error('Ошибка записи времени входа:', err));
-    }
-
-    return () => {
-      const exitTime = new Date().toISOString();
-      if (userId !== null) {
-        fetch('/save-entry-exit-time', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ userId, exitTime }),
-        }).catch(err => console.error('Ошибка записи времени выхода:', err));
-      }
-    };
-  }, [userId]);
-
   return (
     <>
       {notificationMessage && <UpgradeNotification message={notificationMessage} />}
-
       <div className="px-4 z-10 pt-4">
         <div className="flex items-center space-x-2">
           <div className="p-1 rounded-lg bg-gray-800"></div>
@@ -225,48 +245,36 @@ const MineContent: React.FC<MineContentProps> = ({ points, setPoints, username, 
         </div>
       </div>
 
-      {!isUpgradeView ? (
-        <>
-          <div className="px-4 mt-4">
-            <button
-              className="w-full h-20 bg-gradient-to-r from-gray-700 to-gray-600 rounded-lg shadow-lg overflow-hidden relative"
-              onClick={handleUpgradeViewToggle}
-            >
-              <div className="absolute top-0 left-0 w-full h-full bg-yellow-400 opacity-10"></div>
-              <div className="flex justify-between items-start p-3">
-                <span className="text-lg font-semibold text-gray-300">Upgrade Options</span>
-                <span className="text-xs font-medium text-yellow-400 bg-gray-800 px-2 py-1 rounded-full">Open</span>
-              </div>
-            </button>
-          </div>
 
-          <div className="mt-5 px-4 bg-gray-700 p-4 rounded-lg">
-            <div className="text-center text-yellow-400 text-xl">Заработанные монеты: {earnedCoins.toFixed(2)}</div>
-            <button className="w-full py-3 bg-yellow-500 text-black rounded-lg mt-2">
-              Забрать монеты
-            </button>
-            <div className="text-center text-gray-400 mt-2">Таймер: 3 часа</div>
-          </div>
-        </>
-      ) : (
-        <div>
-          <button onClick={handleUpgradeViewToggle} className="text-white mb-4">
-            Back
-          </button>
 
-          <div className="mt-5 px-4 grid grid-cols-2 gap-2.5">
-            <div>Upgrade 1: {upgrades.upgrade1}</div>
-            <div>Farm Level: {farmLevel}</div>
-            {/* Остальные улучшения */}
+      {/* Кнопка для открытия меню улучшений */}
+      <div className="px-4 mt-4">
+        <button
+          className="w-full h-20 bg-gradient-to-r from-gray-700 to-gray-600 rounded-lg shadow-lg overflow-hidden relative"
+          onClick={handleFarmLevelClick}
+        >
+          <div className="absolute top-0 left-0 w-full h-full bg-yellow-400 opacity-10"></div>
+          <div className="flex flex-col justify-between h-full p-3">
+            <div className="flex justify-between items-start">
+              <span className="text-sm font-semibold text-gray-300">Улучшения</span>
+              <span className="text-xs font-medium text-yellow-400 bg-gray-800 px-2 py-1 rounded-full">Active</span>
+            </div>
+            <div className="flex justify-between items-end">
+              <span className="text-2xl font-bold text-white">Уровни</span>
+              <svg className="w-6 h-6 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+              </svg>
+            </div>
           </div>
-        </div>
-      )}
+        </button>
+      </div>
 
       <div className="mt-5 px-4 grid grid-cols-2 gap-2.5 scrollable-upgrades">
         {upgradesList.map((upgrade, index) => (
           <button
             key={index}
-            className="w-[100%] h-[100px] bg-gray-700 rounded-lg flex flex-col items-center justify-center"
+            className="w-[100%] h-[100px] bg-gray-700 rounded-lg flex flex-col items-center justify-center bg-cover bg-center"
+            style={{ backgroundImage: 'url(/path/to/placeholder.png)' }}
             onClick={() => handleUpgradeClick(upgrade)}
           >
             <span className="text-sm text-white">{upgrade}</span>
@@ -283,7 +291,7 @@ const MineContent: React.FC<MineContentProps> = ({ points, setPoints, username, 
             </div>
             <h2 className="text-center text-xl text-white mb-2">{selectedUpgrade}</h2>
             <p className="text-center text-gray-300 mb-4">Level: {upgrades[selectedUpgrade] || 1}</p>
-            <p className="text-center text-gray-400 mb-4">Описание улучшения.</p>
+            <p className="text-center text-gray-400 mb-4">Описание улучшения. Это улучшение поможет вам увеличить производительность и заработать больше монет.</p>
             {upgrades[selectedUpgrade] === 10 ? (
               <p className="text-center text-yellow-400 mb-4">Max level</p>
             ) : (
@@ -294,6 +302,24 @@ const MineContent: React.FC<MineContentProps> = ({ points, setPoints, username, 
               </>
             )}
             <button className="w-full py-2 mt-2 bg-gray-700 text-white rounded-lg" onClick={closeUpgradeMenu}>Закрыть</button>
+          </div>
+        </div>
+      )}
+
+      {isFarmLevelMenuOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={handleOverlayClick}>
+          <div className="bg-gray-800 w-full max-w-md p-6 rounded-lg animate-slide-up">
+            <h2 className="text-center text-xl text-white mb-4">Улучшения</h2>
+            <p className="text-left text-white mb-4">Все улучшения находятся здесь, выберите нужное для повышения уровня.</p>
+            <div className="relative w-full h-4 bg-gray-700 rounded-full overflow-hidden mb-4">
+              <div className="absolute top-0 left-0 h-full bg-yellow-500 rounded-full" style={{ width: `${(farmLevel / 5) * 100}%` }}></div>
+              {[...Array(5)].map((_, index) => (
+                <div key={index} className="absolute top-0 left-[calc(20%*index)] h-full w-0.5 bg-gray-600"></div>
+              ))}
+            </div>
+            <button className="w-full py-3 bg-yellow-600 text-black rounded-lg" onClick={handleFarmUpgrade}>
+              Улучшить ({farmLevel < 5 ? upgradeLevels.farmlevel[farmLevel].cost : 'Max level'})
+            </button>
           </div>
         </div>
       )}
