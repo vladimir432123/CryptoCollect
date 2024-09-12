@@ -53,9 +53,7 @@ db.query(`
         upgrade7 INT DEFAULT 1,
         upgrade8 INT DEFAULT 1,
         farmLevel INT DEFAULT 1,
-        incomePerHour FLOAT DEFAULT 0,  -- Добавляем столбец для дохода в час
-        entryTime TIMESTAMP NULL DEFAULT NULL,  -- Время входа
-        exitTime TIMESTAMP NULL DEFAULT NULL    -- Время выхода
+        income_per_hour INT DEFAULT 0
     )
 `, (err) => {
     if (err) {
@@ -141,58 +139,6 @@ bot.start(async (ctx) => {
     });
 });
 
-// Сохранение дохода в час в базе данных
-app.post('/save-income', (req, res) => {
-    const { userId, incomePerHour } = req.body;
-
-    if (!userId || incomePerHour === undefined) {
-        console.log('Ошибка: Недостаточно данных для сохранения дохода');
-        return res.status(400).json({ error: 'Missing required fields' });
-    }
-
-    const query = `
-        UPDATE user 
-        SET incomePerHour = ?
-        WHERE telegram_id = ?
-    `;
-
-    db.query(query, [incomePerHour, userId], (err) => {
-        if (err) {
-            console.error('Ошибка при сохранении дохода:', err);
-            return res.status(500).json({ error: 'Server error' });
-        }
-
-        console.log('Доход успешно сохранен для пользователя с ID:', userId);
-        res.json({ success: true });
-    });
-});
-
-// Сохранение времени входа и выхода с вкладки
-app.post('/save-entry-exit-time', (req, res) => {
-    const { userId, enterTime, exitTime } = req.body;
-
-    if (!userId || (!enterTime && !exitTime)) {
-        console.log('Ошибка: Недостаточно данных для сохранения времени входа/выхода');
-        return res.status(400).json({ error: 'Missing required fields' });
-    }
-
-    const query = `
-        UPDATE user 
-        SET ${enterTime ? 'entryTime' : 'exitTime'} = ?
-        WHERE telegram_id = ?
-    `;
-
-    db.query(query, [enterTime || exitTime, userId], (err) => {
-        if (err) {
-            console.error('Ошибка при сохранении времени:', err);
-            return res.status(500).json({ error: 'Server error' });
-        }
-
-        console.log(`Время ${enterTime ? 'входа' : 'выхода'} успешно сохранено для пользователя с ID:`, userId);
-        res.json({ success: true });
-    });
-});
-
 app.post('/logout', (req, res) => {
     const { userId, remainingClicks, lastLogout } = req.body;
     
@@ -250,9 +196,7 @@ app.get('/app', async (req, res) => {
                     upgrade7: userData.upgrade7,
                     upgrade8: userData.upgrade8,
                     farmLevel: userData.farmLevel,
-                    incomePerHour: userData.incomePerHour, // Возвращаем доход в час
-                    entryTime: userData.entryTime, // Возвращаем время входа
-                    exitTime: userData.exitTime // Возвращаем время выхода
+                    income_per_hour: userData.income_per_hour
                 });
             } else {
                 console.error('Пользователь не найден с User ID:', userId);
@@ -265,7 +209,6 @@ app.get('/app', async (req, res) => {
     }
 });
 
-// Сохранение данных пользователя (улучшения, клики и т.д.)
 app.post('/save-data', (req, res) => {
     const { 
       userId, 
@@ -281,7 +224,8 @@ app.post('/save-data', (req, res) => {
       upgrade6 = 1, 
       upgrade7 = 1, 
       upgrade8 = 1, 
-      farmLevel = 1 
+      farmLevel = 1,
+      income_per_hour = 0 
     } = req.body;
   
     if (!userId || points === undefined || tapProfitLevel === undefined || tapIncreaseLevel === undefined || remainingClicks === undefined) {
@@ -303,7 +247,8 @@ app.post('/save-data', (req, res) => {
             upgrade6 = ?, 
             upgrade7 = ?, 
             upgrade8 = ?, 
-            farmLevel = ?
+            farmLevel = ?,
+            income_per_hour = ?
         WHERE telegram_id = ?
     `;
 
@@ -321,6 +266,7 @@ app.post('/save-data', (req, res) => {
         upgrade7, 
         upgrade8, 
         farmLevel, 
+        income_per_hour, 
         userId
     ], (err, results) => {
         if (err) {
@@ -344,7 +290,8 @@ app.post('/save-data', (req, res) => {
             upgrade6,
             upgrade7,
             upgrade8,
-            farmLevel
+            farmLevel,
+            income_per_hour
         });
     });
 });
