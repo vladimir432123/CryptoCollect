@@ -15,8 +15,8 @@ const Farm: React.FC<{ className?: string }> = ({ className }) => (
   </svg>
 );
 
-const RECOVERY_RATE = 1000; // Время восстановления одного клика (в миллисекундах)
-const RECOVERY_AMOUNT = 1;  // Количество восстанавливаемых кликов за один интервал
+const RECOVERY_RATE = 1000; // Time to recover one click (in milliseconds)
+const RECOVERY_AMOUNT = 1;  // Amount of clicks restored per interval
 
 const App: React.FC = () => {
   const [tapProfit, setTapProfit] = useState(1);
@@ -41,52 +41,82 @@ const App: React.FC = () => {
   const [userId, setUserId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Добавляем состояния для multitap и tapIncrease
+  // States for multitap and tapIncrease
   const [multitapLevel, setMultitapLevel] = useState<number>(() => {
     const savedMultitap = localStorage.getItem('multitapLevel');
     return savedMultitap ? parseInt(savedMultitap) : 1;
   });
 
-  const [clicks, setClicks] = useState<{ id: number, x: number, y: number, profit: number }[]>([]);
+  // States for upgrades from MineContent
+  const [upgrades, setUpgrades] = useState<{ [key: string]: number }>({
+    upgrade1: 1,
+    upgrade2: 1,
+    upgrade3: 1,
+    upgrade4: 1,
+    upgrade5: 1,
+    upgrade6: 1,
+    upgrade7: 1,
+    upgrade8: 1,
+  });
+  const [farmLevel, setFarmLevel] = useState<number>(1);
+
+  const [clicks, setClicks] = useState<{ id: number; x: number; y: number; profit: number }[]>([]);
   const [isBoostMenuOpen, setIsBoostMenuOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState('farm');
   const [selectedUpgrade, setSelectedUpgrade] = useState<string | null>(null);
 
-  const tapProfitLevels = useMemo(() => [
-    { level: 1, profit: 1, cost: 1000 },
-    { level: 2, profit: 2, cost: 2000 },
-    { level: 3, profit: 4, cost: 4000 },
-    { level: 4, profit: 6, cost: 8000 },
-    { level: 5, profit: 8, cost: 16000 },
-    { level: 6, profit: 10, cost: 24000 },
-    { level: 7, profit: 12, cost: 48000 },
-    { level: 8, profit: 14, cost: 72000 },
-    { level: 9, profit: 16, cost: 104000 },
-    { level: 10, profit: 18, cost: 178000 },
-  ], []);
+  const tapProfitLevels = useMemo(
+    () => [
+      { level: 1, profit: 1, cost: 1000 },
+      { level: 2, profit: 2, cost: 2000 },
+      { level: 3, profit: 4, cost: 4000 },
+      { level: 4, profit: 6, cost: 8000 },
+      { level: 5, profit: 8, cost: 16000 },
+      { level: 6, profit: 10, cost: 24000 },
+      { level: 7, profit: 12, cost: 48000 },
+      { level: 8, profit: 14, cost: 72000 },
+      { level: 9, profit: 16, cost: 104000 },
+      { level: 10, profit: 18, cost: 178000 },
+    ],
+    []
+  );
 
-  const tapIncreaseLevels = useMemo(() => [
-    { level: 1, taps: 1000, cost: 3000 },
-    { level: 2, taps: 1500, cost: 7000 },
-    { level: 3, taps: 2000, cost: 11000 },
-    { level: 4, taps: 2500, cost: 26000 },
-    { level: 5, taps: 3000, cost: 45000 },
-    { level: 6, taps: 3500, cost: 72000 },
-    { level: 7, taps: 4000, cost: 120000 },
-    { level: 8, taps: 4500, cost: 170000 },
-    { level: 9, taps: 5000, cost: 210000 },
-    { level: 10, taps: 5500, cost: 270000 },
-  ], []);
+  const tapIncreaseLevels = useMemo(
+    () => [
+      { level: 1, taps: 1000, cost: 3000 },
+      { level: 2, taps: 1500, cost: 7000 },
+      { level: 3, taps: 2000, cost: 11000 },
+      { level: 4, taps: 2500, cost: 26000 },
+      { level: 5, taps: 3000, cost: 45000 },
+      { level: 6, taps: 3500, cost: 72000 },
+      { level: 7, taps: 4000, cost: 120000 },
+      { level: 8, taps: 4500, cost: 170000 },
+      { level: 9, taps: 5000, cost: 210000 },
+      { level: 10, taps: 5500, cost: 270000 },
+    ],
+    []
+  );
 
-  const levelNames = useMemo(() => [
-    "Beginner", "Intermediate", "Advanced", "Expert", "Master",
-    "Grandmaster", "Champion", "Hero", "Legend", "Mythic"
-  ], []);
+  const levelNames = useMemo(
+    () => [
+      'Beginner',
+      'Intermediate',
+      'Advanced',
+      'Expert',
+      'Master',
+      'Grandmaster',
+      'Champion',
+      'Hero',
+      'Legend',
+      'Mythic',
+    ],
+    []
+  );
 
-  const levelMinPoints = useMemo(() => [
-    0, 5000, 25000, 100000, 1000000,
-    2000000, 10000000, 50000000, 100000000, 1000000000
-  ], []);
+  const levelMinPoints = useMemo(
+    () => [0, 5000, 25000, 100000, 1000000, 2000000, 10000000, 50000000, 100000000, 1000000000],
+    []
+  );
 
   const [levelIndex, setLevelIndex] = useState(0);
 
@@ -109,71 +139,83 @@ const App: React.FC = () => {
     const userIdFromTelegram = initData?.user?.id;
 
     if (!userIdFromTelegram) {
-        return;
+      return;
     }
 
     setUserId(userIdFromTelegram);
 
     fetch(`/app?userId=${userIdFromTelegram}`, {
-        method: 'GET',
-        headers: {
-            'Content-Type': 'application/json',
-        },
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
     })
-        .then((response) => {
-            if (!response.ok) {
-                throw new Error(`Ошибка HTTP: ${response.status}`);
-            }
-            return response.json();
-        })
-        .then((data) => {
-            if (data.username) {
-                setUsername(data.username);
-            }
-            if (data.points !== undefined) {
-                setPoints(data.points);
-                localStorage.setItem('points', data.points.toString());
-            }
-            if (data.tapProfitLevel !== undefined) {
-                setTapProfitLevel(data.tapProfitLevel);
-                setTapProfit(tapProfitLevels[data.tapProfitLevel - 1].profit);
-                localStorage.setItem('tapProfitLevel', data.tapProfitLevel.toString());
-            }
-            if (data.tapIncreaseLevel !== undefined) {
-                setTapIncreaseLevel(data.tapIncreaseLevel);
-                setMaxClicks(tapIncreaseLevels[data.tapIncreaseLevel - 1].taps);
-                localStorage.setItem('tapIncreaseLevel', data.tapIncreaseLevel.toString());
-                localStorage.setItem('maxClicks', tapIncreaseLevels[data.tapIncreaseLevel - 1].taps.toString());
-            }
-            if (data.multitapLevel !== undefined) {
-                setMultitapLevel(data.multitapLevel);
-                localStorage.setItem('multitapLevel', data.multitapLevel.toString());
-            }
-            if (data.remainingClicks !== undefined) {
-                setRemainingClicks(data.remainingClicks); // Устанавливаем загруженные клики
-            }
-        })
-        .finally(() => {
-            setLoading(false);
-        })
-        .catch((error) => console.error('Ошибка при получении данных с сервера:', error));
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error(`HTTP Error: ${response.status}`);
+        }
+        return response.json();
+      })
+      .then((data) => {
+        if (data.username) {
+          setUsername(data.username);
+        }
+        if (data.points !== undefined) {
+          setPoints(data.points);
+          localStorage.setItem('points', data.points.toString());
+        }
+        if (data.tapProfitLevel !== undefined) {
+          setTapProfitLevel(data.tapProfitLevel);
+          setTapProfit(tapProfitLevels[data.tapProfitLevel - 1].profit);
+          localStorage.setItem('tapProfitLevel', data.tapProfitLevel.toString());
+        }
+        if (data.tapIncreaseLevel !== undefined) {
+          setTapIncreaseLevel(data.tapIncreaseLevel);
+          setMaxClicks(tapIncreaseLevels[data.tapIncreaseLevel - 1].taps);
+          localStorage.setItem('tapIncreaseLevel', data.tapIncreaseLevel.toString());
+          localStorage.setItem('maxClicks', tapIncreaseLevels[data.tapIncreaseLevel - 1].taps.toString());
+        }
+        if (data.multitapLevel !== undefined) {
+          setMultitapLevel(data.multitapLevel);
+          localStorage.setItem('multitapLevel', data.multitapLevel.toString());
+        }
+        if (data.remainingClicks !== undefined) {
+          setRemainingClicks(data.remainingClicks); // Set loaded clicks
+        }
+        // Load upgrades from MineContent
+        setUpgrades({
+          upgrade1: data.upgrade1 || 1,
+          upgrade2: data.upgrade2 || 1,
+          upgrade3: data.upgrade3 || 1,
+          upgrade4: data.upgrade4 || 1,
+          upgrade5: data.upgrade5 || 1,
+          upgrade6: data.upgrade6 || 1,
+          upgrade7: data.upgrade7 || 1,
+          upgrade8: data.upgrade8 || 1,
+        });
+        setFarmLevel(data.farmLevel || 1);
+      })
+      .finally(() => {
+        setLoading(false);
+      })
+      .catch((error) => console.error('Error fetching data from server:', error));
   }, [tapProfitLevels, tapIncreaseLevels]);
 
   useEffect(() => {
     const handleBeforeUnload = () => {
       if (userId !== null) {
-          fetch('/logout', {
-              method: 'POST',
-              headers: {
-                  'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                  userId,
-                  remainingClicks,
-                  points, // Добавляем points в запрос
-                  lastLogout: new Date().toISOString()
-              }),
-          }).catch((error) => console.error('Ошибка при отправке времени выхода:', error));
+        fetch('/logout', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            userId,
+            remainingClicks,
+            points,
+            lastLogout: new Date().toISOString(),
+          }),
+        }).catch((error) => console.error('Error sending logout time:', error));
       }
     };
 
@@ -184,188 +226,218 @@ const App: React.FC = () => {
     };
   }, [userId, remainingClicks, points]);
 
-const updateRemainingClicks = async (newRemainingClicks: number) => {
-  if (userId !== null) {
-    try {
-      const response = await fetch('/update-clicks', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          userId,
-          remainingClicks: newRemainingClicks,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`Ошибка HTTP: ${response.status}`);
-      }
-
-      const result = await response.json();
-      if (result.success) {
-        console.log('Клики успешно обновлены на сервере.');
-      } else {
-        console.error('Ошибка при обновлении кликов на сервере:', result.error);
-      }
-    } catch (error) {
-      console.error('Ошибка при обновлении кликов:', error);
-    }
-  }
-};
-
-const saveUpgradeData = useCallback(async (newTapProfitLevel: number, newTapIncreaseLevel: number, newMultitapLevel: number) => {
-  if (userId !== null) {
+  const updateRemainingClicks = async (newRemainingClicks: number) => {
+    if (userId !== null) {
       try {
-          console.log('Отправка POST-запроса для сохранения данных...');
+        const response = await fetch('/update-clicks', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            userId,
+            remainingClicks: newRemainingClicks,
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP Error: ${response.status}`);
+        }
+
+        const result = await response.json();
+        if (result.success) {
+          console.log('Clicks successfully updated on the server.');
+        } else {
+          console.error('Error updating clicks on the server:', result.error);
+        }
+      } catch (error) {
+        console.error('Error updating clicks:', error);
+      }
+    }
+  };
+
+  const saveUpgradeData = useCallback(
+    async (
+      newTapProfitLevel: number,
+      newTapIncreaseLevel: number,
+      newMultitapLevel: number
+    ) => {
+      if (userId !== null) {
+        try {
+          console.log('Sending POST request to save data...');
           const response = await fetch('/save-data', {
-              method: 'POST',
-              headers: {
-                  'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                  userId,
-                  points,
-                  tapProfitLevel: newTapProfitLevel,
-                  tapIncreaseLevel: newTapIncreaseLevel,
-                  multitapLevel: newMultitapLevel,  // Добавляем multitap
-                  remainingClicks: maxClicks,
-              }),
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              userId,
+              points,
+              tapProfitLevel: newTapProfitLevel,
+              tapIncreaseLevel: newTapIncreaseLevel,
+              multitapLevel: newMultitapLevel,
+              remainingClicks: maxClicks,
+              // Include upgrades and farmLevel
+              ...upgrades,
+              farmLevel,
+            }),
           });
 
           if (!response.ok) {
-              throw new Error(`Ошибка HTTP: ${response.status}`);
+            throw new Error(`HTTP Error: ${response.status}`);
           }
 
           const result = await response.json();
           if (result.success) {
-              console.log('POST-запрос успешно отправлен и данные сохранены.');
-              setTapProfitLevel(result.tapProfitLevel);
-              setTapIncreaseLevel(result.tapIncreaseLevel);
-              setMultitapLevel(result.multitapLevel);  // Обновляем multitap
-              setRemainingClicks(result.remainingClicks); // Обновляем состояние после сохранения
+            console.log('POST request successfully sent and data saved.');
+            setTapProfitLevel(result.tapProfitLevel);
+            setTapIncreaseLevel(result.tapIncreaseLevel);
+            setMultitapLevel(result.multitapLevel);
+            setRemainingClicks(result.remainingClicks);
 
-              // Резервное сохранение
-              localStorage.setItem('tapProfitLevel', result.tapProfitLevel.toString());
-              localStorage.setItem('tapIncreaseLevel', result.tapIncreaseLevel.toString());
-              localStorage.setItem('multitapLevel', result.multitapLevel.toString());
-              localStorage.setItem('maxClicks', tapIncreaseLevels[result.tapIncreaseLevel - 1].taps.toString());
+            // Backup saving
+            localStorage.setItem('tapProfitLevel', result.tapProfitLevel.toString());
+            localStorage.setItem('tapIncreaseLevel', result.tapIncreaseLevel.toString());
+            localStorage.setItem('multitapLevel', result.multitapLevel.toString());
+            localStorage.setItem(
+              'maxClicks',
+              tapIncreaseLevels[result.tapIncreaseLevel - 1].taps.toString()
+            );
           } else {
-              console.error('Ошибка при сохранении данных на сервере:', result.error);
+            console.error('Error saving data on the server:', result.error);
           }
-      } catch (error) {
-          console.error('Ошибка при сохранении данных:', error);
+        } catch (error) {
+          console.error('Error saving data:', error);
+        }
+      } else {
+        console.log('userId is null, POST request not sent');
       }
-  } else {
-      console.log('userId is null, POST-запрос не отправлен');
-  }
-}, [userId, points, maxClicks, tapIncreaseLevels]);
+    },
+    [userId, points, maxClicks, tapIncreaseLevels, upgrades, farmLevel]
+  );
 
-const upgradeTapProfit = async () => {
-  const nextLevelData = tapProfitLevels[tapProfitLevel];
-  if (nextLevelData && points >= nextLevelData.cost) {
+  const upgradeTapProfit = async () => {
+    const nextLevelData = tapProfitLevels[tapProfitLevel];
+    if (nextLevelData && points >= nextLevelData.cost) {
       const newLevel = tapProfitLevel + 1;
 
       try {
-          const response = await fetch('/save-data', {
-              method: 'POST',
-              headers: {
-                  'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                  userId,
-                  points: points - nextLevelData.cost,
-                  tapProfitLevel: newLevel,
-                  tapIncreaseLevel, 
-                  multitapLevel, // Сохраняем multitap
-                  remainingClicks: maxClicks,
-              }),
-          });
+        const response = await fetch('/save-data', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            userId,
+            points: points - nextLevelData.cost,
+            tapProfitLevel: newLevel,
+            tapIncreaseLevel,
+            multitapLevel,
+            remainingClicks,
+            // Include upgrades and farmLevel
+            ...upgrades,
+            farmLevel,
+          }),
+        });
 
-          if (!response.ok) throw new Error('Ошибка при сохранении на сервере');
+        if (!response.ok) throw new Error('Error saving on the server');
 
-          const data = await response.json();
-          if (data.success) {
-              // Обновляем состояние только после успешного ответа от сервера
-              setTapProfit(tapProfitLevels[newLevel - 1].profit);
-              setPoints(prevPoints => prevPoints - nextLevelData.cost);
-              setTapProfitLevel(newLevel);
-              localStorage.setItem('tapProfitLevel', newLevel.toString());
-          }
+        const data = await response.json();
+        if (data.success) {
+          // Update state only after successful server response
+          setTapProfit(tapProfitLevels[newLevel - 1].profit);
+          setPoints((prevPoints) => prevPoints - nextLevelData.cost);
+          setTapProfitLevel(newLevel);
+          localStorage.setItem('tapProfitLevel', newLevel.toString());
+        }
       } catch (error) {
-          console.error('Ошибка при сохранении улучшения:', error);
-          alert('Ошибка при обновлении улучшения. Попробуйте снова.');
+        console.error('Error saving upgrade:', error);
+        alert('Error updating upgrade. Please try again.');
       }
-  }
-};
+    }
+  };
 
-
-const upgradeTapIncrease = async () => {
-  const nextLevelData = tapIncreaseLevels[tapIncreaseLevel];
-  if (nextLevelData && points >= nextLevelData.cost) {
+  const upgradeTapIncrease = async () => {
+    const nextLevelData = tapIncreaseLevels[tapIncreaseLevel];
+    if (nextLevelData && points >= nextLevelData.cost) {
       const newLevel = tapIncreaseLevel + 1;
       setMaxClicks(tapIncreaseLevels[newLevel - 1].taps);
-      await saveUpgradeData(tapProfitLevel, newLevel, multitapLevel); // Сохраняем multitap
-  }
-};
+      await saveUpgradeData(tapProfitLevel, newLevel, multitapLevel);
+    }
+  };
 
-const handleMainButtonClick = useCallback(async (e: React.TouchEvent<HTMLDivElement>) => {
-  const touches = e.touches;
-  if (remainingClicks > 0 && touches.length <= 5) {
-      const newRemainingClicks = remainingClicks - touches.length;
-      setRemainingClicks(newRemainingClicks);
-      updateRemainingClicks(newRemainingClicks);
-      
-      const newPoints = points + tapProfit * touches.length;
-      setPoints(newPoints);
+  const handleMainButtonClick = useCallback(
+    async (e: React.TouchEvent<HTMLDivElement>) => {
+      const touches = e.touches;
+      if (remainingClicks > 0 && touches.length <= 5) {
+        const newRemainingClicks = remainingClicks - touches.length;
+        setRemainingClicks(newRemainingClicks);
+        updateRemainingClicks(newRemainingClicks);
 
-      // Сохраняем обновленные points на сервер и в локальном хранилище
-      localStorage.setItem('points', newPoints.toString());
+        const newPoints = points + tapProfit * touches.length;
+        setPoints(newPoints);
 
-      if (userId !== null) {
+        // Save updated points to server and local storage
+        localStorage.setItem('points', newPoints.toString());
+
+        if (userId !== null) {
           try {
-              await fetch('/save-data', {
-                  method: 'POST',
-                  headers: {
-                      'Content-Type': 'application/json',
-                  },
-                  body: JSON.stringify({
-                      userId,
-                      points: newPoints,
-                      tapProfitLevel,
-                      tapIncreaseLevel,
-                      multitapLevel, // Добавляем multitap
-                      remainingClicks: newRemainingClicks,
-                  }),
-              });
+            await fetch('/save-data', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                userId,
+                points: newPoints,
+                tapProfitLevel,
+                tapIncreaseLevel,
+                multitapLevel,
+                remainingClicks: newRemainingClicks,
+                // Include upgrades and farmLevel
+                ...upgrades,
+                farmLevel,
+              }),
+            });
           } catch (error) {
-              console.error('Ошибка при сохранении данных:', error);
+            console.error('Error saving data:', error);
           }
-      }
+        }
 
-      const newClicks = Array.from(touches).map((touch) => ({
+        const newClicks = Array.from(touches).map((touch) => ({
           id: Date.now() + touch.identifier,
           x: touch.clientX,
           y: touch.clientY,
           profit: tapProfit,
-      }));
+        }));
 
-      setClicks((prevClicks) => [...prevClicks, ...newClicks]);
+        setClicks((prevClicks) => [...prevClicks, ...newClicks]);
 
-      setTimeout(() => {
+        setTimeout(() => {
           setClicks((prevClicks) =>
-              prevClicks.filter((click) => !newClicks.some((newClick) => newClick.id === click.id))
+            prevClicks.filter((click) => !newClicks.some((newClick) => newClick.id === click.id))
           );
-      }, 1000);
+        }, 1000);
 
-      const button = e.currentTarget;
-      button.classList.add('clicked');
-      setTimeout(() => {
+        const button = e.currentTarget;
+        button.classList.add('clicked');
+        setTimeout(() => {
           button.classList.remove('clicked');
-      }, 200);
-  }
-}, [remainingClicks, tapProfit, points, userId, tapProfitLevel, tapIncreaseLevel, multitapLevel]);
-
+        }, 200);
+      }
+    },
+    [
+      remainingClicks,
+      tapProfit,
+      points,
+      userId,
+      tapProfitLevel,
+      tapIncreaseLevel,
+      multitapLevel,
+      upgrades,
+      farmLevel,
+    ]
+  );
 
   const calculateProgress = useMemo(() => {
     if (levelIndex >= levelNames.length - 1) {
@@ -408,12 +480,22 @@ const handleMainButtonClick = useCallback(async (e: React.TouchEvent<HTMLDivElem
         <div className="absolute top-0 left-0 w-full h-full bg-yellow-400 opacity-10"></div>
         <div className="flex flex-col justify-between h-full p-4">
           <div className="flex justify-between items-start">
-            <span className="text-lg font-semibold text-gray-300">{isMultitap ? 'Multitap' : 'Tap increase'}</span>
-            <span className="text-xs font-medium text-yellow-400 bg-gray-800 px-2 py-1 rounded-full">Level {currentLevel}</span>
+            <span className="text-lg font-semibold text-gray-300">
+              {isMultitap ? 'Multitap' : 'Tap increase'}
+            </span>
+            <span className="text-xs font-medium text-yellow-400 bg-gray-800 px-2 py-1 rounded-full">
+              Level {currentLevel}
+            </span>
           </div>
           <div className="flex justify-between items-end">
             <span className="text-sm text-gray-400">{description}</span>
-            <svg className="w-6 h-6 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <svg
+              className="w-6 h-6 text-yellow-400"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              xmlns="http://www.w3.org/2000/svg"
+            >
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
             </svg>
           </div>
@@ -423,21 +505,33 @@ const handleMainButtonClick = useCallback(async (e: React.TouchEvent<HTMLDivElem
   };
 
   const renderUpgradeMenu = () => (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-end justify-center z-50" onClick={() => setSelectedUpgrade(null)}>
-      <div className="bg-gray-800 w-full max-w-md p-6 rounded-t-lg animate-slide-up" onClick={(e) => e.stopPropagation()}>
-        <h2 className="text-center text-xl text-white mb-4">{selectedUpgrade === 'multitap' ? 'Multitap' : 'Tap Increase'}</h2>
+    <div
+      className="fixed inset-0 bg-black bg-opacity-50 flex items-end justify-center z-50"
+      onClick={() => setSelectedUpgrade(null)}
+    >
+      <div
+        className="bg-gray-800 w-full max-w-md p-6 rounded-t-lg animate-slide-up"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h2 className="text-center text-xl text-white mb-4">
+          {selectedUpgrade === 'multitap' ? 'Multitap' : 'Tap Increase'}
+        </h2>
         <p className="text-center text-gray-400 mb-4">
-          {selectedUpgrade === 'multitap' ? 
-            'Increases the profit for each tap, allowing you to accumulate coins faster. This improvement will help you reach new levels faster and earn more points.' :
-            'Increases the maximum number of taps that can be made at a time. This improvement will allow you to play longer without having to wait for clicks to be restored.'}
+          {selectedUpgrade === 'multitap'
+            ? 'Increases the profit for each tap, allowing you to accumulate coins faster. This improvement will help you reach new levels faster and earn more points.'
+            : 'Increases the maximum number of taps that can be made at a time. This improvement will allow you to play longer without having to wait for clicks to be restored.'}
         </p>
-        <p className="text-center text-gray-300 mb-4">Current Level: {selectedUpgrade === 'multitap' ? tapProfitLevel : tapIncreaseLevel}</p>
+        <p className="text-center text-gray-300 mb-4">
+          Current Level: {selectedUpgrade === 'multitap' ? tapProfitLevel : tapIncreaseLevel}
+        </p>
         {selectedUpgrade === 'multitap' && tapProfitLevel < 10 && (
           <button
             onClick={upgradeTapProfit}
             disabled={points < tapProfitLevels[tapProfitLevel].cost}
             className={`w-full py-3 bg-yellow-500 text-black rounded-lg ${
-              points >= tapProfitLevels[tapProfitLevel].cost ? 'hover:bg-yellow-600' : 'opacity-50 cursor-not-allowed'
+              points >= tapProfitLevels[tapProfitLevel].cost
+                ? 'hover:bg-yellow-600'
+                : 'opacity-50 cursor-not-allowed'
             }`}
           >
             Upgrade for {tapProfitLevels[tapProfitLevel].cost} coins
@@ -448,16 +542,24 @@ const handleMainButtonClick = useCallback(async (e: React.TouchEvent<HTMLDivElem
             onClick={upgradeTapIncrease}
             disabled={points < tapIncreaseLevels[tapIncreaseLevel].cost}
             className={`w-full py-3 bg-yellow-500 text-black rounded-lg ${
-              points >= tapIncreaseLevels[tapIncreaseLevel].cost ? 'hover:bg-yellow-600' : 'opacity-50 cursor-not-allowed'
+              points >= tapIncreaseLevels[tapIncreaseLevel].cost
+                ? 'hover:bg-yellow-600'
+                : 'opacity-50 cursor-not-allowed'
             }`}
           >
             Upgrade for {tapIncreaseLevels[tapIncreaseLevel].cost} coins
           </button>
         )}
-        {(selectedUpgrade === 'multitap' && tapProfitLevel >= 10) || (selectedUpgrade === 'tapIncrease' && tapIncreaseLevel >= 10) ? (
+        {(selectedUpgrade === 'multitap' && tapProfitLevel >= 10) ||
+        (selectedUpgrade === 'tapIncrease' && tapIncreaseLevel >= 10) ? (
           <p className="text-center text-yellow-400 mt-4">Max Level Reached</p>
         ) : null}
-        <button className="w-full py-2 mt-4 bg-gray-700 text-white rounded-lg" onClick={() => setSelectedUpgrade(null)}>Close</button>
+        <button
+          className="w-full py-2 mt-4 bg-gray-700 text-white rounded-lg"
+          onClick={() => setSelectedUpgrade(null)}
+        >
+          Close
+        </button>
       </div>
     </div>
   );
@@ -469,7 +571,7 @@ const handleMainButtonClick = useCallback(async (e: React.TouchEvent<HTMLDivElem
           <Hamster size={24} className="text-yellow-400" />
         </div>
         <div>
-          <p className="text-sm text-gray-300">{username ? username : 'Гость'}</p>
+          <p className="text-sm text-gray-300">{username ? username : 'Guest'}</p>
         </div>
       </div>
       <div className="flex items-center justify-between space-x-4 mt-1">
@@ -477,11 +579,16 @@ const handleMainButtonClick = useCallback(async (e: React.TouchEvent<HTMLDivElem
           <div className="w-full">
             <div className="flex justify-between">
               <p className="text-sm text-gray-300">{levelNames[levelIndex]}</p>
-              <p className="text-sm text-gray-300">{levelIndex + 1} <span className="text-yellow-400">/ {levelNames.length}</span></p>
+              <p className="text-sm text-gray-300">
+                {levelIndex + 1} <span className="text-yellow-400">/ {levelNames.length}</span>
+              </p>
             </div>
             <div className="flex items-center mt-1 border-2 border-gray-600 rounded-full">
               <div className="w-full h-2 bg-gray-700 rounded-full">
-                <div className="h-2 rounded-full bg-yellow-400" style={{ width: `${calculateProgress}%` }}></div>
+                <div
+                  className="h-2 rounded-full bg-yellow-400"
+                  style={{ width: `${calculateProgress}%` }}
+                ></div>
               </div>
             </div>
           </div>
@@ -505,8 +612,7 @@ const handleMainButtonClick = useCallback(async (e: React.TouchEvent<HTMLDivElem
             className="w-80 h-80 p-4 rounded-full bg-gray-700 shadow-lg main-button"
             onTouchStart={handleMainButtonClick}
           >
-            <div className="w-full h-full rounded-full bg-gray-600 flex items-center justify-center">
-            </div>
+            <div className="w-full h-full rounded-full bg-gray-600 flex items-center justify-center"></div>
           </div>
         </div>
       </div>
@@ -558,8 +664,12 @@ const handleMainButtonClick = useCallback(async (e: React.TouchEvent<HTMLDivElem
               setPoints={setPoints}
               selectedUpgrade={selectedUpgrade}
               setSelectedUpgrade={setSelectedUpgrade}
-              username={username || 'Гость'} 
+              username={username || 'Guest'}
               userId={userId}
+              // Pass additional props if needed
+              tapProfitLevel={tapProfitLevel}
+              tapIncreaseLevel={tapIncreaseLevel}
+              remainingClicks={remainingClicks}
             />
           )}
           {isBoostMenuOpen && renderBoostContent()}
@@ -606,11 +716,7 @@ const handleMainButtonClick = useCallback(async (e: React.TouchEvent<HTMLDivElem
           </div>
 
           {clicks.map((click) => (
-            <div
-              key={click.id}
-              className="clicked-number"
-              style={{ top: click.y, left: click.x }}
-            >
+            <div key={click.id} className="clicked-number" style={{ top: click.y, left: click.x }}>
               +{click.profit}
             </div>
           ))}
