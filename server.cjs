@@ -1,3 +1,5 @@
+// server.cjs
+
 const express = require('express');
 const path = require('path');
 const bodyParser = require('body-parser');
@@ -14,25 +16,26 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'dist')));
 
 const dbConfig = {
-    host: process.env.DB_HOST,
-    user: process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
-    database: process.env.DB_NAME,
-    port: process.env.DB_PORT || 3306,
+  host: process.env.DB_HOST,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME,
+  port: process.env.DB_PORT || 3306,
 };
 
 const db = mysql.createConnection(dbConfig);
 
 db.connect((err) => {
-    if (err) {
-        console.error('Ошибка подключения к базе данных:', err);
-        return;
-    }
-    console.log('Успешное подключение к базе данных');
+  if (err) {
+    console.error('Ошибка подключения к базе данных:', err);
+    return;
+  }
+  console.log('Успешное подключение к базе данных');
 });
 
 // Создание/обновление таблицы 'user' в базе данных
-db.query(`
+db.query(
+  `
     CREATE TABLE IF NOT EXISTS user (
         id INT AUTO_INCREMENT PRIMARY KEY,
         telegram_id BIGINT UNIQUE,
@@ -53,357 +56,342 @@ db.query(`
         upgrade7 INT DEFAULT 1,
         upgrade8 INT DEFAULT 1,
         farmLevel INT DEFAULT 1,
+        multitapLevel INT DEFAULT 1,  -- Добавляем поле multitapLevel
         incomePerHour FLOAT DEFAULT 0,  -- Добавляем столбец для дохода в час
         entryTime TIMESTAMP NULL DEFAULT NULL,  -- Время входа
         exitTime TIMESTAMP NULL DEFAULT NULL    -- Время выхода
     )
-`, (err) => {
+`,
+  (err) => {
     if (err) {
-        console.error('Ошибка создания таблицы:', err);
+      console.error('Ошибка создания таблицы:', err);
     } else {
-        console.log('Таблица user проверена/создана');
+      console.log('Таблица user проверена/создана');
     }
-});
+  }
+);
 
 const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN);
 
 function generateSessionToken(telegramId) {
-    return crypto.randomBytes(64).toString('hex');
+  return crypto.randomBytes(64).toString('hex');
 }
 
 function saveSessionToken(telegramId, sessionToken) {
-    return new Promise((resolve, reject) => {
-        db.query(
-            'UPDATE user SET session_token = ? WHERE telegram_id = ?',
-            [sessionToken, telegramId],
-            (err, results) => {
-                if (err) {
-                    console.error('Ошибка сохранения токена сессии в базе данных:', err);
-                    return reject(err);
-                }
-                resolve();
-            }
-        );
-    });
+  return new Promise((resolve, reject) => {
+    db.query(
+      'UPDATE user SET session_token = ? WHERE telegram_id = ?',
+      [sessionToken, telegramId],
+      (err, results) => {
+        if (err) {
+          console.error('Ошибка сохранения токена сессии в базе данных:', err);
+          return reject(err);
+        }
+        resolve();
+      }
+    );
+  });
 }
 
 function validateSessionToken(token) {
-    return new Promise((resolve, reject) => {
-        db.query(
-            'SELECT * FROM user WHERE session_token = ?',
-            [token],
-            (err, results) => {
-                if (err) {
-                    console.error('Ошибка проверки токена сессии:', err);
-                    return reject(err);
-                }
-                if (results.length > 0) {
-                    resolve(results[0]);
-                } else {
-                    resolve(null);
-                }
-            }
-        );
-    });
+  return new Promise((resolve, reject) => {
+    db.query(
+      'SELECT * FROM user WHERE session_token = ?',
+      [token],
+      (err, results) => {
+        if (err) {
+          console.error('Ошибка проверки токена сессии:', err);
+          return reject(err);
+        }
+        if (results.length > 0) {
+          resolve(results[0]);
+        } else {
+          resolve(null);
+        }
+      }
+    );
+  });
 }
 
 bot.start(async (ctx) => {
-    const telegramId = ctx.message.from.id;
-    const username = ctx.message.from.username || `user_${telegramId}`;
+  const telegramId = ctx.message.from.id;
+  const username = ctx.message.from.username || `user_${telegramId}`;
 
-    const sessionToken = generateSessionToken(telegramId);
+  const sessionToken = generateSessionToken(telegramId);
 
-    db.query('SELECT points FROM user WHERE telegram_id = ?', [telegramId], (err, results) => {
-        if (err) {
-            return ctx.reply('Произошла ошибка, попробуйте позже.');
-        }
+  db.query('SELECT points FROM user WHERE telegram_id = ?', [telegramId], (err, results) => {
+    if (err) {
+      return ctx.reply('Произошла ошибка, попробуйте позже.');
+    }
 
-        if (results.length > 0) {
-            db.query(
-                'UPDATE user SET session_token = ?, auth_date = NOW() WHERE telegram_id = ?',
-                [sessionToken, telegramId]
-            );
-        } else {
-            db.query(
-                'INSERT INTO user (telegram_id, username, session_token, points, remainingClicks) VALUES (?, ?, ?, 10000, 1000)',
-                [telegramId, username, sessionToken]
-            );
-        }
+    if (results.length > 0) {
+      db.query('UPDATE user SET session_token = ?, auth_date = NOW() WHERE telegram_id = ?', [
+        sessionToken,
+        telegramId,
+      ]);
+    } else {
+      db.query(
+        'INSERT INTO user (telegram_id, username, session_token, points, remainingClicks) VALUES (?, ?, ?, 10000, 1000)',
+        [telegramId, username, sessionToken]
+      );
+    }
 
-        const miniAppUrl = `https://t.me/cryptocollect_bot?startapp=${telegramId}&tgWebApp=true&token=${sessionToken}`;
+    const miniAppUrl = `https://t.me/cryptocollect_bot?startapp=${telegramId}&tgWebApp=true&token=${sessionToken}`;
 
-        ctx.reply(
-            'Добро пожаловать! Нажмите на кнопку ниже, чтобы открыть приложение:',
-            Markup.inlineKeyboard([
-                Markup.button.url('Открыть приложение', miniAppUrl)
-            ])
-        );
-    });
+    ctx.reply(
+      'Добро пожаловать! Нажмите на кнопку ниже, чтобы открыть приложение:',
+      Markup.inlineKeyboard([Markup.button.url('Открыть приложение', miniAppUrl)])
+    );
+  });
 });
 
 // Сохранение дохода в час в базе данных
 app.post('/save-income', (req, res) => {
-    const { userId, incomePerHour } = req.body;
+  const { userId, incomePerHour } = req.body;
 
-    if (!userId || incomePerHour === undefined) {
-        console.log('Ошибка: Недостаточно данных для сохранения дохода');
-        return res.status(400).json({ error: 'Missing required fields' });
-    }
+  if (!userId || incomePerHour === undefined) {
+    console.log('Ошибка: Недостаточно данных для сохранения дохода');
+    return res.status(400).json({ error: 'Missing required fields' });
+  }
 
-    const query = `
+  const query = `
         UPDATE user 
         SET incomePerHour = ?
         WHERE telegram_id = ?
     `;
 
-    db.query(query, [incomePerHour, userId], (err) => {
-        if (err) {
-            console.error('Ошибка при сохранении дохода:', err);
-            return res.status(500).json({ error: 'Server error' });
-        }
+  db.query(query, [incomePerHour, userId], (err) => {
+    if (err) {
+      console.error('Ошибка при сохранении дохода:', err);
+      return res.status(500).json({ error: 'Server error' });
+    }
 
-        console.log('Доход успешно сохранен для пользователя с ID:', userId);
-        res.json({ success: true });
-    });
+    console.log('Доход успешно сохранен для пользователя с ID:', userId);
+    res.json({ success: true });
+  });
 });
 
 // Сохранение времени входа и выхода с вкладки
 app.post('/save-entry-exit-time', (req, res) => {
-    const { userId, enterTime, exitTime } = req.body;
+  const { userId, enterTime, exitTime } = req.body;
 
-    if (!userId || (!enterTime && !exitTime)) {
-        console.log('Ошибка: Недостаточно данных для сохранения времени входа/выхода');
-        return res.status(400).json({ error: 'Missing required fields' });
-    }
+  if (!userId || (!enterTime && !exitTime)) {
+    console.log('Ошибка: Недостаточно данных для сохранения времени входа/выхода');
+    return res.status(400).json({ error: 'Missing required fields' });
+  }
 
-    const query = `
+  const query = `
         UPDATE user 
         SET ${enterTime ? 'entryTime' : 'exitTime'} = ?
         WHERE telegram_id = ?
     `;
 
-    db.query(query, [enterTime || exitTime, userId], (err) => {
-        if (err) {
-            console.error('Ошибка при сохранении времени:', err);
-            return res.status(500).json({ error: 'Server error' });
-        }
+  db.query(query, [enterTime || exitTime, userId], (err) => {
+    if (err) {
+      console.error('Ошибка при сохранении времени:', err);
+      return res.status(500).json({ error: 'Server error' });
+    }
 
-        console.log(`Время ${enterTime ? 'входа' : 'выхода'} успешно сохранено для пользователя с ID:`, userId);
-        res.json({ success: true });
-    });
+    console.log(
+      `Время ${enterTime ? 'входа' : 'выхода'} успешно сохранено для пользователя с ID:`,
+      userId
+    );
+    res.json({ success: true });
+  });
 });
 
 app.post('/logout', (req, res) => {
-    const { userId, remainingClicks, lastLogout } = req.body;
-    
-    if (!userId) {
-        return res.status(400).json({ error: 'Missing userId' });
-    }
+  const { userId, remainingClicks, lastLogout } = req.body;
 
-    const query = `
+  if (!userId) {
+    return res.status(400).json({ error: 'Missing userId' });
+  }
+
+  const query = `
         UPDATE user
         SET last_logout = ?, remainingClicks = ?
         WHERE telegram_id = ?
     `;
 
-    db.query(query, [lastLogout, remainingClicks, userId], (err) => {
-        if (err) {
-            console.error('Ошибка при обновлении времени выхода:', err);
-            return res.status(500).json({ error: 'Server error' });
-        }
-        res.json({ success: true });
-    });
+  db.query(query, [lastLogout, remainingClicks, userId], (err) => {
+    if (err) {
+      console.error('Ошибка при обновлении времени выхода:', err);
+      return res.status(500).json({ error: 'Server error' });
+    }
+    res.json({ success: true });
+  });
 });
 
 app.get('/app', async (req, res) => {
-    const userId = req.query.userId;
+  const userId = req.query.userId;
 
-    if (!userId) {
-        console.error('User ID не передан в запросе');
-        return res.status(400).json({ error: 'User ID обязателен' });
-    }
+  if (!userId) {
+    console.error('User ID не передан в запросе');
+    return res.status(400).json({ error: 'User ID обязателен' });
+  }
 
-    console.log('Запрос от Mini App с User ID:', userId);
+  console.log('Запрос от Mini App с User ID:', userId);
 
-    try {
-        const query = 'SELECT * FROM user WHERE telegram_id = ?';
-        db.query(query, [userId], (err, results) => {
-            if (err) {
-                console.error('Ошибка проверки User ID:', err);
-                return res.status(500).json({ error: 'Ошибка сервера' });
-            }
-            if (results.length > 0) {
-                const userData = results[0];
-                return res.json({
-                    username: userData.username,
-                    points: userData.points,
-                    tapProfitLevel: userData.tapProfitLevel,
-                    tapIncreaseLevel: userData.tapIncreaseLevel,
-                    remainingClicks: userData.remainingClicks,
-                    lastLogout: userData.last_logout,
-                    upgrade1: userData.upgrade1,
-                    upgrade2: userData.upgrade2,
-                    upgrade3: userData.upgrade3,
-                    upgrade4: userData.upgrade4,
-                    upgrade5: userData.upgrade5,
-                    upgrade6: userData.upgrade6,
-                    upgrade7: userData.upgrade7,
-                    upgrade8: userData.upgrade8,
-                    farmLevel: userData.farmLevel,
-                    incomePerHour: userData.incomePerHour, // Возвращаем доход в час
-                    entryTime: userData.entryTime, // Возвращаем время входа
-                    exitTime: userData.exitTime // Возвращаем время выхода
-                });
-            } else {
-                console.error('Пользователь не найден с User ID:', userId);
-                return res.status(404).json({ error: 'Пользователь не найден' });
-            }
+  try {
+    const query = 'SELECT * FROM user WHERE telegram_id = ?';
+    db.query(query, [userId], (err, results) => {
+      if (err) {
+        console.error('Ошибка проверки User ID:', err);
+        return res.status(500).json({ error: 'Ошибка сервера' });
+      }
+      if (results.length > 0) {
+        const userData = results[0];
+        return res.json({
+          username: userData.username,
+          points: userData.points,
+          tapProfitLevel: userData.tapProfitLevel,
+          tapIncreaseLevel: userData.tapIncreaseLevel,
+          remainingClicks: userData.remainingClicks,
+          lastLogout: userData.last_logout,
+          upgrade1: userData.upgrade1,
+          upgrade2: userData.upgrade2,
+          upgrade3: userData.upgrade3,
+          upgrade4: userData.upgrade4,
+          upgrade5: userData.upgrade5,
+          upgrade6: userData.upgrade6,
+          upgrade7: userData.upgrade7,
+          upgrade8: userData.upgrade8,
+          farmLevel: userData.farmLevel,
+          multitapLevel: userData.multitapLevel, // Добавляем multitapLevel в ответ
+          incomePerHour: userData.incomePerHour,
+          entryTime: userData.entryTime,
+          exitTime: userData.exitTime,
         });
-    } catch (error) {
-        console.error('Ошибка при проверке User ID:', error);
-        res.status(500).json({ error: 'Ошибка сервера' });
-    }
+      } else {
+        console.error('Пользователь не найден с User ID:', userId);
+        return res.status(404).json({ error: 'Пользователь не найден' });
+      }
+    });
+  } catch (error) {
+    console.error('Ошибка при проверке User ID:', error);
+    res.status(500).json({ error: 'Ошибка сервера' });
+  }
 });
 
 // Сохранение данных пользователя (улучшения, клики и т.д.)
 app.post('/save-data', (req, res) => {
-    const { 
-      userId, 
-      points, 
-      tapProfitLevel = 1, 
-      tapIncreaseLevel = 1, 
-      remainingClicks = 1000, 
-      upgrade1 = 1, 
-      upgrade2 = 1, 
-      upgrade3 = 1, 
-      upgrade4 = 1, 
-      upgrade5 = 1, 
-      upgrade6 = 1, 
-      upgrade7 = 1, 
-      upgrade8 = 1, 
-      farmLevel = 1 
-    } = req.body;
-  
-    if (!userId || points === undefined || tapProfitLevel === undefined || tapIncreaseLevel === undefined || remainingClicks === undefined) {
-        console.log('Ошибка: Недостаточно данных для сохранения');
-        return res.status(400).json({ error: 'Missing required fields' });
+  const { userId, ...dataToUpdate } = req.body;
+
+  if (!userId) {
+    console.log('Ошибка: Недостаточно данных для сохранения');
+    return res.status(400).json({ error: 'Missing userId' });
+  }
+
+  const allowedFields = [
+    'points',
+    'tapProfitLevel',
+    'tapIncreaseLevel',
+    'remainingClicks',
+    'upgrade1',
+    'upgrade2',
+    'upgrade3',
+    'upgrade4',
+    'upgrade5',
+    'upgrade6',
+    'upgrade7',
+    'upgrade8',
+    'farmLevel',
+    'multitapLevel',
+  ];
+
+  const fieldsToUpdate = {};
+  allowedFields.forEach((field) => {
+    if (dataToUpdate[field] !== undefined) {
+      fieldsToUpdate[field] = dataToUpdate[field];
     }
-  
-    const query = `
-        UPDATE user 
-        SET points = ?, 
-            tapProfitLevel = ?, 
-            tapIncreaseLevel = ?, 
-            remainingClicks = ?, 
-            upgrade1 = ?, 
-            upgrade2 = ?, 
-            upgrade3 = ?, 
-            upgrade4 = ?, 
-            upgrade5 = ?, 
-            upgrade6 = ?, 
-            upgrade7 = ?, 
-            upgrade8 = ?, 
-            farmLevel = ?
+  });
+
+  if (Object.keys(fieldsToUpdate).length === 0) {
+    return res.status(400).json({ error: 'No fields to update' });
+  }
+
+  const setClause = Object.keys(fieldsToUpdate)
+    .map((field) => `${field} = ?`)
+    .join(', ');
+  const values = Object.values(fieldsToUpdate);
+
+  const query = `
+        UPDATE user
+        SET ${setClause}
         WHERE telegram_id = ?
     `;
 
-    db.query(query, [
-        points, 
-        tapProfitLevel, 
-        tapIncreaseLevel, 
-        remainingClicks, 
-        upgrade1, 
-        upgrade2, 
-        upgrade3, 
-        upgrade4, 
-        upgrade5, 
-        upgrade6, 
-        upgrade7, 
-        upgrade8, 
-        farmLevel, 
-        userId
-    ], (err, results) => {
-        if (err) {
-            console.error('Ошибка при сохранении данных:', err);
-            return res.status(500).json({ error: 'Server error' });
-        }
+  db.query(query, [...values, userId], (err, results) => {
+    if (err) {
+      console.error('Ошибка при сохранении данных:', err);
+      return res.status(500).json({ error: 'Server error' });
+    }
 
-        console.log('Данные успешно сохранены для пользователя с ID:', userId);
+    console.log('Данные успешно сохранены для пользователя с ID:', userId);
 
-        res.json({
-            success: true,
-            points,
-            tapProfitLevel,
-            tapIncreaseLevel,
-            remainingClicks,
-            upgrade1,
-            upgrade2,
-            upgrade3,
-            upgrade4,
-            upgrade5,
-            upgrade6,
-            upgrade7,
-            upgrade8,
-            farmLevel
-        });
+    res.json({
+      success: true,
+      ...fieldsToUpdate,
     });
+  });
 });
 
 app.post('/update-clicks', (req, res) => {
-    const { userId, remainingClicks } = req.body;
+  const { userId, remainingClicks } = req.body;
 
-    if (!userId || remainingClicks === undefined) {
-        console.log('Ошибка: Недостаточно данных для обновления кликов');
-        return res.status(400).json({ error: 'Missing required fields' });
-    }
+  if (!userId || remainingClicks === undefined) {
+    console.log('Ошибка: Недостаточно данных для обновления кликов');
+    return res.status(400).json({ error: 'Missing required fields' });
+  }
 
-    const query = `
+  const query = `
         UPDATE user 
         SET remainingClicks = ?
         WHERE telegram_id = ?
     `;
 
-    db.query(query, [remainingClicks, userId], (err) => {
-        if (err) {
-            console.error('Ошибка при обновлении кликов:', err);
-            return res.status(500).json({ error: 'Server error' });
-        }
+  db.query(query, [remainingClicks, userId], (err) => {
+    if (err) {
+      console.error('Ошибка при обновлении кликов:', err);
+      return res.status(500).json({ error: 'Server error' });
+    }
 
-        console.log('Клики успешно обновлены для пользователя с ID:', userId);
+    console.log('Клики успешно обновлены для пользователя с ID:', userId);
 
-        res.json({
-            success: true,
-            remainingClicks,
-        });
+    res.json({
+      success: true,
+      remainingClicks,
     });
+  });
 });
 
 app.post('/webhook', (req, res) => {
-    console.log('Получен запрос на /webhook:', req.body);
-    bot.handleUpdate(req.body)
-        .then(() => {
-            res.sendStatus(200);
-        })
-        .catch((err) => {
-            console.error('Ошибка при обработке запроса:', err);
-            res.sendStatus(500);
-        });
+  console.log('Получен запрос на /webhook:', req.body);
+  bot
+    .handleUpdate(req.body)
+    .then(() => {
+      res.sendStatus(200);
+    })
+    .catch((err) => {
+      console.error('Ошибка при обработке запроса:', err);
+      res.sendStatus(500);
+    });
 });
 
 const startServer = async () => {
-    try {
-        await bot.telegram.deleteWebhook({ drop_pending_updates: true });
+  try {
+    await bot.telegram.deleteWebhook({ drop_pending_updates: true });
 
-        const webhookUrl = process.env.WEBHOOK_URL;
-        await bot.telegram.setWebhook(webhookUrl);
-        console.log('Webhook успешно установлен:', webhookUrl);
+    const webhookUrl = process.env.WEBHOOK_URL;
+    await bot.telegram.setWebhook(webhookUrl);
+    console.log('Webhook успешно установлен:', webhookUrl);
 
-        app.listen(port, () => {
-            console.log(`Сервер запущен на порту ${port}`);
-        });
-    } catch (err) {
-        console.error('Ошибка установки вебхука:', err);
-    }
+    app.listen(port, () => {
+      console.log(`Сервер запущен на порту ${port}`);
+    });
+  } catch (err) {
+    console.error('Ошибка установки вебхука:', err);
+  }
 };
 
 startServer();
