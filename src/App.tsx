@@ -1,5 +1,3 @@
-// App.tsx
-
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import './App.css';
 import Hamster from './icons/Hamster';
@@ -21,6 +19,7 @@ const RECOVERY_RATE = 1000; // Время восстановления одно�
 const RECOVERY_AMOUNT = 1;  // Количество восстанавливаемых кликов за интервал
 
 const App: React.FC = () => {
+  // Ваши существующие состояния
   const [tapProfit, setTapProfit] = useState(1);
   const [tapProfitLevel, setTapProfitLevel] = useState<number>(() => {
     const savedLevel = localStorage.getItem('tapProfitLevel');
@@ -42,6 +41,10 @@ const App: React.FC = () => {
   const [username, setUsername] = useState<string | null>(null);
   const [userId, setUserId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // Новые состояния для entryTime и exitTime
+  const [entryTime, setEntryTime] = useState<string | null>(null);
+  const [exitTime, setExitTime] = useState<string | null>(null);
 
   // Состояния для улучшений из MineContent
   const [upgrades, setUpgrades] = useState<{ [key: string]: number }>({
@@ -677,22 +680,27 @@ const App: React.FC = () => {
         <div className="w-full max-w-[390px] h-screen font-bold flex flex-col relative overflow-hidden bg-gray-800">
           {currentPage === 'farm' && !isBoostMenuOpen && renderMainContent()}
           {currentPage === 'mine' && (
-            <MineContent
-              points={points}
-              setPoints={setPoints}
-              username={username || 'Гость'}
-              userId={userId}
-              tapProfitLevel={tapProfitLevel}
-              tapIncreaseLevel={tapIncreaseLevel}
-              remainingClicks={remainingClicks}
-              upgrades={upgrades}
-              setUpgrades={setUpgrades}
-              farmLevel={farmLevel}
-              setFarmLevel={setFarmLevel}
-              incomePerHour={incomePerHour}
-              setIncomePerHour={setIncomePerHour}
-            />
-          )}
+    <MineContent
+      points={points}
+      setPoints={setPoints}
+      username={username || 'Гость'}
+      userId={userId}
+      tapProfitLevel={tapProfitLevel}
+      tapIncreaseLevel={tapIncreaseLevel}
+      remainingClicks={remainingClicks}
+      upgrades={upgrades}
+      setUpgrades={setUpgrades}
+      farmLevel={farmLevel}
+      setFarmLevel={setFarmLevel}
+      incomePerHour={incomePerHour}
+      setIncomePerHour={setIncomePerHour}
+      entryTime={entryTime}
+      setEntryTime={setEntryTime}
+      exitTime={exitTime}
+      setExitTime={setExitTime}
+      // ... другие пропсы, если есть ...
+    />
+  )}
           {isBoostMenuOpen && renderBoostContent()}
           {selectedUpgrade && renderUpgradeMenu()}
           <div className="absolute bottom-0 left-0 right-0 bg-gray-700 rounded-t-2xl flex justify-around items-center text-xs py-4 px-2 z-50">
