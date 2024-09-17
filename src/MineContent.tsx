@@ -1,6 +1,6 @@
 // MineContent.tsx
 
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { upgradeLevels } from './upgrades';
 import UpgradeNotification from './UpgradeNotification';
 import './minecontent.css';
@@ -19,10 +19,6 @@ interface MineContentProps {
   setFarmLevel: React.Dispatch<React.SetStateAction<number>>;
   incomePerHour: number;
   setIncomePerHour: React.Dispatch<React.SetStateAction<number>>;
-  entryTime: string | null;
-  exitTime: string | null;
-  setEntryTime: React.Dispatch<React.SetStateAction<string | null>>;
-  setExitTime: React.Dispatch<React.SetStateAction<string | null>>;
 }
 
 const MineContent: React.FC<MineContentProps> = ({
@@ -38,18 +34,12 @@ const MineContent: React.FC<MineContentProps> = ({
   farmLevel,
   incomePerHour,
   setIncomePerHour,
-  entryTime,
-  exitTime,
-  setEntryTime,
-  setExitTime,
 }) => {
   const [notificationMessage, setNotificationMessage] = useState<string | null>(null);
   const [isUpgradesMenuOpen, setIsUpgradesMenuOpen] = useState(false);
   const [selectedMineUpgrade, setSelectedMineUpgrade] = useState<string | null>(null);
-
-  const [collectedCoins, setCollectedCoins] = useState<number>(0);
-  const [collectionTimer, setCollectionTimer] = useState<number>(3 * 60 * 60); // 3 hours in seconds
-  const timerIntervalRef = useRef<number | null>(null);
+  const [earnedCoins, setEarnedCoins] = useState<number>(0);
+  const [timer, setTimer] = useState<number>(10800); // 3 часа в секундах
 
   const farmLevelMultipliers = [1, 1.2, 1.4, 1.6, 1.8, 2.0];
 
@@ -64,137 +54,142 @@ const MineContent: React.FC<MineContentProps> = ({
     return income * farmLevelMultipliers[farmLevel - 1];
   };
 
+  // Инициализация дохода при изменении улучшений или уровня фермы
   useEffect(() => {
     const totalIncome = calculateTotalIncome(upgrades, farmLevel);
     setIncomePerHour(totalIncome);
   }, [upgrades, farmLevel, setIncomePerHour]);
 
-  // Accumulate coins in collectedCoins
+  // Обновление earnedCoins каждые секунду, пока таймер > 0
   useEffect(() => {
-    let startTime = Date.now();
-
-    // If there's time left in the collection timer
-    if (collectionTimer > 0) {
-      timerIntervalRef.current = window.setInterval(() => {
-        const now = Date.now();
-        const elapsedTime = (now - startTime) / 1000; // in seconds
-        const incomePerSecond = incomePerHour / 3600;
-        const potentialCollected = incomePerSecond * elapsedTime;
-
-        setCollectedCoins((prev) => {
-          const newTotal = prev + potentialCollected;
-          const maxCollectible = incomePerHour * 3; // Max collection for 3 hours
-          return Math.min(newTotal, maxCollectible);
+    if (incomePerHour > 0 && timer > 0) {
+      const interval = setInterval(() => {
+        setEarnedCoins((prevEarnedCoins) => {
+          const incomePerSecond = incomePerHour / 3600;
+          const newEarnedCoins = prevEarnedCoins + incomePerSecond;
+          const maxEarnedCoins = incomePerHour * 3;
+          return newEarnedCoins > maxEarnedCoins ? maxEarnedCoins : newEarnedCoins;
         });
 
-        setCollectionTimer((prev) => Math.max(prev - elapsedTime, 0));
-
-        startTime = now;
-
-        // Stop accumulation when timer reaches zero
-        if (collectionTimer - elapsedTime <= 0) {
-          if (timerIntervalRef.current) {
-            clearInterval(timerIntervalRef.current);
-            timerIntervalRef.current = null;
-          }
-        }
+        setTimer((prevTimer) => (prevTimer > 0 ? prevTimer - 1 : 0));
       }, 1000);
+
+      return () => clearInterval(interval);
     }
+  }, [incomePerHour, timer]);
 
-    return () => {
-      if (timerIntervalRef.current) {
-        clearInterval(timerIntervalRef.current);
-        timerIntervalRef.current = null;
-      }
-    };
-  }, [incomePerHour, collectionTimer]);
-
-  // Update collectedCoins and collectionTimer on entry
-  useEffect(() => {
-    const fetchEntryExitTime = async () => {
-      if (userId) {
-        try {
-          const response = await fetch(`/get-entry-exit-time?userId=${userId}`);
-          const data = await response.json();
-          if (data.entryTime && data.exitTime) {
-            // Update entryTime and exitTime states
-            setEntryTime(data.entryTime);
-            setExitTime(data.exitTime);
-
-            const lastExitTime = new Date(data.exitTime).getTime();
-            const now = Date.now();
-            const elapsedTime = (now - lastExitTime) / 1000; // in seconds
-
-            // Update collectedCoins
-            const incomePerSecond = incomePerHour / 3600;
-            const potentialCollected = incomePerSecond * elapsedTime;
-            const maxCollectible = incomePerHour * 3; // Max collection for 3 hours
-            const newCollectedCoins = Math.min(potentialCollected, maxCollectible);
-            setCollectedCoins(newCollectedCoins);
-
-            // Update collectionTimer
-            const newTimerValue = Math.max(3 * 60 * 60 - elapsedTime, 0);
-            setCollectionTimer(newTimerValue);
-          }
-        } catch (error) {
-          console.error('Error fetching entry/exit time:', error);
-        }
-      }
-    };
-
-    fetchEntryExitTime();
-
-    // Save current time as entryTime
-    const now = new Date().toISOString();
-    setEntryTime(now);
-
-    // Send to server
-    fetch('/save-entry-exit-time', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId, action: 'enter', time: now }),
-    });
-  }, [userId, incomePerHour, setEntryTime, setExitTime]);
-
-  // Save exitTime when component unmounts
-  useEffect(() => {
-    return () => {
-      const now = new Date().toISOString();
-      setExitTime(now);
-      // Send to server
-      fetch('/save-entry-exit-time', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId, action: 'exit', time: now }),
-      });
-    };
-  }, [userId, setExitTime]);
-
-  const handleCollect = () => {
-    const coinsToAdd = Math.floor(collectedCoins);
-    // Add collected coins to points
-    setPoints((prevPoints) => prevPoints + coinsToAdd);
-    setCollectedCoins(0);
-    setCollectionTimer(3 * 60 * 60); // Reset timer to 3 hours
-
-    // Save updated points on server
-    if (userId !== null) {
-      fetch('/update-points', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId,
-          points: points + coinsToAdd,
-        }),
-      }).catch((error) => {
-        console.error('Error updating points:', error);
-      });
-    }
+  // Форматирование времени из секунд в HH:MM:SS
+  const formatTime = (seconds: number): string => {
+    const h = Math.floor(seconds / 3600).toString().padStart(2, '0');
+    const m = Math.floor((seconds % 3600) / 60).toString().padStart(2, '0');
+    const s = Math.floor(seconds % 60).toString().padStart(2, '0');
+    return `${h}:${m}:${s}`;
   };
 
+  // Функция для сбора заработанных монет
+  const handleCollect = useCallback(() => {
+    if (earnedCoins > 0) {
+      const totalPoints = points + earnedCoins;
+      setPoints(totalPoints);
+      setEarnedCoins(0);
+      setTimer(10800); // Сброс таймера на 3 часа
+
+      // Сохраняем данные на сервере
+      fetch('/save-data', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId,
+          points: totalPoints,
+          earnedCoins: 0,
+          timer: 10800,
+        }),
+      })
+        .then((response) => response.json())
+        .then((data) => {
+          if (data.success) {
+            console.log('Данные сохранены после сбора монет:', data);
+          } else {
+            console.error('Ошибка на сервере при сохранении данных после сбора:', data.error);
+            alert('Ошибка сохранения данных. Попробуйте снова.');
+          }
+        })
+        .catch((error) => {
+          console.error('Ошибка при сохранении данных после сбора:', error);
+          alert('Ошибка сохранения данных. Попробуйте снова.');
+        });
+    }
+  }, [earnedCoins, points, setPoints, userId]);
+
+  // Загрузка данных при монтировании компонента
+  useEffect(() => {
+    if (userId !== null) {
+      fetch(`/app?userId=${userId}`)
+        .then((response) => response.json())
+        .then((data) => {
+          const savedEarnedCoins = data.earnedCoins || 0;
+          const savedTimer = data.timer !== undefined ? data.timer : 10800;
+          const exitTime = data.exitTime ? new Date(data.exitTime) : null;
+          const now = new Date();
+
+          let timeElapsed = 0;
+          if (exitTime) {
+            timeElapsed = Math.floor((now.getTime() - exitTime.getTime()) / 1000); // в секундах
+          }
+
+          let adjustedTimer = savedTimer - timeElapsed;
+          if (adjustedTimer < 0) {
+            adjustedTimer = 0;
+          }
+          setTimer(adjustedTimer);
+
+          const incomePerSecond = incomePerHour / 3600;
+          let additionalEarnedCoins = incomePerSecond * Math.min(timeElapsed, savedTimer);
+          const totalEarnedCoins = Math.min(savedEarnedCoins + additionalEarnedCoins, incomePerHour * 3);
+          setEarnedCoins(totalEarnedCoins);
+        })
+        .catch((error) => console.error('Ошибка при загрузке данных с сервера:', error));
+    }
+
+    // Отправляем действие 'enter' на сервер при монтировании
+    if (userId !== null) {
+      fetch('/save-entry-exit-time', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId,
+          action: 'enter',
+        }),
+      }).catch((error) => console.error('Ошибка при сохранении времени входа:', error));
+    }
+
+    // Отправляем действие 'exit' с earnedCoins и timer при размонтировании
+    return () => {
+      if (userId !== null) {
+        fetch('/save-entry-exit-time', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            userId,
+            action: 'exit',
+            earnedCoins,
+            timer,
+          }),
+        }).catch((error) => console.error('Ошибка при сохранении времени выхода:', error));
+      }
+    };
+  }, [userId, incomePerHour, earnedCoins, timer]);
+
+  // Обработчики меню улучшений
   const handleUpgradeClick = (upgrade: string) => {
     setSelectedMineUpgrade(upgrade);
-    // Keep the upgrades menu open
+    setIsUpgradesMenuOpen(false);
   };
 
   const closeUpgradeMenu = () => {
@@ -205,14 +200,14 @@ const MineContent: React.FC<MineContentProps> = ({
     setIsUpgradesMenuOpen(false);
   };
 
+  // Обработчик улучшения
   const handleUpgrade = () => {
     if (selectedMineUpgrade) {
       const currentLevel = upgrades[selectedMineUpgrade] || 1;
 
       if (currentLevel < 10) {
         const nextLevel = currentLevel + 1;
-        const upgradeData =
-          upgradeLevels[selectedMineUpgrade as keyof typeof upgradeLevels][nextLevel - 1];
+        const upgradeData = upgradeLevels[selectedMineUpgrade as keyof typeof upgradeLevels][nextLevel - 1];
 
         if (points >= upgradeData.cost) {
           const newPoints = points - upgradeData.cost;
@@ -223,13 +218,13 @@ const MineContent: React.FC<MineContentProps> = ({
             [selectedMineUpgrade]: nextLevel,
           };
           setUpgrades(newUpgrades);
-          setNotificationMessage(`Upgraded ${selectedMineUpgrade} to level ${nextLevel}`);
+          setNotificationMessage(`Улучшено ${selectedMineUpgrade} до уровня ${nextLevel}`);
 
-          // Update incomePerHour
+          // Обновляем incomePerHour
           const totalIncome = calculateTotalIncome(newUpgrades, farmLevel);
           setIncomePerHour(totalIncome);
 
-          // Save data on the server
+          // Сохранение данных на сервере
           fetch('/save-data', {
             method: 'POST',
             headers: {
@@ -244,33 +239,33 @@ const MineContent: React.FC<MineContentProps> = ({
               ...newUpgrades,
               farmLevel,
               incomePerHour: totalIncome,
+              earnedCoins,
+              timer,
             }),
           })
-            .then((response) => {
-              if (!response.ok) {
-                throw new Error(`HTTP Error: ${response.status}`);
-              }
-              return response.json();
-            })
+            .then((response) => response.json())
             .then((data) => {
               if (data.success) {
-                console.log('Data saved successfully.');
+                console.log('Данные успешно сохранены.');
               } else {
-                console.error('Server error: data was not saved');
+                console.error('Ошибка на сервере: данные не были сохранены', data.error);
+                alert('Ошибка сохранения данных. Попробуйте снова.');
               }
             })
             .catch((error) => {
-              console.error('Error saving data:', error);
-              alert('Error saving data. Please try again.');
+              console.error('Ошибка сохранения данных:', error);
+              alert('Ошибка сохранения данных. Попробуйте снова.');
             });
         } else {
-          alert('Not enough coins for upgrade');
+          alert('Недостаточно монет для улучшения');
         }
+      } else {
+        alert('Максимальный уровень достигнут');
       }
     }
   };
 
-  // List of upgrades
+  // Список улучшений без 'farmlevel'
   const upgradesList = [
     'upgrade1',
     'upgrade2',
@@ -282,20 +277,6 @@ const MineContent: React.FC<MineContentProps> = ({
     'upgrade8',
   ];
 
-  // Format time for timer display
-  const formatTime = (seconds: number) => {
-    const h = Math.floor(seconds / 3600)
-      .toString()
-      .padStart(2, '0');
-    const m = Math.floor((seconds % 3600) / 60)
-      .toString()
-      .padStart(2, '0');
-    const s = Math.floor(seconds % 60)
-      .toString()
-      .padStart(2, '0');
-    return `${h}:${m}:${s}`;
-  };
-
   return (
     <>
       {notificationMessage && <UpgradeNotification message={notificationMessage} />}
@@ -303,34 +284,25 @@ const MineContent: React.FC<MineContentProps> = ({
         <div className="flex items-center space-x-2">
           <div className="p-1 rounded-lg bg-gray-800"></div>
           <div>
-            <p className="text-sm text-gray-300">{username ? username : 'Guest'}</p>
+            <p className="text-sm text-gray-300">{username ? username : 'Гость'}</p>
           </div>
         </div>
       </div>
-      {/* Coins and hourly income block */}
+      {/* Блок с монетами и доходом в час */}
       <div className="px-4 mt-4">
         <div className="h-[50px] bg-gray-700 rounded-lg flex">
           <div className="flex-1 flex items-center justify-center border-r border-gray-600">
             <span className="text-sm text-gray-300">
-              Coins: {Math.floor(points).toLocaleString()}
+              Монеты: {Math.floor(points).toLocaleString()}
             </span>
           </div>
           <div className="flex-1 flex flex-col items-center justify-center">
-            <span className="text-xs text-gray-400">Income</span>
-            <span className="text-sm text-gray-300">{incomePerHour.toFixed(2)} / hour</span>
+            <span className="text-xs text-gray-400">Доход</span>
+            <span className="text-sm text-gray-300">{incomePerHour.toFixed(2)} / час</span>
           </div>
         </div>
       </div>
-      {/* Display entryTime and exitTime */}
-      <div className="px-4 mt-2">
-        <p className="text-sm text-gray-400">
-          Last Entry: {entryTime ? new Date(entryTime).toLocaleString() : 'Unknown'}
-        </p>
-        <p className="text-sm text-gray-400">
-          Last Exit: {exitTime ? new Date(exitTime).toLocaleString() : 'Unknown'}
-        </p>
-      </div>
-      {/* "Upgrades" button */}
+      {/* Кнопка "Улучшения" */}
       <div className="px-4 mt-4">
         <button
           className="w-full h-20 bg-gradient-to-r from-green-400 to-blue-500 rounded-lg shadow-lg overflow-hidden relative flex items-center justify-between px-4"
@@ -338,17 +310,22 @@ const MineContent: React.FC<MineContentProps> = ({
         >
           <div className="flex items-center space-x-4">
             <div className="p-2 bg-white bg-opacity-20 rounded-full">
-              {/* Upgrades icon */}
+              {/* Иконка улучшений */}
               <svg
                 className="w-8 h-8 text-white"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
               >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4 6h16M4 12h16M4 18h16"
+                />
               </svg>
             </div>
-            <span className="text-2xl font-bold text-white">Upgrades</span>
+            <span className="text-2xl font-bold text-white">Улучшения</span>
           </div>
           <svg
             className="w-6 h-6 text-white"
@@ -372,12 +349,12 @@ const MineContent: React.FC<MineContentProps> = ({
             style={{ maxHeight: '90%' }}
           >
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl text-white">Upgrades</h2>
+              <h2 className="text-xl text-white">Улучшения</h2>
               <button className="text-gray-400" onClick={closeUpgradesMenu}>
                 ✕
               </button>
             </div>
-            {/* Upgrades list with scrolling */}
+            {/* Список улучшений со скроллингом */}
             <div className="grid grid-cols-2 gap-4 overflow-y-auto" style={{ maxHeight: '75vh' }}>
               {upgradesList.map((upgrade, index) => (
                 <button
@@ -385,12 +362,18 @@ const MineContent: React.FC<MineContentProps> = ({
                   className="w-full h-[120px] bg-gray-800 rounded-lg flex flex-col items-center justify-center"
                   onClick={() => handleUpgradeClick(upgrade)}
                 >
-                  {/* Add images or icons for each upgrade */}
+                  {/* Добавьте изображения или иконки для каждого улучшения */}
                   <div className="mb-2">
-                    <img src={`/images/${upgrade}.png`} alt={upgrade} className="w-12 h-12" />
+                    <img
+                      src={`/images/${upgrade}.png`}
+                      alt={upgrade}
+                      className="w-12 h-12"
+                    />
                   </div>
-                  <span className="text-sm text-white">{`Upgrade ${index + 1}`}</span>
-                  <span className="text-xs text-gray-300">Level {upgrades[upgrade] || 1}</span>
+                  <span className="text-sm text-white">{`Улучшение ${index + 1}`}</span>
+                  <span className="text-xs text-gray-300">
+                    Уровень {upgrades[upgrade] || 1}
+                  </span>
                 </button>
               ))}
             </div>
@@ -407,29 +390,29 @@ const MineContent: React.FC<MineContentProps> = ({
             className="bg-gray-900 w-11/12 max-w-md p-6 rounded-lg"
             onClick={(e) => e.stopPropagation()}
           >
-            <h2 className="text-center text-xl text-white mb-2">{`Upgrade ${selectedMineUpgrade}`}</h2>
+            <h2 className="text-center text-xl text-white mb-2">{`Улучшение ${selectedMineUpgrade}`}</h2>
             <p className="text-center text-gray-300 mb-4">
-              Level: {upgrades[selectedMineUpgrade] || 1}
+              Уровень: {upgrades[selectedMineUpgrade] || 1}
             </p>
             <p className="text-center text-gray-400 mb-4">
-              {/* You can add individual descriptions for each upgrade here */}
-              Upgrade description. This upgrade will help you increase production and earn more coins.
+              {/* Здесь можно добавить индивидуальное описание для каждого улучшения */}
+              Описание улучшения. Это улучшение поможет вам увеличить производительность и заработать больше монет.
             </p>
             {upgrades[selectedMineUpgrade] === 10 ? (
-              <p className="text-center text-yellow-400 mb-4">Maximum level reached</p>
+              <p className="text-center text-yellow-400 mb-4">Максимальный уровень</p>
             ) : (
               <>
                 <button
                   className="w-full py-3 bg-yellow-500 text-black rounded-lg"
                   onClick={handleUpgrade}
                 >
-                  Upgrade (
+                  Улучшить (
                   {
                     upgradeLevels[selectedMineUpgrade as keyof typeof upgradeLevels][
                       upgrades[selectedMineUpgrade]
                     ].cost
                   }{' '}
-                  coins)
+                  монет)
                 </button>
               </>
             )}
@@ -437,24 +420,25 @@ const MineContent: React.FC<MineContentProps> = ({
               className="w-full py-2 mt-2 bg-gray-700 text-white rounded-lg"
               onClick={closeUpgradeMenu}
             >
-              Close
+              Закрыть
             </button>
           </div>
         </div>
       )}
 
-      {/* New block with collected coins, timer, and "Collect" button */}
-      <div className="fixed bottom-16 w-full px-4">
-        <div className="bg-gray-800 rounded-lg p-4 flex flex-col items-center">
-          <span className="text-lg text-white">
-            Collected Coins: {Math.floor(collectedCoins).toLocaleString()}
-          </span>
-          <span className="text-sm text-gray-300">Timer: {formatTime(collectionTimer)}</span>
+      {/* Новое меню для отображения заработанных монет и таймера */}
+      <div className="fixed bottom-20 left-0 right-0 px-4">
+        <div className="bg-gray-700 rounded-lg p-4 flex flex-col items-center">
+          <p className="text-yellow-400 text-2xl mb-2">
+            {Math.floor(earnedCoins).toLocaleString()} монет
+          </p>
+          <p className="text-gray-300 text-lg mb-2">Таймер: {formatTime(timer)}</p>
           <button
-            className="mt-2 w-full py-2 bg-green-500 text-white rounded-lg"
+            className="bg-yellow-500 text-gray-900 px-4 py-2 rounded-full font-bold shadow-lg"
             onClick={handleCollect}
+            disabled={earnedCoins === 0}
           >
-            Collect
+            Забрать
           </button>
         </div>
       </div>
