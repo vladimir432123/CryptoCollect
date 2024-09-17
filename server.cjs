@@ -11,6 +11,7 @@ require('dotenv').config();
 const app = express();
 const port = process.env.PORT || 8080;
 
+// Используем body-parser для обработки JSON-запросов
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'dist')));
@@ -56,7 +57,7 @@ db.query(
       upgrade7 INT DEFAULT 1,
       upgrade8 INT DEFAULT 1,
       farmLevel INT DEFAULT 1,
-      incomePerHour FLOAT DEFAULT 0,
+      incomePerHour DOUBLE DEFAULT 0,
       entryTime TIMESTAMP NULL DEFAULT NULL,
       exitTime TIMESTAMP NULL DEFAULT NULL
   )
@@ -90,6 +91,7 @@ const addColumnIfNotExists = (columnName, columnDefinition) => {
 };
 
 // Добавляем недостающие столбцы
+addColumnIfNotExists('incomePerHour', 'DOUBLE DEFAULT 0');
 addColumnIfNotExists('entryTime', 'TIMESTAMP NULL DEFAULT NULL');
 addColumnIfNotExists('exitTime', 'TIMESTAMP NULL DEFAULT NULL');
 
@@ -164,32 +166,6 @@ bot.start(async (ctx) => {
       'Добро пожаловать! Нажмите на кнопку ниже, чтобы открыть приложение:',
       Markup.inlineKeyboard([Markup.button.url('Открыть приложение', miniAppUrl)])
     );
-  });
-});
-
-// Сохранение дохода в час в базе данных
-app.post('/save-income', (req, res) => {
-  const { userId, incomePerHour } = req.body;
-
-  if (!userId || incomePerHour === undefined) {
-    console.log('Ошибка: Недостаточно данных для сохранения дохода');
-    return res.status(400).json({ error: 'Missing required fields' });
-  }
-
-  const query = `
-        UPDATE user 
-        SET incomePerHour = ?
-        WHERE telegram_id = ?
-    `;
-
-  db.query(query, [incomePerHour, userId], (err) => {
-    if (err) {
-      console.error('Ошибка при сохранении дохода:', err);
-      return res.status(500).json({ error: 'Server error' });
-    }
-
-    console.log('Доход успешно сохранен для пользователя с ID:', userId);
-    res.json({ success: true });
   });
 });
 
@@ -280,7 +256,7 @@ app.get('/app', async (req, res) => {
           upgrade7: userData.upgrade7,
           upgrade8: userData.upgrade8,
           farmLevel: userData.farmLevel,
-          incomePerHour: userData.incomePerHour,
+          incomePerHour: parseFloat(userData.incomePerHour), // Добавлено parseFloat для точности
           entryTime: userData.entryTime,
           exitTime: userData.exitTime,
         });
@@ -318,6 +294,7 @@ app.post('/save-data', (req, res) => {
     'upgrade7',
     'upgrade8',
     'farmLevel',
+    'incomePerHour',
   ];
 
   const fieldsToUpdate = {};
