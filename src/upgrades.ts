@@ -1,6 +1,6 @@
 export const upgradeLevels = {
   upgrade1: [
-    { level: 1, cost: 1000, profit: 600 },
+    { level: 1, cost: 1000, profit: 0 },
     { level: 2, cost: 2000, profit: 800 },
     { level: 3, cost: 4000, profit: 1400 },
     { level: 4, cost: 8000, profit: 2000 },
@@ -12,7 +12,7 @@ export const upgradeLevels = {
     { level: 10, cost: 512000, profit: 34000 },
   ],
   upgrade2: [
-    { level: 1, cost: 1500, profit: 700 },
+    { level: 1, cost: 1000, profit: 0 },
     { level: 2, cost: 3000, profit: 1000 },
     { level: 3, cost: 6000, profit: 1800 },
     { level: 4, cost: 12000, profit: 2500 },
@@ -24,7 +24,7 @@ export const upgradeLevels = {
     { level: 10, cost: 768000, profit: 38000 },
   ],
   upgrade3: [
-    { level: 1, cost: 2000, profit: 800 },
+    { level: 1, cost: 1000, profit: 0 },
     { level: 2, cost: 4000, profit: 1200 },
     { level: 3, cost: 8000, profit: 2200 },
     { level: 4, cost: 16000, profit: 3000 },
@@ -36,7 +36,7 @@ export const upgradeLevels = {
     { level: 10, cost: 1024000, profit: 50000 },
   ],
   upgrade4: [
-    { level: 1, cost: 2500, profit: 900 },
+    { level: 1, cost: 1000, profit: 0 },
     { level: 2, cost: 5000, profit: 1400 },
     { level: 3, cost: 10000, profit: 2600 },
     { level: 4, cost: 20000, profit: 3500 },
@@ -48,7 +48,7 @@ export const upgradeLevels = {
     { level: 10, cost: 1280000, profit: 60000 },
   ],
   upgrade5: [
-    { level: 1, cost: 3000, profit: 1000 },
+    { level: 1, cost: 1000, profit: 0 },
     { level: 2, cost: 6000, profit: 1600 },
     { level: 3, cost: 12000, profit: 3000 },
     { level: 4, cost: 24000, profit: 4000 },
@@ -60,7 +60,7 @@ export const upgradeLevels = {
     { level: 10, cost: 1536000, profit: 75000 },
   ],
   upgrade6: [
-    { level: 1, cost: 3500, profit: 1100 },
+    { level: 1, cost: 1000, profit: 0 },
     { level: 2, cost: 7000, profit: 1800 },
     { level: 3, cost: 14000, profit: 3400 },
     { level: 4, cost: 28000, profit: 4500 },
@@ -72,7 +72,7 @@ export const upgradeLevels = {
     { level: 10, cost: 1792000, profit: 88000 },
   ],
   upgrade7: [
-    { level: 1, cost: 4000, profit: 1200 },
+    { level: 1, cost: 1000, profit: 0 },
     { level: 2, cost: 8000, profit: 2000 },
     { level: 3, cost: 16000, profit: 3800 },
     { level: 4, cost: 32000, profit: 5000 },
@@ -84,7 +84,7 @@ export const upgradeLevels = {
     { level: 10, cost: 2048000, profit: 100000 },
   ],
   upgrade8: [
-    { level: 1, cost: 4500, profit: 1300 },
+    { level: 1, cost: 1000, profit: 0 },
     { level: 2, cost: 9000, profit: 2200 },
     { level: 3, cost: 18000, profit: 4200 },
     { level: 4, cost: 36000, profit: 5500 },
