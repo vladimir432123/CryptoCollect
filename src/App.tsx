@@ -1,4 +1,6 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+// App.tsx
+
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import './App.css';
 import Hamster from './icons/Hamster';
 import { dollarCoin } from './images';
@@ -15,8 +17,8 @@ const Farm: React.FC<{ className?: string }> = ({ className }) => (
   </svg>
 );
 
-const RECOVERY_RATE = 1000; // Time to recover one click (in milliseconds)
-const RECOVERY_AMOUNT = 1;  // Amount of clicks restored per interval
+const RECOVERY_RATE = 1000; // Время восстановления одного клика (в миллисекундах)
+const RECOVERY_AMOUNT = 1;  // Количество восстанавливаемых кликов за интервал
 
 const App: React.FC = () => {
   const [tapProfit, setTapProfit] = useState(1);
@@ -41,13 +43,13 @@ const App: React.FC = () => {
   const [userId, setUserId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // States for multitap and tapIncrease
+  // Состояния для multitap
   const [multitapLevel, setMultitapLevel] = useState<number>(() => {
     const savedMultitap = localStorage.getItem('multitapLevel');
     return savedMultitap ? parseInt(savedMultitap) : 1;
   });
 
-  // States for upgrades from MineContent
+  // Состояния для улучшений из MineContent
   const [upgrades, setUpgrades] = useState<{ [key: string]: number }>({
     upgrade1: 1,
     upgrade2: 1,
@@ -152,7 +154,7 @@ const App: React.FC = () => {
     })
       .then((response) => {
         if (!response.ok) {
-          throw new Error(`HTTP Error: ${response.status}`);
+          throw new Error(`Ошибка HTTP: ${response.status}`);
         }
         return response.json();
       })
@@ -180,9 +182,9 @@ const App: React.FC = () => {
           localStorage.setItem('multitapLevel', data.multitapLevel.toString());
         }
         if (data.remainingClicks !== undefined) {
-          setRemainingClicks(data.remainingClicks); // Set loaded clicks
+          setRemainingClicks(data.remainingClicks); // Устанавливаем оставшиеся клики из базы
         }
-        // Load upgrades from MineContent
+        // Загружаем улучшения из MineContent
         setUpgrades({
           upgrade1: data.upgrade1 || 1,
           upgrade2: data.upgrade2 || 1,
@@ -198,12 +200,19 @@ const App: React.FC = () => {
       .finally(() => {
         setLoading(false);
       })
-      .catch((error) => console.error('Error fetching data from server:', error));
+      .catch((error) => console.error('Ошибка при загрузке данных с сервера:', error));
   }, [tapProfitLevels, tapIncreaseLevels]);
 
   useEffect(() => {
     const handleBeforeUnload = () => {
       if (userId !== null) {
+        if (currentPage === 'mine') {
+          // Пользователь закрывает приложение на вкладке MineContent
+          navigator.sendBeacon('/save-entry-exit-time', JSON.stringify({
+            userId,
+            action: 'exit',
+          }));
+        }
         fetch('/logout', {
           method: 'POST',
           headers: {
@@ -215,7 +224,7 @@ const App: React.FC = () => {
             points,
             lastLogout: new Date().toISOString(),
           }),
-        }).catch((error) => console.error('Error sending logout time:', error));
+        }).catch((error) => console.error('Ошибка при отправке времени выхода:', error));
       }
     };
 
@@ -224,7 +233,40 @@ const App: React.FC = () => {
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload);
     };
-  }, [userId, remainingClicks, points]);
+  }, [userId, remainingClicks, points, currentPage]);
+
+  const previousPageRef = useRef<string>(currentPage);
+
+  useEffect(() => {
+    if (userId !== null) {
+      if (currentPage === 'mine' && previousPageRef.current !== 'mine') {
+        // Пользователь вошёл в MineContent
+        fetch('/save-entry-exit-time', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            userId,
+            action: 'enter',
+          }),
+        }).catch((error) => console.error('Ошибка при сохранении времени входа:', error));
+      } else if (currentPage !== 'mine' && previousPageRef.current === 'mine') {
+        // Пользователь вышел из MineContent
+        fetch('/save-entry-exit-time', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            userId,
+            action: 'exit',
+          }),
+        }).catch((error) => console.error('Ошибка при сохранении времени выхода:', error));
+      }
+      previousPageRef.current = currentPage;
+    }
+  }, [currentPage, userId]);
 
   const updateRemainingClicks = async (newRemainingClicks: number) => {
     if (userId !== null) {
@@ -241,17 +283,17 @@ const App: React.FC = () => {
         });
 
         if (!response.ok) {
-          throw new Error(`HTTP Error: ${response.status}`);
+          throw new Error(`Ошибка HTTP: ${response.status}`);
         }
 
         const result = await response.json();
         if (result.success) {
-          console.log('Clicks successfully updated on the server.');
+          console.log('Клики успешно обновлены на сервере.');
         } else {
-          console.error('Error updating clicks on the server:', result.error);
+          console.error('Ошибка при обновлении кликов на сервере:', result.error);
         }
       } catch (error) {
-        console.error('Error updating clicks:', error);
+        console.error('Ошибка при обновлении кликов:', error);
       }
     }
   };
@@ -264,7 +306,7 @@ const App: React.FC = () => {
     ) => {
       if (userId !== null) {
         try {
-          console.log('Sending POST request to save data...');
+          console.log('Отправка запроса POST для сохранения данных...');
           const response = await fetch('/save-data', {
             method: 'POST',
             headers: {
@@ -277,25 +319,25 @@ const App: React.FC = () => {
               tapIncreaseLevel: newTapIncreaseLevel,
               multitapLevel: newMultitapLevel,
               remainingClicks: maxClicks,
-              // Include upgrades and farmLevel
+              // Включаем улучшения и farmLevel
               ...upgrades,
               farmLevel,
             }),
           });
 
           if (!response.ok) {
-            throw new Error(`HTTP Error: ${response.status}`);
+            throw new Error(`Ошибка HTTP: ${response.status}`);
           }
 
           const result = await response.json();
           if (result.success) {
-            console.log('POST request successfully sent and data saved.');
+            console.log('Данные успешно сохранены на сервере.');
             setTapProfitLevel(result.tapProfitLevel);
             setTapIncreaseLevel(result.tapIncreaseLevel);
             setMultitapLevel(result.multitapLevel);
             setRemainingClicks(result.remainingClicks);
 
-            // Backup saving
+            // Сохранение в localStorage
             localStorage.setItem('tapProfitLevel', result.tapProfitLevel.toString());
             localStorage.setItem('tapIncreaseLevel', result.tapIncreaseLevel.toString());
             localStorage.setItem('multitapLevel', result.multitapLevel.toString());
@@ -304,13 +346,13 @@ const App: React.FC = () => {
               tapIncreaseLevels[result.tapIncreaseLevel - 1].taps.toString()
             );
           } else {
-            console.error('Error saving data on the server:', result.error);
+            console.error('Ошибка при сохранении данных на сервере:', result.error);
           }
         } catch (error) {
-          console.error('Error saving data:', error);
+          console.error('Ошибка при сохранении данных:', error);
         }
       } else {
-        console.log('userId is null, POST request not sent');
+        console.log('userId равен null, запрос POST не отправлен');
       }
     },
     [userId, points, maxClicks, tapIncreaseLevels, upgrades, farmLevel]
@@ -334,25 +376,25 @@ const App: React.FC = () => {
             tapIncreaseLevel,
             multitapLevel,
             remainingClicks,
-            // Include upgrades and farmLevel
+            // Включаем улучшения и farmLevel
             ...upgrades,
             farmLevel,
           }),
         });
 
-        if (!response.ok) throw new Error('Error saving on the server');
+        if (!response.ok) throw new Error('Ошибка при сохранении на сервере');
 
         const data = await response.json();
         if (data.success) {
-          // Update state only after successful server response
+          // Обновляем состояние только после успешного ответа от сервера
           setTapProfit(tapProfitLevels[newLevel - 1].profit);
           setPoints((prevPoints) => prevPoints - nextLevelData.cost);
           setTapProfitLevel(newLevel);
           localStorage.setItem('tapProfitLevel', newLevel.toString());
         }
       } catch (error) {
-        console.error('Error saving upgrade:', error);
-        alert('Error updating upgrade. Please try again.');
+        console.error('Ошибка при сохранении улучшения:', error);
+        alert('Ошибка при обновлении улучшения. Попробуйте снова.');
       }
     }
   };
@@ -377,7 +419,7 @@ const App: React.FC = () => {
         const newPoints = points + tapProfit * touches.length;
         setPoints(newPoints);
 
-        // Save updated points to server and local storage
+        // Сохранение обновлённых очков на сервере и в localStorage
         localStorage.setItem('points', newPoints.toString());
 
         if (userId !== null) {
@@ -394,13 +436,13 @@ const App: React.FC = () => {
                 tapIncreaseLevel,
                 multitapLevel,
                 remainingClicks: newRemainingClicks,
-                // Include upgrades and farmLevel
+                // Включаем улучшения и farmLevel
                 ...upgrades,
                 farmLevel,
               }),
             });
           } catch (error) {
-            console.error('Error saving data:', error);
+            console.error('Ошибка при сохранении данных:', error);
           }
         }
 
@@ -468,8 +510,8 @@ const App: React.FC = () => {
     const currentLevel = isMultitap ? tapProfitLevel : tapIncreaseLevel;
 
     const description = isMultitap
-      ? 'Increases the profit for each tap, allowing you to accumulate coins faster. This improvement will help you reach new levels faster and earn more points.'
-      : 'Increases the maximum number of taps that can be made at a time. This improvement will allow you to play longer without having to wait for clicks to be restored.';
+      ? 'Увеличивает прибыль за каждый тап, позволяя вам быстрее накапливать монеты. Это улучшение поможет вам быстрее достигать новых уровней и зарабатывать больше очков.'
+      : 'Увеличивает максимальное количество доступных кликов. Это улучшение позволит вам играть дольше без необходимости ждать восстановления кликов.';
 
     return (
       <button
@@ -518,11 +560,11 @@ const App: React.FC = () => {
         </h2>
         <p className="text-center text-gray-400 mb-4">
           {selectedUpgrade === 'multitap'
-            ? 'Increases the profit for each tap, allowing you to accumulate coins faster. This improvement will help you reach new levels faster and earn more points.'
-            : 'Increases the maximum number of taps that can be made at a time. This improvement will allow you to play longer without having to wait for clicks to be restored.'}
+            ? 'Увеличивает прибыль за каждый тап, позволяя вам быстрее накапливать монеты. Это улучшение поможет вам быстрее достигать новых уровней и зарабатывать больше очков.'
+            : 'Увеличивает максимальное количество доступных кликов. Это улучшение позволит вам играть дольше без необходимости ждать восстановления кликов.'}
         </p>
         <p className="text-center text-gray-300 mb-4">
-          Current Level: {selectedUpgrade === 'multitap' ? tapProfitLevel : tapIncreaseLevel}
+          Текущий уровень: {selectedUpgrade === 'multitap' ? tapProfitLevel : tapIncreaseLevel}
         </p>
         {selectedUpgrade === 'multitap' && tapProfitLevel < 10 && (
           <button
@@ -534,7 +576,7 @@ const App: React.FC = () => {
                 : 'opacity-50 cursor-not-allowed'
             }`}
           >
-            Upgrade for {tapProfitLevels[tapProfitLevel].cost} coins
+            Улучшить за {tapProfitLevels[tapProfitLevel].cost} монет
           </button>
         )}
         {selectedUpgrade === 'tapIncrease' && tapIncreaseLevel < 10 && (
@@ -547,18 +589,18 @@ const App: React.FC = () => {
                 : 'opacity-50 cursor-not-allowed'
             }`}
           >
-            Upgrade for {tapIncreaseLevels[tapIncreaseLevel].cost} coins
+            Улучшить за {tapIncreaseLevels[tapIncreaseLevel].cost} монет
           </button>
         )}
         {(selectedUpgrade === 'multitap' && tapProfitLevel >= 10) ||
         (selectedUpgrade === 'tapIncrease' && tapIncreaseLevel >= 10) ? (
-          <p className="text-center text-yellow-400 mt-4">Max Level Reached</p>
+          <p className="text-center text-yellow-400 mt-4">Максимальный уровень достигнут</p>
         ) : null}
         <button
           className="w-full py-2 mt-4 bg-gray-700 text-white rounded-lg"
           onClick={() => setSelectedUpgrade(null)}
         >
-          Close
+          Закрыть
         </button>
       </div>
     </div>
@@ -571,7 +613,7 @@ const App: React.FC = () => {
           <Hamster size={24} className="text-yellow-400" />
         </div>
         <div>
-          <p className="text-sm text-gray-300">{username ? username : 'Guest'}</p>
+          <p className="text-sm text-gray-300">{username ? username : 'Гость'}</p>
         </div>
       </div>
       <div className="flex items-center justify-between space-x-4 mt-1">
@@ -664,12 +706,15 @@ const App: React.FC = () => {
               setPoints={setPoints}
               selectedUpgrade={selectedUpgrade}
               setSelectedUpgrade={setSelectedUpgrade}
-              username={username || 'Guest'}
+              username={username || 'Гость'}
               userId={userId}
-              // Pass additional props if needed
               tapProfitLevel={tapProfitLevel}
               tapIncreaseLevel={tapIncreaseLevel}
               remainingClicks={remainingClicks}
+              upgrades={upgrades}
+              setUpgrades={setUpgrades}
+              farmLevel={farmLevel}
+              setFarmLevel={setFarmLevel}
             />
           )}
           {isBoostMenuOpen && renderBoostContent()}
