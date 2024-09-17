@@ -11,7 +11,7 @@ require('dotenv').config();
 const app = express();
 const port = process.env.PORT || 8080;
 
-// Use body-parser to handle JSON requests
+// Используем body-parser для обработки JSON-запросов
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'dist')));
@@ -28,13 +28,13 @@ const db = mysql.createConnection(dbConfig);
 
 db.connect((err) => {
   if (err) {
-    console.error('Error connecting to database:', err);
+    console.error('Ошибка подключения к базе данных:', err);
     return;
   }
-  console.log('Successfully connected to database');
+  console.log('Успешное подключение к базе данных');
 });
 
-// Create/update 'user' table in the database
+// Создание/обновление таблицы 'user' в базе данных
 db.query(
   `
   CREATE TABLE IF NOT EXISTS user (
@@ -64,33 +64,33 @@ db.query(
 `,
   (err) => {
     if (err) {
-      console.error('Error creating table:', err);
+      console.error('Ошибка создания таблицы:', err);
     } else {
-      console.log('Table "user" checked/created');
+      console.log('Таблица user проверена/создана');
     }
   }
 );
 
-// Check and add missing columns
+// Проверка и добавление недостающих столбцов
 const addColumnIfNotExists = (columnName, columnDefinition) => {
   db.query(`SHOW COLUMNS FROM user LIKE '${columnName}'`, (err, results) => {
     if (err) {
-      console.error(`Error checking column ${columnName}:`, err);
+      console.error(`Ошибка при проверке наличия столбца ${columnName}:`, err);
       return;
     }
     if (results.length === 0) {
       db.query(`ALTER TABLE user ADD COLUMN ${columnName} ${columnDefinition}`, (err) => {
         if (err) {
-          console.error(`Error adding column ${columnName}:`, err);
+          console.error(`Ошибка при добавлении столбца ${columnName}:`, err);
         } else {
-          console.log(`Column ${columnName} added to table "user"`);
+          console.log(`Столбец ${columnName} успешно добавлен в таблицу user`);
         }
       });
     }
   });
 };
 
-// Add missing columns
+// Добавляем недостающие столбцы
 addColumnIfNotExists('incomePerHour', 'DOUBLE DEFAULT 0');
 addColumnIfNotExists('entryTime', 'DATETIME NULL DEFAULT NULL');
 addColumnIfNotExists('exitTime', 'DATETIME NULL DEFAULT NULL');
@@ -108,7 +108,7 @@ function saveSessionToken(telegramId, sessionToken) {
       [sessionToken, telegramId],
       (err, results) => {
         if (err) {
-          console.error('Error saving session token to database:', err);
+          console.error('Ошибка сохранения токена сессии в базе данных:', err);
           return reject(err);
         }
         resolve();
@@ -119,17 +119,21 @@ function saveSessionToken(telegramId, sessionToken) {
 
 function validateSessionToken(token) {
   return new Promise((resolve, reject) => {
-    db.query('SELECT * FROM user WHERE session_token = ?', [token], (err, results) => {
-      if (err) {
-        console.error('Error validating session token:', err);
-        return reject(err);
+    db.query(
+      'SELECT * FROM user WHERE session_token = ?',
+      [token],
+      (err, results) => {
+        if (err) {
+          console.error('Ошибка проверки токена сессии:', err);
+          return reject(err);
+        }
+        if (results.length > 0) {
+          resolve(results[0]);
+        } else {
+          resolve(null);
+        }
       }
-      if (results.length > 0) {
-        resolve(results[0]);
-      } else {
-        resolve(null);
-      }
-    });
+    );
   });
 }
 
@@ -141,7 +145,7 @@ bot.start(async (ctx) => {
 
   db.query('SELECT points FROM user WHERE telegram_id = ?', [telegramId], (err, results) => {
     if (err) {
-      return ctx.reply('An error occurred, please try again later.');
+      return ctx.reply('Произошла ошибка, попробуйте позже.');
     }
 
     if (results.length > 0) {
@@ -156,21 +160,21 @@ bot.start(async (ctx) => {
       );
     }
 
-    const miniAppUrl = `https://t.me/your_bot_username?startapp=${telegramId}&tgWebApp=true&token=${sessionToken}`;
+    const miniAppUrl = `https://t.me/cryptocollect_bot?startapp=${telegramId}&tgWebApp=true&token=${sessionToken}`;
 
     ctx.reply(
-      'Welcome! Click the button below to open the app:',
-      Markup.inlineKeyboard([Markup.button.url('Open App', miniAppUrl)])
+      'Добро пожаловать! Нажмите на кнопку ниже, чтобы открыть приложение:',
+      Markup.inlineKeyboard([Markup.button.url('Открыть приложение', miniAppUrl)])
     );
   });
 });
 
-// Save entry and exit time
+// Сохранение времени входа и выхода с вкладки
 app.post('/save-entry-exit-time', (req, res) => {
   const { userId, action, time } = req.body;
 
   if (!userId || !action || !time) {
-    console.log('Error: Insufficient data to save entry/exit time');
+    console.log('Ошибка: Недостаточно данных для сохранения времени входа/выхода');
     return res.status(400).json({ error: 'Missing required fields' });
   }
 
@@ -183,57 +187,42 @@ app.post('/save-entry-exit-time', (req, res) => {
 
   db.query(query, [time, userId], (err) => {
     if (err) {
-      console.error('Error saving time:', err);
+      console.error('Ошибка при сохранении времени:', err);
       return res.status(500).json({ error: 'Server error' });
     }
 
     console.log(
-      `Time of ${action === 'enter' ? 'entry' : 'exit'} saved for user ID:`,
+      `Время ${action === 'enter' ? 'входа' : 'выхода'} успешно сохранено для пользователя с ID:`,
       userId
     );
     res.json({ success: true });
   });
 });
 
+// Эндпоинт для получения времени входа и выхода
 app.get('/get-entry-exit-time', (req, res) => {
   const userId = req.query.userId;
 
   if (!userId) {
-    console.error('User ID not provided in request');
-    return res.status(400).json({ error: 'User ID is required' });
+    console.error('User ID не передан в запросе');
+    return res.status(400).json({ error: 'User ID обязателен' });
   }
 
   const query = 'SELECT entryTime, exitTime FROM user WHERE telegram_id = ?';
 
   db.query(query, [userId], (err, results) => {
     if (err) {
-      console.error('Error fetching entry/exit time:', err);
+      console.error('Ошибка при получении времени входа/выхода:', err);
       return res.status(500).json({ error: 'Server error' });
     }
     if (results.length > 0) {
-      res.json(results[0]);
+      res.json({
+        entryTime: results[0].entryTime,
+        exitTime: results[0].exitTime,
+      });
     } else {
-      res.status(404).json({ error: 'User not found' });
+      res.status(404).json({ error: 'Пользователь не найден' });
     }
-  });
-});
-
-app.post('/update-points', (req, res) => {
-  const { userId, points } = req.body;
-
-  if (!userId || points === undefined) {
-    return res.status(400).json({ error: 'Missing parameters' });
-  }
-
-  const query = `UPDATE user SET points = ? WHERE telegram_id = ?`;
-
-  db.query(query, [points, userId], (err, results) => {
-    if (err) {
-      console.error('Error updating points:', err);
-      res.status(500).json({ error: 'Server error' });
-      return;
-    }
-    res.json({ success: true });
   });
 });
 
@@ -252,7 +241,7 @@ app.post('/logout', (req, res) => {
 
   db.query(query, [lastLogout, remainingClicks, userId], (err) => {
     if (err) {
-      console.error('Error updating logout time:', err);
+      console.error('Ошибка при обновлении времени выхода:', err);
       return res.status(500).json({ error: 'Server error' });
     }
     res.json({ success: true });
@@ -263,18 +252,18 @@ app.get('/app', async (req, res) => {
   const userId = req.query.userId;
 
   if (!userId) {
-    console.error('User ID not provided in request');
-    return res.status(400).json({ error: 'User ID is required' });
+    console.error('User ID не передан в запросе');
+    return res.status(400).json({ error: 'User ID обязателен' });
   }
 
-  console.log('Request from Mini App with User ID:', userId);
+  console.log('Запрос от Mini App с User ID:', userId);
 
   try {
     const query = 'SELECT * FROM user WHERE telegram_id = ?';
     db.query(query, [userId], (err, results) => {
       if (err) {
-        console.error('Error checking User ID:', err);
-        return res.status(500).json({ error: 'Server error' });
+        console.error('Ошибка проверки User ID:', err);
+        return res.status(500).json({ error: 'Ошибка сервера' });
       }
       if (results.length > 0) {
         const userData = results[0];
@@ -299,22 +288,22 @@ app.get('/app', async (req, res) => {
           exitTime: userData.exitTime,
         });
       } else {
-        console.error('User not found with User ID:', userId);
-        return res.status(404).json({ error: 'User not found' });
+        console.error('Пользователь не найден с User ID:', userId);
+        return res.status(404).json({ error: 'Пользователь не найден' });
       }
     });
   } catch (error) {
-    console.error('Error checking User ID:', error);
-    res.status(500).json({ error: 'Server error' });
+    console.error('Ошибка при проверке User ID:', error);
+    res.status(500).json({ error: 'Ошибка сервера' });
   }
 });
 
-// Save user data (upgrades, clicks, etc.)
+// Сохранение данных пользователя (улучшения, клики и т.д.)
 app.post('/save-data', (req, res) => {
   const { userId, ...dataToUpdate } = req.body;
 
   if (!userId) {
-    console.log('Error: Insufficient data to save');
+    console.log('Ошибка: Недостаточно данных для сохранения');
     return res.status(400).json({ error: 'Missing userId' });
   }
 
@@ -359,11 +348,11 @@ app.post('/save-data', (req, res) => {
 
   db.query(query, [...values, userId], (err, results) => {
     if (err) {
-      console.error('Error saving data:', err);
+      console.error('Ошибка при сохранении данных:', err);
       return res.status(500).json({ error: 'Server error' });
     }
 
-    console.log('Data saved for user ID:', userId);
+    console.log('Данные успешно сохранены для пользователя с ID:', userId);
 
     res.json({
       success: true,
@@ -376,7 +365,7 @@ app.post('/update-clicks', (req, res) => {
   const { userId, remainingClicks } = req.body;
 
   if (!userId || remainingClicks === undefined) {
-    console.log('Error: Insufficient data to update clicks');
+    console.log('Ошибка: Недостаточно данных для обновления кликов');
     return res.status(400).json({ error: 'Missing required fields' });
   }
 
@@ -388,11 +377,11 @@ app.post('/update-clicks', (req, res) => {
 
   db.query(query, [remainingClicks, userId], (err) => {
     if (err) {
-      console.error('Error updating clicks:', err);
+      console.error('Ошибка при обновлении кликов:', err);
       return res.status(500).json({ error: 'Server error' });
     }
 
-    console.log('Clicks updated for user ID:', userId);
+    console.log('Клики успешно обновлены для пользователя с ID:', userId);
 
     res.json({
       success: true,
@@ -402,14 +391,14 @@ app.post('/update-clicks', (req, res) => {
 });
 
 app.post('/webhook', (req, res) => {
-  console.log('Received request on /webhook:', req.body);
+  console.log('Получен запрос на /webhook:', req.body);
   bot
     .handleUpdate(req.body)
     .then(() => {
       res.sendStatus(200);
     })
     .catch((err) => {
-      console.error('Error handling request:', err);
+      console.error('Ошибка при обработке запроса:', err);
       res.sendStatus(500);
     });
 });
@@ -420,13 +409,13 @@ const startServer = async () => {
 
     const webhookUrl = process.env.WEBHOOK_URL;
     await bot.telegram.setWebhook(webhookUrl);
-    console.log('Webhook set:', webhookUrl);
+    console.log('Webhook успешно установлен:', webhookUrl);
 
     app.listen(port, () => {
-      console.log(`Server running on port ${port}`);
+      console.log(`Сервер запущен на порту ${port}`);
     });
   } catch (err) {
-    console.error('Error setting webhook:', err);
+    console.error('Ошибка установки вебхука:', err);
   }
 };
 
