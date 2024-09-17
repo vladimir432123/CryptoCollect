@@ -56,7 +56,6 @@ db.query(
       upgrade7 INT DEFAULT 1,
       upgrade8 INT DEFAULT 1,
       farmLevel INT DEFAULT 1,
-      multitapLevel INT DEFAULT 1,
       incomePerHour FLOAT DEFAULT 0,
       entryTime TIMESTAMP NULL DEFAULT NULL,
       exitTime TIMESTAMP NULL DEFAULT NULL
@@ -91,7 +90,6 @@ const addColumnIfNotExists = (columnName, columnDefinition) => {
 };
 
 // Добавляем недостающие столбцы
-addColumnIfNotExists('multitapLevel', 'INT DEFAULT 1');
 addColumnIfNotExists('entryTime', 'TIMESTAMP NULL DEFAULT NULL');
 addColumnIfNotExists('exitTime', 'TIMESTAMP NULL DEFAULT NULL');
 
@@ -282,7 +280,6 @@ app.get('/app', async (req, res) => {
           upgrade7: userData.upgrade7,
           upgrade8: userData.upgrade8,
           farmLevel: userData.farmLevel,
-          multitapLevel: userData.multitapLevel,
           incomePerHour: userData.incomePerHour,
           entryTime: userData.entryTime,
           exitTime: userData.exitTime,
@@ -321,7 +318,6 @@ app.post('/save-data', (req, res) => {
     'upgrade7',
     'upgrade8',
     'farmLevel',
-    'multitapLevel',
   ];
 
   const fieldsToUpdate = {};
