@@ -10,12 +10,16 @@ interface MineContentProps {
   setSelectedUpgrade: (upgrade: string | null) => void;
   username: string | null;
   userId: number | null;
-  tapProfitLevel: number;    // Added these props to receive from parent
+  tapProfitLevel: number;
   tapIncreaseLevel: number;
   remainingClicks: number;
+  upgrades: { [key: string]: number };
+  setUpgrades: React.Dispatch<React.SetStateAction<{ [key: string]: number }>>;
+  farmLevel: number;
+  setFarmLevel: React.Dispatch<React.SetStateAction<number>>;
 }
 
-const farmLevelMultipliers = [1, 1.2, 1.2, 1.2, 1.2, 1.2];
+const farmLevelMultipliers = [1, 1.2, 1.4, 1.6, 1.8, 2.0]; // Пример множителей для уровней фермы
 
 const MineContent: React.FC<MineContentProps> = ({
   points,
@@ -25,58 +29,20 @@ const MineContent: React.FC<MineContentProps> = ({
   tapProfitLevel,
   tapIncreaseLevel,
   remainingClicks,
+  upgrades,
+  setUpgrades,
+  farmLevel,
+  setFarmLevel,
 }) => {
   const [isUpgradeMenuOpen, setIsUpgradeMenuOpen] = useState(false);
   const [isFarmLevelMenuOpen, setIsFarmLevelMenuOpen] = useState(false);
   const [selectedUpgrade, setSelectedUpgrade] = useState<string | null>(null);
-
-  const [upgrades, setUpgrades] = useState<{ [key: string]: number }>({
-    upgrade1: 1,
-    upgrade2: 1,
-    upgrade3: 1,
-    upgrade4: 1,
-    upgrade5: 1,
-    upgrade6: 1,
-    upgrade7: 1,
-    upgrade8: 1,
-  });
-  const [farmLevel, setFarmLevel] = useState<number>(1);
   const [notificationMessage, setNotificationMessage] = useState<string | null>(null);
   const [totalIncome, setTotalIncome] = useState<number>(0);
 
   useEffect(() => {
-    if (userId !== null) {
-      fetch(`/app?userId=${userId}`)
-        .then((response) => response.json())
-        .then((data) => {
-          setUpgrades({
-            upgrade1: data.upgrade1 || 1,
-            upgrade2: data.upgrade2 || 1,
-            upgrade3: data.upgrade3 || 1,
-            upgrade4: data.upgrade4 || 1,
-            upgrade5: data.upgrade5 || 1,
-            upgrade6: data.upgrade6 || 1,
-            upgrade7: data.upgrade7 || 1,
-            upgrade8: data.upgrade8 || 1,
-          });
-          setFarmLevel(data.farmLevel || 1);
-          setTotalIncome(calculateTotalIncome(
-            {
-              upgrade1: data.upgrade1 || 1,
-              upgrade2: data.upgrade2 || 1,
-              upgrade3: data.upgrade3 || 1,
-              upgrade4: data.upgrade4 || 1,
-              upgrade5: data.upgrade5 || 1,
-              upgrade6: data.upgrade6 || 1,
-              upgrade7: data.upgrade7 || 1,
-              upgrade8: data.upgrade8 || 1,
-            },
-            data.farmLevel || 1
-          ));
-        })
-        .catch((error) => console.error('Error loading data:', error));
-    }
-  }, [userId]);
+    setTotalIncome(calculateTotalIncome(upgrades, farmLevel));
+  }, [upgrades, farmLevel]);
 
   const calculateTotalIncome = (upgrades: { [key: string]: number }, farmLevel: number): number => {
     let income = 0;
@@ -131,15 +97,15 @@ const MineContent: React.FC<MineContentProps> = ({
           setUpgrades(newUpgrades);
 
           if ('profit' in upgradeData) {
-            setTotalIncome(totalIncome + upgradeData.profit);
+            setTotalIncome(calculateTotalIncome(newUpgrades, farmLevel));
           }
 
           const newPoints = points - upgradeData.cost;
           setPoints(newPoints);
-          setNotificationMessage(`Upgraded ${selectedUpgrade} to level ${nextLevel}`);
+          setNotificationMessage(`Улучшено ${selectedUpgrade} до уровня ${nextLevel}`);
           closeUpgradeMenu();
 
-          // Save data to server
+          // Сохранение данных на сервере
           fetch('/save-data', {
             method: 'POST',
             headers: {
@@ -157,23 +123,23 @@ const MineContent: React.FC<MineContentProps> = ({
           })
             .then((response) => {
               if (!response.ok) {
-                throw new Error(`HTTP Error: ${response.status}`);
+                throw new Error(`Ошибка HTTP: ${response.status}`);
               }
               return response.json();
             })
             .then((data) => {
               if (data.success) {
-                console.log('Upgrade successfully saved.');
+                console.log('Улучшение успешно сохранено.');
               } else {
-                console.error('Server error: data not saved');
+                console.error('Ошибка на сервере: данные не были сохранены');
               }
             })
             .catch((error) => {
-              console.error('Error saving upgrade:', error);
-              alert('Error saving data. Please try again.');
+              console.error('Ошибка сохранения улучшения:', error);
+              alert('Ошибка сохранения данных. Попробуйте снова.');
             });
         } else {
-          alert('Not enough points to upgrade');
+          alert('Недостаточно очков для улучшения');
         }
       }
     }
@@ -196,9 +162,9 @@ const MineContent: React.FC<MineContentProps> = ({
         setFarmLevel(nextLevel);
         setPoints(newPoints);
         setTotalIncome(calculateTotalIncome(upgrades, nextLevel));
-        setNotificationMessage(`Upgraded Farm Level to ${nextLevel}`);
+        setNotificationMessage(`Уровень фермы улучшен до ${nextLevel}`);
 
-        // Save changes to server
+        // Сохранение изменений на сервере
         fetch('/save-data', {
           method: 'POST',
           headers: {
@@ -216,20 +182,20 @@ const MineContent: React.FC<MineContentProps> = ({
         })
           .then((response) => {
             if (!response.ok) {
-              throw new Error(`HTTP Error: ${response.status}`);
+              throw new Error(`Ошибка HTTP: ${response.status}`);
             }
             return response.json();
           })
           .then((data) => {
             if (data.success) {
-              console.log('Farm level successfully saved.');
+              console.log('Уровень фермы успешно сохранён.');
             } else {
-              console.error('Server error: data not saved');
+              console.error('Ошибка на сервере: данные не были сохранены');
             }
           })
-          .catch((error) => console.error('Error saving farm level:', error));
+          .catch((error) => console.error('Ошибка сохранения уровня фермы:', error));
       } else {
-        alert('Not enough points to upgrade');
+        alert('Недостаточно очков для улучшения');
       }
     }
   };
@@ -252,7 +218,7 @@ const MineContent: React.FC<MineContentProps> = ({
         <div className="flex items-center space-x-2">
           <div className="p-1 rounded-lg bg-gray-800"></div>
           <div>
-            <p className="text-sm text-gray-300">{username ? username : 'Guest'}</p>
+            <p className="text-sm text-gray-300">{username ? username : 'Гость'}</p>
           </div>
         </div>
       </div>
@@ -264,13 +230,13 @@ const MineContent: React.FC<MineContentProps> = ({
           <div className="absolute top-0 left-0 w-full h-full bg-yellow-400 opacity-10"></div>
           <div className="flex flex-col justify-between h-full p-3">
             <div className="flex justify-between items-start">
-              <span className="text-sm font-semibold text-gray-300">Farm Level</span>
+              <span className="text-sm font-semibold text-gray-300">Уровень Фермы</span>
               <span className="text-xs font-medium text-yellow-400 bg-gray-800 px-2 py-1 rounded-full">
-                Active
+                Активно
               </span>
             </div>
             <div className="flex justify-between items-end">
-              <span className="text-2xl font-bold text-white">Level {farmLevel}</span>
+              <span className="text-2xl font-bold text-white">Уровень {farmLevel}</span>
               <svg
                 className="w-6 h-6 text-yellow-400"
                 fill="none"
@@ -288,12 +254,12 @@ const MineContent: React.FC<MineContentProps> = ({
         <div className="h-[50px] bg-gray-700 rounded-lg flex">
           <div className="flex-1 flex items-center justify-center border-r border-gray-600">
             <span className="text-sm text-gray-300">
-              Coins: {Math.floor(points).toLocaleString()}
+              Монеты: {Math.floor(points).toLocaleString()}
             </span>
           </div>
           <div className="flex-1 flex flex-col items-center justify-center">
-            <span className="text-xs text-gray-400">Income</span>
-            <span className="text-sm text-gray-300">{totalIncome} / hour</span>
+            <span className="text-xs text-gray-400">Доход</span>
+            <span className="text-sm text-gray-300">{totalIncome.toFixed(2)} / час</span>
           </div>
         </div>
       </div>
@@ -306,7 +272,7 @@ const MineContent: React.FC<MineContentProps> = ({
             onClick={() => handleUpgradeClick(upgrade)}
           >
             <span className="text-sm text-white">{upgrade}</span>
-            <span className="text-xs text-gray-300">Level {upgrades[upgrade] || 1}</span>
+            <span className="text-xs text-gray-300">Уровень {upgrades[upgrade] || 1}</span>
           </button>
         ))}
       </div>
@@ -322,18 +288,18 @@ const MineContent: React.FC<MineContentProps> = ({
             </div>
             <h2 className="text-center text-xl text-white mb-2">{selectedUpgrade}</h2>
             <p className="text-center text-gray-300 mb-4">
-              Level: {upgrades[selectedUpgrade] || 1}
+              Уровень: {upgrades[selectedUpgrade] || 1}
             </p>
             <p className="text-center text-gray-400 mb-4">
-              Upgrade description. This upgrade will help you increase productivity and earn more coins.
+              Описание улучшения. Это улучшение поможет вам увеличить производительность и заработать больше монет.
             </p>
             {upgrades[selectedUpgrade] === 10 ? (
-              <p className="text-center text-yellow-400 mb-4">Max level</p>
+              <p className="text-center text-yellow-400 mb-4">Максимальный уровень</p>
             ) : (
               <>
                 <button className="w-full py-3 bg-yellow-500 text-black rounded-lg" onClick={handleUpgrade}>
-                  Upgrade ({upgradeLevels[selectedUpgrade as keyof typeof upgradeLevels][(upgrades[selectedUpgrade] || 1)].cost}{' '}
-                  coins)
+                  Улучшить ({upgradeLevels[selectedUpgrade as keyof typeof upgradeLevels][(upgrades[selectedUpgrade] || 1)].cost}{' '}
+                  монет)
                 </button>
               </>
             )}
@@ -341,7 +307,7 @@ const MineContent: React.FC<MineContentProps> = ({
               className="w-full py-2 mt-2 bg-gray-700 text-white rounded-lg"
               onClick={closeUpgradeMenu}
             >
-              Close
+              Закрыть
             </button>
           </div>
         </div>
@@ -353,15 +319,15 @@ const MineContent: React.FC<MineContentProps> = ({
           onClick={handleOverlayClick}
         >
           <div className="bg-gray-800 w-full max-w-md p-6 rounded-lg animate-slide-up">
-            <h2 className="text-center text-xl text-white mb-4">Farm Level</h2>
+            <h2 className="text-center text-xl text-white mb-4">Уровень Фермы</h2>
             <p className="text-left text-white mb-4">
-              This is a brief description of the farm level. It should be around 20 words long and provide some useful information.
+              Краткое описание уровня фермы. Здесь можно написать информацию о преимуществах повышения уровня фермы.
             </p>
             <div className="text-center text-white mb-4">
               {farmLevel < 5 ? (
-                <p>Next Level Multiplier: {farmLevelMultipliers[farmLevel + 1]}x</p>
+                <p>Следующий множитель: {farmLevelMultipliers[farmLevel + 1]}x</p>
               ) : (
-                <p>Max Level Reached</p>
+                <p>Максимальный уровень достигнут</p>
               )}
             </div>
             <div className="relative w-full h-4 bg-gray-700 rounded-full overflow-hidden mb-4">
@@ -376,8 +342,18 @@ const MineContent: React.FC<MineContentProps> = ({
                 ></div>
               ))}
             </div>
-            <button className="w-full py-3 bg-yellow-600 text-black rounded-lg" onClick={handleFarmUpgrade}>
-              Upgrade ({farmLevel < 5 ? upgradeLevels.farmlevel[farmLevel].cost : 'Max level'})
+            {farmLevel < 5 ? (
+              <button className="w-full py-3 bg-yellow-600 text-black rounded-lg" onClick={handleFarmUpgrade}>
+                Улучшить ({upgradeLevels.farmlevel[farmLevel].cost} монет)
+              </button>
+            ) : (
+              <p className="text-center text-yellow-400">Максимальный уровень достигнут</p>
+            )}
+            <button
+              className="w-full py-2 mt-2 bg-gray-700 text-white rounded-lg"
+              onClick={closeFarmLevelMenu}
+            >
+              Закрыть
             </button>
           </div>
         </div>
