@@ -55,6 +55,10 @@ const App: React.FC = () => {
     upgrade8: 1,
   });
   const [farmLevel, setFarmLevel] = useState<number>(1);
+  const [incomePerHour, setIncomePerHour] = useState<number>(() => {
+    const savedIncome = localStorage.getItem('incomePerHour');
+    return savedIncome ? parseFloat(savedIncome) : 0;
+  });
 
   const [clicks, setClicks] = useState<{ id: number; x: number; y: number; profit: number }[]>([]);
   const [isBoostMenuOpen, setIsBoostMenuOpen] = useState(false);
@@ -173,6 +177,10 @@ const App: React.FC = () => {
         }
         if (data.remainingClicks !== undefined) {
           setRemainingClicks(data.remainingClicks); // Устанавливаем оставшиеся клики из базы
+        }
+        if (data.incomePerHour !== undefined) {
+          setIncomePerHour(data.incomePerHour);
+          localStorage.setItem('incomePerHour', data.incomePerHour.toString());
         }
         // Загружаем улучшения из MineContent
         setUpgrades({
@@ -320,6 +328,7 @@ const App: React.FC = () => {
                 remainingClicks: newRemainingClicks,
                 ...upgrades,
                 farmLevel,
+                incomePerHour,
               }),
             });
           } catch (error) {
@@ -359,6 +368,7 @@ const App: React.FC = () => {
       upgrades,
       farmLevel,
       updateRemainingClicks,
+      incomePerHour,
     ]
   );
 
@@ -379,6 +389,7 @@ const App: React.FC = () => {
               remainingClicks,
               ...upgrades,
               farmLevel,
+              incomePerHour,
             }),
           });
 
@@ -410,7 +421,7 @@ const App: React.FC = () => {
         console.log('userId равен null, запрос POST не отправлен');
       }
     },
-    [userId, points, remainingClicks, upgrades, farmLevel, tapIncreaseLevels]
+    [userId, points, remainingClicks, upgrades, farmLevel, tapIncreaseLevels, incomePerHour]
   );
 
   const upgradeTapProfit = async () => {
@@ -669,8 +680,6 @@ const App: React.FC = () => {
             <MineContent
               points={points}
               setPoints={setPoints}
-              selectedUpgrade={selectedUpgrade}
-              setSelectedUpgrade={setSelectedUpgrade}
               username={username || 'Гость'}
               userId={userId}
               tapProfitLevel={tapProfitLevel}
@@ -680,6 +689,10 @@ const App: React.FC = () => {
               setUpgrades={setUpgrades}
               farmLevel={farmLevel}
               setFarmLevel={setFarmLevel}
+              incomePerHour={incomePerHour}
+              setIncomePerHour={setIncomePerHour}
+              selectedUpgrade={selectedUpgrade} // Добавлено
+              setSelectedUpgrade={setSelectedUpgrade} // Добавлено
             />
           )}
           {isBoostMenuOpen && renderBoostContent()}
