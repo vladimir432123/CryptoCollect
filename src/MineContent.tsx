@@ -297,8 +297,16 @@ const MineContent: React.FC<MineContentProps> = ({
               <p className="text-center text-yellow-400 mb-4">Максимальный уровень</p>
             ) : (
               <>
-                <button className="w-full py-3 bg-yellow-500 text-black rounded-lg" onClick={handleUpgrade}>
-                  Улучшить ({upgradeLevels[selectedUpgrade as keyof typeof upgradeLevels][(upgrades[selectedUpgrade] || 1)].cost}{' '}
+                <button
+                  className="w-full py-3 bg-yellow-500 text-black rounded-lg"
+                  onClick={handleUpgrade}
+                >
+                  Улучшить (
+                  {
+                    upgradeLevels[selectedUpgrade as keyof typeof upgradeLevels][
+                      (upgrades[selectedUpgrade] || 1)
+                    ].cost
+                  }{' '}
                   монет)
                 </button>
               </>
