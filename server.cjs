@@ -36,31 +36,31 @@ db.connect((err) => {
 // Создание/обновление таблицы 'user' в базе данных
 db.query(
   `
-    CREATE TABLE IF NOT EXISTS user (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        telegram_id BIGINT UNIQUE,
-        username VARCHAR(255) UNIQUE,
-        auth_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-        session_token VARCHAR(255),
-        points INT DEFAULT 10000,
-        tapProfitLevel INT DEFAULT 1,
-        tapIncreaseLevel INT DEFAULT 1,
-        remainingClicks INT DEFAULT 1000,
-        last_logout TIMESTAMP NULL DEFAULT NULL,
-        upgrade1 INT DEFAULT 1,
-        upgrade2 INT DEFAULT 1,
-        upgrade3 INT DEFAULT 1,
-        upgrade4 INT DEFAULT 1,
-        upgrade5 INT DEFAULT 1,
-        upgrade6 INT DEFAULT 1,
-        upgrade7 INT DEFAULT 1,
-        upgrade8 INT DEFAULT 1,
-        farmLevel INT DEFAULT 1,
-        multitapLevel INT DEFAULT 1,  -- Добавляем поле multitapLevel
-        incomePerHour FLOAT DEFAULT 0,  -- Добавляем столбец для дохода в час
-        entryTime TIMESTAMP NULL DEFAULT NULL,  -- Время входа
-        exitTime TIMESTAMP NULL DEFAULT NULL    -- Время выхода
-    )
+  CREATE TABLE IF NOT EXISTS user (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      telegram_id BIGINT UNIQUE,
+      username VARCHAR(255) UNIQUE,
+      auth_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      session_token VARCHAR(255),
+      points INT DEFAULT 10000,
+      tapProfitLevel INT DEFAULT 1,
+      tapIncreaseLevel INT DEFAULT 1,
+      remainingClicks INT DEFAULT 1000,
+      last_logout TIMESTAMP NULL DEFAULT NULL,
+      upgrade1 INT DEFAULT 1,
+      upgrade2 INT DEFAULT 1,
+      upgrade3 INT DEFAULT 1,
+      upgrade4 INT DEFAULT 1,
+      upgrade5 INT DEFAULT 1,
+      upgrade6 INT DEFAULT 1,
+      upgrade7 INT DEFAULT 1,
+      upgrade8 INT DEFAULT 1,
+      farmLevel INT DEFAULT 1,
+      multitapLevel INT DEFAULT 1,
+      incomePerHour FLOAT DEFAULT 0,
+      entryTime TIMESTAMP NULL DEFAULT NULL,
+      exitTime TIMESTAMP NULL DEFAULT NULL
+  )
 `,
   (err) => {
     if (err) {
@@ -70,6 +70,30 @@ db.query(
     }
   }
 );
+
+// Проверка и добавление недостающих столбцов
+const addColumnIfNotExists = (columnName, columnDefinition) => {
+  db.query(`SHOW COLUMNS FROM user LIKE '${columnName}'`, (err, results) => {
+    if (err) {
+      console.error(`Ошибка при проверке наличия столбца ${columnName}:`, err);
+      return;
+    }
+    if (results.length === 0) {
+      db.query(`ALTER TABLE user ADD COLUMN ${columnName} ${columnDefinition}`, (err) => {
+        if (err) {
+          console.error(`Ошибка при добавлении столбца ${columnName}:`, err);
+        } else {
+          console.log(`Столбец ${columnName} успешно добавлен в таблицу user`);
+        }
+      });
+    }
+  });
+};
+
+// Добавляем недостающие столбцы
+addColumnIfNotExists('multitapLevel', 'INT DEFAULT 1');
+addColumnIfNotExists('entryTime', 'TIMESTAMP NULL DEFAULT NULL');
+addColumnIfNotExists('exitTime', 'TIMESTAMP NULL DEFAULT NULL');
 
 const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN);
 
@@ -173,27 +197,28 @@ app.post('/save-income', (req, res) => {
 
 // Сохранение времени входа и выхода с вкладки
 app.post('/save-entry-exit-time', (req, res) => {
-  const { userId, enterTime, exitTime } = req.body;
+  const { userId, action } = req.body;
 
-  if (!userId || (!enterTime && !exitTime)) {
+  if (!userId || !action) {
     console.log('Ошибка: Недостаточно данных для сохранения времени входа/выхода');
     return res.status(400).json({ error: 'Missing required fields' });
   }
 
+  const field = action === 'enter' ? 'entryTime' : 'exitTime';
   const query = `
         UPDATE user 
-        SET ${enterTime ? 'entryTime' : 'exitTime'} = ?
+        SET ${field} = NOW()
         WHERE telegram_id = ?
     `;
 
-  db.query(query, [enterTime || exitTime, userId], (err) => {
+  db.query(query, [userId], (err) => {
     if (err) {
       console.error('Ошибка при сохранении времени:', err);
       return res.status(500).json({ error: 'Server error' });
     }
 
     console.log(
-      `Время ${enterTime ? 'входа' : 'выхода'} успешно сохранено для пользователя с ID:`,
+      `Время ${action === 'enter' ? 'входа' : 'выхода'} успешно сохранено для пользователя с ID:`,
       userId
     );
     res.json({ success: true });
@@ -257,7 +282,7 @@ app.get('/app', async (req, res) => {
           upgrade7: userData.upgrade7,
           upgrade8: userData.upgrade8,
           farmLevel: userData.farmLevel,
-          multitapLevel: userData.multitapLevel, // Добавляем multitapLevel в ответ
+          multitapLevel: userData.multitapLevel,
           incomePerHour: userData.incomePerHour,
           entryTime: userData.entryTime,
           exitTime: userData.exitTime,
