@@ -1,5 +1,3 @@
-// MineContent.tsx
-
 import React, { useEffect, useState } from 'react';
 import { upgradeLevels } from './upgrades';
 import UpgradeNotification from './UpgradeNotification';
@@ -34,7 +32,7 @@ const MineContent: React.FC<MineContentProps> = ({
   upgrades,
   setUpgrades,
   farmLevel,
-  setFarmLevel,
+  
   incomePerHour,
   setIncomePerHour,
   selectedUpgrade,
@@ -73,6 +71,7 @@ const MineContent: React.FC<MineContentProps> = ({
 
   const handleUpgradeClick = (upgrade: string) => {
     setSelectedUpgrade(upgrade);
+    setIsUpgradesMenuOpen(false); // Закрываем меню улучшений при выборе улучшения
   };
 
   const closeUpgradeMenu = () => {
@@ -85,35 +84,25 @@ const MineContent: React.FC<MineContentProps> = ({
 
   const handleUpgrade = () => {
     if (selectedUpgrade) {
-      const currentLevel =
-        selectedUpgrade === 'farmlevel' ? farmLevel : upgrades[selectedUpgrade] || 1;
+      const currentLevel = upgrades[selectedUpgrade] || 1;
 
       if (currentLevel < 10) {
         const nextLevel = currentLevel + 1;
-        const upgradeData =
-          upgradeLevels[selectedUpgrade as keyof typeof upgradeLevels][nextLevel - 1];
+        const upgradeData = upgradeLevels[selectedUpgrade as keyof typeof upgradeLevels][nextLevel - 1];
 
         if (points >= upgradeData.cost) {
           const newPoints = points - upgradeData.cost;
           setPoints(newPoints);
 
-          if (selectedUpgrade === 'farmlevel') {
-            setFarmLevel(nextLevel);
-            setNotificationMessage(`Уровень фермы улучшен до ${nextLevel}`);
-          } else {
-            const newUpgrades = {
-              ...upgrades,
-              [selectedUpgrade]: nextLevel,
-            };
-            setUpgrades(newUpgrades);
-            setNotificationMessage(`Улучшено ${selectedUpgrade} до уровня ${nextLevel}`);
-          }
+          const newUpgrades = {
+            ...upgrades,
+            [selectedUpgrade]: nextLevel,
+          };
+          setUpgrades(newUpgrades);
+          setNotificationMessage(`Улучшено ${selectedUpgrade} до уровня ${nextLevel}`);
 
           // Обновляем incomePerHour
-          const totalIncome = calculateTotalIncome(
-            selectedUpgrade === 'farmlevel' ? upgrades : { ...upgrades, [selectedUpgrade]: nextLevel },
-            selectedUpgrade === 'farmlevel' ? nextLevel : farmLevel
-          );
+          const totalIncome = calculateTotalIncome(newUpgrades, farmLevel);
           setIncomePerHour(totalIncome);
 
           // Сохранение данных на сервере
@@ -128,8 +117,8 @@ const MineContent: React.FC<MineContentProps> = ({
               tapProfitLevel,
               tapIncreaseLevel,
               remainingClicks,
-              ...upgrades,
-              ...(selectedUpgrade === 'farmlevel' ? { farmLevel: nextLevel } : {}),
+              ...newUpgrades,
+              farmLevel,
               incomePerHour: totalIncome,
             }),
           })
@@ -157,8 +146,8 @@ const MineContent: React.FC<MineContentProps> = ({
     }
   };
 
+  // Обновляем список улучшений без 'farmlevel'
   const upgradesList = [
-    'farmlevel',
     'upgrade1',
     'upgrade2',
     'upgrade3',
@@ -180,7 +169,7 @@ const MineContent: React.FC<MineContentProps> = ({
           </div>
         </div>
       </div>
-      {/* Добавляем блок с монетами и доходом в час */}
+      {/* Блок с монетами и доходом в час */}
       <div className="px-4 mt-4">
         <div className="h-[50px] bg-gray-700 rounded-lg flex">
           <div className="flex-1 flex items-center justify-center border-r border-gray-600">
@@ -194,7 +183,7 @@ const MineContent: React.FC<MineContentProps> = ({
           </div>
         </div>
       </div>
-      {/* Изменяем стиль кнопки "Просмотр улучшений" */}
+      {/* Кнопка "Просмотр улучшений" */}
       <div className="px-4 mt-4">
         <button
           className="w-full h-20 bg-gradient-to-r from-purple-600 to-indigo-600 rounded-lg shadow-lg overflow-hidden relative flex items-center justify-between px-4"
@@ -241,7 +230,7 @@ const MineContent: React.FC<MineContentProps> = ({
                 ✕
               </button>
             </div>
-            {/* Убираем блок с монетами и доходом в час из меню улучшений */}
+            {/* Список улучшений без 'farmlevel' */}
             <div className="grid grid-cols-2 gap-2.5 overflow-y-auto" style={{ maxHeight: '75vh' }}>
               {upgradesList.map((upgrade, index) => (
                 <button
@@ -250,12 +239,9 @@ const MineContent: React.FC<MineContentProps> = ({
                   style={{ backgroundImage: 'url(/path/to/placeholder.png)' }}
                   onClick={() => handleUpgradeClick(upgrade)}
                 >
-                  <span className="text-sm text-white">
-                    {upgrade === 'farmlevel' ? 'Farm Level' : upgrade}
-                  </span>
+                  <span className="text-sm text-white">{upgrade}</span>
                   <span className="text-xs text-gray-300">
-                    Уровень{' '}
-                    {upgrade === 'farmlevel' ? farmLevel : upgrades[upgrade] || 1}
+                    Уровень {upgrades[upgrade] || 1}
                   </span>
                 </button>
               ))}
@@ -274,20 +260,14 @@ const MineContent: React.FC<MineContentProps> = ({
             onClick={(e) => e.stopPropagation()}
             style={{ maxHeight: '90%' }}
           >
-            <h2 className="text-center text-xl text-white mb-2">
-              {selectedUpgrade === 'farmlevel' ? 'Farm Level' : selectedUpgrade}
-            </h2>
+            <h2 className="text-center text-xl text-white mb-2">{selectedUpgrade}</h2>
             <p className="text-center text-gray-300 mb-4">
-              Уровень:{' '}
-              {selectedUpgrade === 'farmlevel'
-                ? farmLevel
-                : upgrades[selectedUpgrade] || 1}
+              Уровень: {upgrades[selectedUpgrade] || 1}
             </p>
             <p className="text-center text-gray-400 mb-4">
               Описание улучшения. Это улучшение поможет вам увеличить производительность и заработать больше монет.
             </p>
-            {((selectedUpgrade !== 'farmlevel' && upgrades[selectedUpgrade] === 10) ||
-            (selectedUpgrade === 'farmlevel' && farmLevel === farmLevelMultipliers.length)) ? (
+            {upgrades[selectedUpgrade] === 10 ? (
               <p className="text-center text-yellow-400 mb-4">Максимальный уровень</p>
             ) : (
               <>
@@ -298,9 +278,7 @@ const MineContent: React.FC<MineContentProps> = ({
                   Улучшить (
                   {
                     upgradeLevels[selectedUpgrade as keyof typeof upgradeLevels][
-                      (selectedUpgrade === 'farmlevel'
-                        ? farmLevel
-                        : upgrades[selectedUpgrade]) || 1
+                      upgrades[selectedUpgrade]
                     ].cost
                   }{' '}
                   монет)
