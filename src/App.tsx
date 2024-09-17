@@ -65,17 +65,6 @@ const App: React.FC = () => {
   const [currentPage, setCurrentPage] = useState('farm');
   const [selectedUpgrade, setSelectedUpgrade] = useState<string | null>(null);
 
-  // Новые состояния для заработанных монет и таймера
-  const [earnedCoins, setEarnedCoins] = useState<number>(() => {
-    const savedEarnedCoins = localStorage.getItem('earnedCoins');
-    return savedEarnedCoins ? parseFloat(savedEarnedCoins) : 0;
-  });
-
-  const [timer, setTimer] = useState<number>(() => {
-    const savedTimer = localStorage.getItem('timer');
-    return savedTimer ? parseInt(savedTimer) : 10800; // 3 часа в секундах
-  });
-
   const tapProfitLevels = useMemo(
     () => [
       { level: 1, profit: 1, cost: 1000 },
@@ -205,9 +194,6 @@ const App: React.FC = () => {
           upgrade8: data.upgrade8 || 1,
         });
         setFarmLevel(data.farmLevel || 1);
-        // Загрузка новых данных: earnedCoins и timer
-        setEarnedCoins(data.earnedCoins || 0);
-        setTimer(data.timer || 10800);
       })
       .finally(() => {
         setLoading(false);
@@ -223,8 +209,6 @@ const App: React.FC = () => {
           navigator.sendBeacon('/save-entry-exit-time', JSON.stringify({
             userId,
             action: 'exit',
-            earnedCoins,
-            timer,
           }));
         }
         fetch('/logout', {
@@ -236,8 +220,6 @@ const App: React.FC = () => {
             userId,
             remainingClicks,
             points,
-            earnedCoins,
-            timer,
             lastLogout: new Date().toISOString(),
           }),
         }).catch((error) => console.error('Ошибка при отправке времени выхода:', error));
@@ -249,7 +231,7 @@ const App: React.FC = () => {
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload);
     };
-  }, [userId, remainingClicks, points, earnedCoins, timer, currentPage]);
+  }, [userId, remainingClicks, points, currentPage]);
 
   const previousPageRef = useRef<string>(currentPage);
 
@@ -277,14 +259,12 @@ const App: React.FC = () => {
           body: JSON.stringify({
             userId,
             action: 'exit',
-            earnedCoins,
-            timer,
           }),
         }).catch((error) => console.error('Ошибка при сохранении времени выхода:', error));
       }
       previousPageRef.current = currentPage;
     }
-  }, [currentPage, userId, earnedCoins, timer]);
+  }, [currentPage, userId]);
 
   const updateRemainingClicks = useCallback(
     async (newRemainingClicks: number) => {
@@ -349,8 +329,6 @@ const App: React.FC = () => {
                 ...upgrades,
                 farmLevel,
                 incomePerHour,
-                earnedCoins, // Добавлено
-                timer,       // Добавлено
               }),
             });
           } catch (error) {
@@ -389,10 +367,8 @@ const App: React.FC = () => {
       tapIncreaseLevel,
       upgrades,
       farmLevel,
-      incomePerHour,
-      earnedCoins,
-      timer,
       updateRemainingClicks,
+      incomePerHour,
     ]
   );
 
@@ -414,8 +390,6 @@ const App: React.FC = () => {
               ...upgrades,
               farmLevel,
               incomePerHour,
-              earnedCoins, // Добавлено
-              timer,       // Добавлено
             }),
           });
 
@@ -447,7 +421,7 @@ const App: React.FC = () => {
         console.log('userId равен null, запрос POST не отправлен');
       }
     },
-    [userId, points, remainingClicks, upgrades, farmLevel, tapIncreaseLevels, incomePerHour, earnedCoins, timer]
+    [userId, points, remainingClicks, upgrades, farmLevel, tapIncreaseLevels, incomePerHour]
   );
 
   const upgradeTapProfit = async () => {
@@ -681,69 +655,8 @@ const App: React.FC = () => {
           </div>
         </div>
       </div>
-      {/* Новое меню для заработанных монет, таймера и кнопки "Забрать" */}
-      <div className="fixed bottom-24 left-0 right-0 px-4">
-        <div className="bg-gray-700 rounded-lg p-4 flex flex-col items-center">
-          <p className="text-yellow-400 text-2xl mb-2">
-            {Math.floor(earnedCoins).toLocaleString()} монет
-          </p>
-          <p className="text-gray-300 text-lg">Таймер: {formatTime(timer)}</p>
-          <button
-            className="bg-yellow-500 text-gray-900 px-4 py-2 rounded-full font-bold shadow-lg mt-2"
-            onClick={handleCollect}
-          >
-            Забрать
-          </button>
-        </div>
-      </div>
     </>
   );
-
-  // Функция форматирования времени
-  const formatTime = (seconds: number): string => {
-    const h = Math.floor(seconds / 3600)
-      .toString()
-      .padStart(2, '0');
-    const m = Math.floor((seconds % 3600) / 60)
-      .toString()
-      .padStart(2, '0');
-    const s = Math.floor(seconds % 60)
-      .toString()
-      .padStart(2, '0');
-    return `${h}:${m}:${s}`;
-  };
-
-  const handleCollect = () => {
-    const totalPoints = points + earnedCoins;
-    setPoints(totalPoints);
-    setEarnedCoins(0);
-    setTimer(10800); // Сброс таймера на 3 часа
-
-    // Сохраняем данные на сервере
-    fetch('/save-data', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        userId,
-        points: totalPoints,
-        earnedCoins: 0,
-        timer: 10800,
-        tapProfitLevel,
-        tapIncreaseLevel,
-        remainingClicks,
-        ...upgrades,
-        farmLevel,
-        incomePerHour,
-      }),
-    })
-      .then((response) => response.json())
-      .then((data) => {
-        console.log('Данные сохранены после сбора монет:', data);
-      })
-      .catch((error) => console.error('Ошибка при сохранении данных после сбора:', error));
-  };
 
   const renderBoostContent = () => (
     <>
@@ -778,7 +691,6 @@ const App: React.FC = () => {
               setFarmLevel={setFarmLevel}
               incomePerHour={incomePerHour}
               setIncomePerHour={setIncomePerHour}
-
             />
           )}
           {isBoostMenuOpen && renderBoostContent()}
