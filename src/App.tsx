@@ -691,8 +691,6 @@ const App: React.FC = () => {
               setFarmLevel={setFarmLevel}
               incomePerHour={incomePerHour}
               setIncomePerHour={setIncomePerHour}
-              selectedUpgrade={selectedUpgrade} // Добавлено
-              setSelectedUpgrade={setSelectedUpgrade} // Добавлено
             />
           )}
           {isBoostMenuOpen && renderBoostContent()}
