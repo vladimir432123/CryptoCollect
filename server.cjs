@@ -58,8 +58,8 @@ db.query(
       upgrade8 INT DEFAULT 1,
       farmLevel INT DEFAULT 1,
       incomePerHour DOUBLE DEFAULT 0,
-      entryTime DATETIME NULL DEFAULT NULL,
-      exitTime DATETIME NULL DEFAULT NULL
+      entryTime TIMESTAMP NULL DEFAULT NULL,
+      exitTime TIMESTAMP NULL DEFAULT NULL
   )
 `,
   (err) => {
@@ -92,8 +92,8 @@ const addColumnIfNotExists = (columnName, columnDefinition) => {
 
 // Добавляем недостающие столбцы
 addColumnIfNotExists('incomePerHour', 'DOUBLE DEFAULT 0');
-addColumnIfNotExists('entryTime', 'DATETIME NULL DEFAULT NULL');
-addColumnIfNotExists('exitTime', 'DATETIME NULL DEFAULT NULL');
+addColumnIfNotExists('entryTime', 'TIMESTAMP NULL DEFAULT NULL');
+addColumnIfNotExists('exitTime', 'TIMESTAMP NULL DEFAULT NULL');
 
 const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN);
 
@@ -171,9 +171,9 @@ bot.start(async (ctx) => {
 
 // Сохранение времени входа и выхода с вкладки
 app.post('/save-entry-exit-time', (req, res) => {
-  const { userId, action, time } = req.body;
+  const { userId, action } = req.body;
 
-  if (!userId || !action || !time) {
+  if (!userId || !action) {
     console.log('Ошибка: Недостаточно данных для сохранения времени входа/выхода');
     return res.status(400).json({ error: 'Missing required fields' });
   }
@@ -181,11 +181,11 @@ app.post('/save-entry-exit-time', (req, res) => {
   const field = action === 'enter' ? 'entryTime' : 'exitTime';
   const query = `
         UPDATE user 
-        SET ${field} = ?
+        SET ${field} = NOW()
         WHERE telegram_id = ?
     `;
 
-  db.query(query, [time, userId], (err) => {
+  db.query(query, [userId], (err) => {
     if (err) {
       console.error('Ошибка при сохранении времени:', err);
       return res.status(500).json({ error: 'Server error' });
@@ -196,33 +196,6 @@ app.post('/save-entry-exit-time', (req, res) => {
       userId
     );
     res.json({ success: true });
-  });
-});
-
-// Эндпоинт для получения времени входа и выхода
-app.get('/get-entry-exit-time', (req, res) => {
-  const userId = req.query.userId;
-
-  if (!userId) {
-    console.error('User ID не передан в запросе');
-    return res.status(400).json({ error: 'User ID обязателен' });
-  }
-
-  const query = 'SELECT entryTime, exitTime FROM user WHERE telegram_id = ?';
-
-  db.query(query, [userId], (err, results) => {
-    if (err) {
-      console.error('Ошибка при получении времени входа/выхода:', err);
-      return res.status(500).json({ error: 'Server error' });
-    }
-    if (results.length > 0) {
-      res.json({
-        entryTime: results[0].entryTime,
-        exitTime: results[0].exitTime,
-      });
-    } else {
-      res.status(404).json({ error: 'Пользователь не найден' });
-    }
   });
 });
 
@@ -283,7 +256,7 @@ app.get('/app', async (req, res) => {
           upgrade7: userData.upgrade7,
           upgrade8: userData.upgrade8,
           farmLevel: userData.farmLevel,
-          incomePerHour: parseFloat(userData.incomePerHour),
+          incomePerHour: parseFloat(userData.incomePerHour), // Добавлено parseFloat для точности
           entryTime: userData.entryTime,
           exitTime: userData.exitTime,
         });
