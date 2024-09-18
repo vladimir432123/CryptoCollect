@@ -1,6 +1,6 @@
 // MineContent.tsx
 
-import React, { useEffect, useState, useRef, useCallback } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { upgradeLevels } from './upgrades';
 import UpgradeNotification from './UpgradeNotification';
 import './minecontent.css';
@@ -32,6 +32,7 @@ const MineContent: React.FC<MineContentProps> = ({
   upgrades,
   setUpgrades,
   farmLevel,
+  
   incomePerHour,
   setIncomePerHour,
 }) => {
@@ -42,22 +43,13 @@ const MineContent: React.FC<MineContentProps> = ({
   // Новые состояния для заработанных монет и таймера
   const [earnedCoins, setEarnedCoins] = useState<number>(() => {
     const saved = localStorage.getItem('earnedCoins');
-    return saved ? parseInt(saved, 10) : 0;
+    return saved ? parseInt(saved) : 0;
   });
   const [timer, setTimer] = useState<number>(() => {
     const saved = localStorage.getItem('timer');
-    return saved ? parseInt(saved, 10) : 10800; // 3 часа в секундах
+    return saved ? parseInt(saved) : 10800; // 3 часа в секундах
   });
   const timerRef = useRef<number | null>(null);
-
-  // Обновление earnedCoins и timer в localStorage при их изменении
-  useEffect(() => {
-    localStorage.setItem('earnedCoins', earnedCoins.toString());
-  }, [earnedCoins]);
-
-  useEffect(() => {
-    localStorage.setItem('timer', timer.toString());
-  }, [timer]);
 
   const farmLevelMultipliers = [1, 1.2, 1.4, 1.6, 1.8, 2.0];
 
@@ -73,7 +65,7 @@ const MineContent: React.FC<MineContentProps> = ({
   };
 
   // Функция для получения данных пользователя с сервера
-  const fetchUserData = useCallback(async () => {
+  const fetchUserData = async () => {
     if (userId === null) return;
 
     try {
@@ -100,29 +92,33 @@ const MineContent: React.FC<MineContentProps> = ({
 
         const totalAccumulationTime = 10800; // 3 часа в секундах
 
-        // Рассчитываем заработанные монеты за время отсутствия
         const newEarnedCoins = Math.min((diffInSeconds * incomePerHour) / 3600, incomePerHour * 3);
         const flooredEarnedCoins = Math.floor(newEarnedCoins);
 
-        // Добавляем к существующим монетам, не превышая лимит
-        const updatedEarnedCoins = Math.min(earnedCoins + flooredEarnedCoins, incomePerHour * 3);
-        setEarnedCoins(updatedEarnedCoins);
+        // Получаем существующие заработанные монеты из состояния
+        const existingEarnedCoins = earnedCoins;
 
-        // Рассчитываем оставшееся время
+        // Добавляем новые заработанные монеты к существующим, с ограничением до 3 часов
+        const updatedEarnedCoins = Math.min(existingEarnedCoins + flooredEarnedCoins, incomePerHour * 3);
+        setEarnedCoins(updatedEarnedCoins);
+        localStorage.setItem('earnedCoins', updatedEarnedCoins.toString());
+
+        // Рассчитываем оставшееся время на таймере
         const additionalTime = Math.floor((flooredEarnedCoins / incomePerHour) * 3600);
         const updatedTimer = Math.min(timer + additionalTime, totalAccumulationTime);
         setTimer(updatedTimer);
+        localStorage.setItem('timer', updatedTimer.toString());
       }
 
     } catch (error) {
       console.error('Ошибка при получении данных пользователя:', error);
     }
-  }, [userId, incomePerHour, earnedCoins, timer]);
+  };
 
   useEffect(() => {
     // При монтировании компонента
     fetchUserData();
-  }, [fetchUserData]);
+  }, [userId, incomePerHour]);
 
   useEffect(() => {
     // Обновляем доход при изменении улучшений или уровня фермы
@@ -137,9 +133,10 @@ const MineContent: React.FC<MineContentProps> = ({
         setTimer((prevTimer) => {
           if (prevTimer > 0) {
             const newTimer = prevTimer - 1;
+            localStorage.setItem('timer', newTimer.toString());
             return newTimer;
           } else {
-            if (timerRef.current !== null) {
+            if (timerRef.current) {
               clearInterval(timerRef.current);
             }
             return 0;
@@ -149,69 +146,18 @@ const MineContent: React.FC<MineContentProps> = ({
         setEarnedCoins((prevEarnedCoins) => {
           const increment = incomePerHour / 3600;
           const newEarnedCoins = Math.min(prevEarnedCoins + increment, incomePerHour * 3);
+          localStorage.setItem('earnedCoins', Math.floor(newEarnedCoins).toString());
           return newEarnedCoins;
         });
       }, 1000);
     }
 
     return () => {
-      if (timerRef.current !== null) {
+      if (timerRef.current) {
         clearInterval(timerRef.current);
       }
     };
   }, [timer, incomePerHour]);
-
-  // Обработчик видимости страницы для учета времени блокировки экрана
-  useEffect(() => {
-    const handleVisibilityChange = async () => {
-      if (document.hidden) {
-        // Страница скрыта, сохранить время выхода
-        if (userId !== null) {
-          try {
-            await fetch('/save-entry-exit-time', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                userId,
-                action: 'exit',
-              }),
-            });
-          } catch (error) {
-            console.error('Ошибка при сохранении времени выхода:', error);
-          }
-        }
-      } else {
-        // Страница видна, сохранить время входа и обновить данные
-        if (userId !== null) {
-          try {
-            await fetch('/save-entry-exit-time', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                userId,
-                action: 'enter',
-              }),
-            });
-
-            // Обновить данные пользователя после возврата
-            fetchUserData();
-          } catch (error) {
-            console.error('Ошибка при сохранении времени входа:', error);
-          }
-        }
-      }
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
-  }, [userId, fetchUserData]);
 
   const handleUpgradeClick = (upgrade: string) => {
     setSelectedMineUpgrade(upgrade);
@@ -466,7 +412,7 @@ const MineContent: React.FC<MineContentProps> = ({
           onClick={closeUpgradesMenu}
         >
           <div
-            className="bg-gray-900 w-full max-w-md p-6 rounded-t-lg animate-slide-up overflow-hidden"
+            className="bg-gray-900 w-full max-w-md p-6 rounded-t-lg animate-slide-up"
             onClick={(e) => e.stopPropagation()}
             style={{ maxHeight: '90%' }}
           >
