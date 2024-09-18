@@ -32,6 +32,7 @@ const MineContent: React.FC<MineContentProps> = ({
   upgrades,
   setUpgrades,
   farmLevel,
+  
   incomePerHour,
   setIncomePerHour,
 }) => {
@@ -40,8 +41,14 @@ const MineContent: React.FC<MineContentProps> = ({
   const [selectedMineUpgrade, setSelectedMineUpgrade] = useState<string | null>(null);
   
   // Новые состояния для заработанных монет и таймера
-  const [earnedCoins, setEarnedCoins] = useState<number>(0);
-  const [timer, setTimer] = useState<number>(10800); // 3 часа в секундах
+  const [earnedCoins, setEarnedCoins] = useState<number>(() => {
+    const saved = localStorage.getItem('earnedCoins');
+    return saved ? parseInt(saved) : 0;
+  });
+  const [timer, setTimer] = useState<number>(() => {
+    const saved = localStorage.getItem('timer');
+    return saved ? parseInt(saved) : 10800; // 3 часа в секундах
+  });
   const timerRef = useRef<number | null>(null);
 
   const farmLevelMultipliers = [1, 1.2, 1.4, 1.6, 1.8, 2.0];
@@ -85,13 +92,22 @@ const MineContent: React.FC<MineContentProps> = ({
 
         const totalAccumulationTime = 10800; // 3 часа в секундах
 
-        let accumulatedCoins = Math.min((diffInSeconds * incomePerHour) / 3600, incomePerHour * 3);
-        accumulatedCoins = Math.floor(accumulatedCoins);
+        const newEarnedCoins = Math.min((diffInSeconds * incomePerHour) / 3600, incomePerHour * 3);
+        const flooredEarnedCoins = Math.floor(newEarnedCoins);
 
-        setEarnedCoins(accumulatedCoins);
+        // Получаем существующие заработанные монеты из состояния
+        const existingEarnedCoins = earnedCoins;
 
-        const remainingTime = totalAccumulationTime - Math.floor((accumulatedCoins / incomePerHour) * 3600);
-        setTimer(remainingTime > 0 ? remainingTime : 0);
+        // Добавляем новые заработанные монеты к существующим, с ограничением до 3 часов
+        const updatedEarnedCoins = Math.min(existingEarnedCoins + flooredEarnedCoins, incomePerHour * 3);
+        setEarnedCoins(updatedEarnedCoins);
+        localStorage.setItem('earnedCoins', updatedEarnedCoins.toString());
+
+        // Рассчитываем оставшееся время на таймере
+        const additionalTime = Math.floor((flooredEarnedCoins / incomePerHour) * 3600);
+        const updatedTimer = Math.min(timer + additionalTime, totalAccumulationTime);
+        setTimer(updatedTimer);
+        localStorage.setItem('timer', updatedTimer.toString());
       }
 
     } catch (error) {
@@ -102,8 +118,6 @@ const MineContent: React.FC<MineContentProps> = ({
   useEffect(() => {
     // При монтировании компонента
     fetchUserData();
-
-    // Запросить текущие заработанные монеты и таймер
   }, [userId, incomePerHour]);
 
   useEffect(() => {
@@ -118,7 +132,9 @@ const MineContent: React.FC<MineContentProps> = ({
       timerRef.current = window.setInterval(() => {
         setTimer((prevTimer) => {
           if (prevTimer > 0) {
-            return prevTimer - 1;
+            const newTimer = prevTimer - 1;
+            localStorage.setItem('timer', newTimer.toString());
+            return newTimer;
           } else {
             if (timerRef.current) {
               clearInterval(timerRef.current);
@@ -128,8 +144,10 @@ const MineContent: React.FC<MineContentProps> = ({
         });
 
         setEarnedCoins((prevEarnedCoins) => {
-          const newEarnedCoins = prevEarnedCoins + incomePerHour / 3600;
-          return newEarnedCoins >= incomePerHour * 3 ? incomePerHour * 3 : newEarnedCoins;
+          const increment = incomePerHour / 3600;
+          const newEarnedCoins = Math.min(prevEarnedCoins + increment, incomePerHour * 3);
+          localStorage.setItem('earnedCoins', Math.floor(newEarnedCoins).toString());
+          return newEarnedCoins;
         });
       }, 1000);
     }
@@ -248,6 +266,8 @@ const MineContent: React.FC<MineContentProps> = ({
       setPoints(newPoints);
       setEarnedCoins(0);
       setTimer(10800); // Сбросить таймер на 3 часа
+      localStorage.setItem('earnedCoins', '0');
+      localStorage.setItem('timer', '10800');
 
       // Обновить entryTime на сервере
       await fetch('/save-entry-exit-time', {
@@ -286,10 +306,10 @@ const MineContent: React.FC<MineContentProps> = ({
     }
   };
 
-  // Новое меню внизу страницы с отступом 50 пикселей выше навигационной панели
+  // Новое меню внизу страницы с отступом 100 пикселей выше навигационной панели
   const renderBottomMenu = () => {
     return (
-      <div className="fixed left-0 right-0 px-4" style={{ bottom: '50px' }}>
+      <div className="fixed left-0 right-0 px-4 z-40" style={{ bottom: '100px' }}>
         <div className="bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg shadow-lg p-4 flex flex-col items-center space-y-2">
           <div className="flex items-center space-x-2">
             <svg
