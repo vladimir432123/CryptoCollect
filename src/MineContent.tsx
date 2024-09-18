@@ -1,3 +1,5 @@
+// MineContent.tsx
+
 import React, { useEffect, useState } from 'react';
 import { upgradeLevels } from './upgrades';
 import UpgradeNotification from './UpgradeNotification';
@@ -30,7 +32,6 @@ const MineContent: React.FC<MineContentProps> = ({
   upgrades,
   setUpgrades,
   farmLevel,
-  
   incomePerHour,
   setIncomePerHour,
 }) => {
@@ -154,6 +155,39 @@ const MineContent: React.FC<MineContentProps> = ({
     'upgrade7',
     'upgrade8',
   ];
+
+  // Новое меню внизу страницы
+  const renderBottomMenu = () => {
+    return (
+      <div className="fixed bottom-16 left-0 right-0 px-4">
+        <div className="bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg shadow-lg p-4 flex flex-col items-center space-y-2">
+          <div className="flex items-center space-x-2">
+            <svg
+              className="w-6 h-6 text-yellow-400"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 8c-1.104 0-2 .896-2 2s.896 2 2 2 2-.896 2-2-.896-2-2-2zm0 6c-1.104 0-2 .896-2 2s.896 2 2 2 2-.896 2-2-.896-2-2-2z"
+              />
+            </svg>
+            <span className="text-white text-lg font-semibold">{Math.floor(points).toLocaleString()} монет</span>
+          </div>
+          <div className="flex flex-col items-center">
+            <span className="text-white text-sm">Осталось времени:</span>
+            <span className="text-yellow-400 text-xl font-bold">3:00:00</span>
+          </div>
+          <button className="w-full bg-yellow-500 hover:bg-yellow-600 text-gray-800 font-bold py-2 px-4 rounded-lg shadow-md transition duration-300">
+            Забрать
+          </button>
+        </div>
+      </div>
+    );
+  };
 
   return (
     <>
@@ -303,6 +337,9 @@ const MineContent: React.FC<MineContentProps> = ({
           </div>
         </div>
       )}
+
+      {/* Новое нижнее меню */}
+      {renderBottomMenu()}
     </>
   );
 };
