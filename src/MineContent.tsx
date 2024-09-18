@@ -21,8 +21,6 @@ interface MineContentProps {
   setIncomePerHour: React.Dispatch<React.SetStateAction<number>>;
 }
 
-const TIMER_DURATION = 3 * 60 * 60 * 1000; // 3 часа в миллисекундах
-
 const MineContent: React.FC<MineContentProps> = ({
   points,
   setPoints,
@@ -34,15 +32,24 @@ const MineContent: React.FC<MineContentProps> = ({
   upgrades,
   setUpgrades,
   farmLevel,
+  
   incomePerHour,
   setIncomePerHour,
 }) => {
   const [notificationMessage, setNotificationMessage] = useState<string | null>(null);
   const [isUpgradesMenuOpen, setIsUpgradesMenuOpen] = useState(false);
   const [selectedMineUpgrade, setSelectedMineUpgrade] = useState<string | null>(null);
-  const [timer, setTimer] = useState<number>(TIMER_DURATION);
+  
+  // Новые состояния для заработанных монет и таймера
+  const [earnedCoins, setEarnedCoins] = useState<number>(() => {
+    const saved = localStorage.getItem('earnedCoins');
+    return saved ? parseInt(saved) : 0;
+  });
+  const [timer, setTimer] = useState<number>(() => {
+    const saved = localStorage.getItem('timer');
+    return saved ? parseInt(saved) : 10800; // 3 часа в секундах
+  });
   const timerRef = useRef<number | null>(null);
-  const lastActiveRef = useRef<number>(Date.now());
 
   const farmLevelMultipliers = [1, 1.2, 1.4, 1.6, 1.8, 2.0];
 
@@ -57,99 +64,101 @@ const MineContent: React.FC<MineContentProps> = ({
     return income * farmLevelMultipliers[farmLevel - 1];
   };
 
-  // Обновление дохода в час при изменении улучшений или уровня фермы
-  useEffect(() => {
-    const totalIncome = calculateTotalIncome(upgrades, farmLevel);
-    setIncomePerHour(totalIncome);
-  }, [upgrades, farmLevel, setIncomePerHour]);
+  // Функция для получения данных пользователя с сервера
+  const fetchUserData = async () => {
+    if (userId === null) return;
 
-  // Таймер для добавления монет каждую секунду
-  useEffect(() => {
-    if (incomePerHour > 0) {
-      const interval = window.setInterval(() => {
-        setPoints((prevPoints: number) => prevPoints + incomePerHour / 3600);
-      }, 1000);
-      return () => clearInterval(interval);
-    }
-  }, [incomePerHour, setPoints]);
-
-  // Функция для загрузки последнего времени выхода и расчёта оставшегося времени
-  useEffect(() => {
-    if (userId !== null) {
-      fetch(`/app?userId=${userId}`, {
+    try {
+      const response = await fetch(`/app?userId=${userId}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
         },
-      })
-        .then((response) => response.json())
-        .then((data) => {
-          const lastLogout = data.lastLogout ? new Date(data.lastLogout).getTime() : Date.now();
-          const elapsed = Date.now() - lastLogout;
-          if (elapsed < TIMER_DURATION) {
-            setTimer(TIMER_DURATION - elapsed);
-            startTimer(TIMER_DURATION - elapsed);
-          } else {
-            setTimer(0);
-          }
-        })
-        .catch((error) => console.error('Ошибка при загрузке последнего времени выхода:', error));
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userId]);
-
-  // Функция для запуска таймера
-  const startTimer = (initialTime: number) => {
-    if (timerRef.current !== null) {
-      clearInterval(timerRef.current);
-    }
-    setTimer(initialTime);
-
-    timerRef.current = window.setInterval(() => {
-      setTimer((prevTimer) => {
-        if (prevTimer <= 1000) {
-          if (timerRef.current !== null) {
-            clearInterval(timerRef.current);
-          }
-          return 0;
-        }
-        return prevTimer - 1000;
       });
-    }, 1000);
+
+      if (!response.ok) {
+        throw new Error(`Ошибка HTTP: ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      const { entryTime, exitTime } = data;
+
+      if (entryTime && exitTime) {
+        const exitDate = new Date(exitTime);
+        const currentDate = new Date();
+
+        const diffInSeconds = Math.floor((currentDate.getTime() - exitDate.getTime()) / 1000);
+
+        const totalAccumulationTime = 10800; // 3 часа в секундах
+
+        const newEarnedCoins = Math.min((diffInSeconds * incomePerHour) / 3600, incomePerHour * 3);
+        const flooredEarnedCoins = Math.floor(newEarnedCoins);
+
+        // Получаем существующие заработанные монеты из состояния
+        const existingEarnedCoins = earnedCoins;
+
+        // Добавляем новые заработанные монеты к существующим, с ограничением до 3 часов
+        const updatedEarnedCoins = Math.min(existingEarnedCoins + flooredEarnedCoins, incomePerHour * 3);
+        setEarnedCoins(updatedEarnedCoins);
+        localStorage.setItem('earnedCoins', updatedEarnedCoins.toString());
+
+        // Рассчитываем оставшееся время на таймере
+        const additionalTime = Math.floor((flooredEarnedCoins / incomePerHour) * 3600);
+        const updatedTimer = Math.min(timer + additionalTime, totalAccumulationTime);
+        setTimer(updatedTimer);
+        localStorage.setItem('timer', updatedTimer.toString());
+      }
+
+    } catch (error) {
+      console.error('Ошибка при получении данных пользователя:', error);
+    }
   };
 
-  // Обработка видимости страницы (например, блокировка экрана)
   useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (document.hidden) {
-        lastActiveRef.current = Date.now();
-      } else {
-        const now = Date.now();
-        const elapsed = now - lastActiveRef.current;
-        if (incomePerHour > 0 && timer > 0) {
-          const newTimer = timer - elapsed;
-          if (newTimer > 0) {
-            setTimer(newTimer);
-            startTimer(newTimer);
-          } else {
-            setTimer(0);
-            if (timerRef.current !== null) clearInterval(timerRef.current);
-          }
-          // Добавление монет за время отсутствия
-          const earnedPoints = (incomePerHour * elapsed) / 3600000; // incomePerHour * (elapsed / 3600000)
-          setPoints((prevPoints: number) => prevPoints + earnedPoints);
-        }
-      }
-    };
+    // При монтировании компонента
+    fetchUserData();
+  }, [userId, incomePerHour]);
 
-    document.addEventListener('visibilitychange', handleVisibilityChange);
+  useEffect(() => {
+    // Обновляем доход при изменении улучшений или уровня фермы
+    const totalIncome = calculateTotalIncome(upgrades, farmLevel);
+    setIncomePerHour(totalIncome);
+  }, [upgrades, farmLevel, setIncomePerHour]);
+
+  useEffect(() => {
+    // Таймер для накопления монет
+    if (timer > 0) {
+      timerRef.current = window.setInterval(() => {
+        setTimer((prevTimer) => {
+          if (prevTimer > 0) {
+            const newTimer = prevTimer - 1;
+            localStorage.setItem('timer', newTimer.toString());
+            return newTimer;
+          } else {
+            if (timerRef.current) {
+              clearInterval(timerRef.current);
+            }
+            return 0;
+          }
+        });
+
+        setEarnedCoins((prevEarnedCoins) => {
+          const increment = incomePerHour / 3600;
+          const newEarnedCoins = Math.min(prevEarnedCoins + increment, incomePerHour * 3);
+          localStorage.setItem('earnedCoins', Math.floor(newEarnedCoins).toString());
+          return newEarnedCoins;
+        });
+      }, 1000);
+    }
 
     return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+      }
     };
-  }, [incomePerHour, timer, setPoints]);
+  }, [timer, incomePerHour]);
 
-  // Обработка открытия и закрытия меню улучшений
   const handleUpgradeClick = (upgrade: string) => {
     setSelectedMineUpgrade(upgrade);
     setIsUpgradesMenuOpen(false); // Закрываем меню улучшений
@@ -239,15 +248,101 @@ const MineContent: React.FC<MineContentProps> = ({
     'upgrade8',
   ];
 
-  // Форматирование времени для отображения
-  const formatTime = (milliseconds: number) => {
-    const totalSeconds = Math.floor(milliseconds / 1000);
-    const hours = Math.floor(totalSeconds / 3600);
-    const minutes = Math.floor((totalSeconds % 3600) / 60);
-    const seconds = totalSeconds % 60;
-    return `${hours.toString().padStart(2, '0')}:${minutes
-      .toString()
-      .padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+  // Функция форматирования времени
+  const formatTime = (seconds: number) => {
+    const hrs = Math.floor(seconds / 3600);
+    const mins = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+    return `${hrs}:${mins < 10 ? '0' : ''}${mins}:${secs < 10 ? '0' : ''}${secs}`;
+  };
+
+  // Функция для обработки нажатия кнопки "Забрать"
+  const handleCollectCoins = async () => {
+    if (earnedCoins <= 0) return;
+
+    try {
+      // Добавить заработанные монеты к points
+      const newPoints = points + earnedCoins;
+      setPoints(newPoints);
+      setEarnedCoins(0);
+      setTimer(10800); // Сбросить таймер на 3 часа
+      localStorage.setItem('earnedCoins', '0');
+      localStorage.setItem('timer', '10800');
+
+      // Обновить entryTime на сервере
+      await fetch('/save-entry-exit-time', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId,
+          action: 'enter',
+        }),
+      });
+
+      // Сохранить обновленные данные на сервере
+      await fetch('/save-data', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId,
+          points: newPoints,
+          tapProfitLevel,
+          tapIncreaseLevel,
+          remainingClicks,
+          ...upgrades,
+          farmLevel,
+          incomePerHour,
+        }),
+      });
+
+      alert('Монеты успешно забраны!');
+    } catch (error) {
+      console.error('Ошибка при сборе монет:', error);
+      alert('Ошибка при сборе монет. Попробуйте снова.');
+    }
+  };
+
+  // Новое меню внизу страницы с отступом 100 пикселей выше навигационной панели
+  const renderBottomMenu = () => {
+    return (
+      <div className="fixed left-0 right-0 px-4 z-40" style={{ bottom: '100px' }}>
+        <div className="bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg shadow-lg p-4 flex flex-col items-center space-y-2">
+          <div className="flex items-center space-x-2">
+            <svg
+              className="w-6 h-6 text-yellow-400"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 8c-1.104 0-2 .896-2 2s.896 2 2 2 2-.896 2-2-.896-2-2-2zm0 6c-1.104 0-2 .896-2 2s.896 2 2 2 2-.896 2-2-.896-2-2-2z"
+              />
+            </svg>
+            <span className="text-white text-lg font-semibold">{Math.floor(earnedCoins).toLocaleString()} монет</span>
+          </div>
+          <div className="flex flex-col items-center">
+            <span className="text-white text-sm">Осталось времени:</span>
+            <span className="text-yellow-400 text-xl font-bold">{formatTime(timer)}</span>
+          </div>
+          <button
+            onClick={handleCollectCoins}
+            className={`w-full bg-yellow-500 hover:bg-yellow-600 text-gray-800 font-bold py-2 px-4 rounded-lg shadow-md transition duration-300 ${
+              earnedCoins > 0 ? 'cursor-pointer' : 'opacity-50 cursor-not-allowed'
+            }`}
+            disabled={earnedCoins <= 0}
+          >
+            Забрать
+          </button>
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -311,25 +406,15 @@ const MineContent: React.FC<MineContentProps> = ({
         </button>
       </div>
 
-      {/* Таймер */}
-      {incomePerHour > 0 && timer > 0 && (
-        <div className="px-4 mt-4">
-          <div className="h-px bg-gray-600 my-4"></div>
-          <div className="text-center text-white">
-            Осталось времени для накопления монет: {formatTime(timer)}
-          </div>
-        </div>
-      )}
-
       {isUpgradesMenuOpen && (
         <div
           className="fixed inset-0 bg-black bg-opacity-50 flex items-end justify-center z-50"
           onClick={closeUpgradesMenu}
         >
           <div
-            className="bg-gray-900 w-full max-w-md p-6 rounded-t-lg animate-slide-up overflow-y-auto"
+            className="bg-gray-900 w-full max-w-md p-6 rounded-t-lg animate-slide-up"
             onClick={(e) => e.stopPropagation()}
-            style={{ maxHeight: '90vh' }} // Ограничение высоты для скроллинга
+            style={{ maxHeight: '90%' }}
           >
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl text-white">Улучшения</h2>
@@ -338,7 +423,7 @@ const MineContent: React.FC<MineContentProps> = ({
               </button>
             </div>
             {/* Список улучшений со скроллингом */}
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-4 overflow-y-auto" style={{ maxHeight: '75vh' }}>
               {upgradesList.map((upgrade, index) => (
                 <button
                   key={index}
@@ -408,6 +493,9 @@ const MineContent: React.FC<MineContentProps> = ({
           </div>
         </div>
       )}
+
+      {/* Новое нижнее меню */}
+      {renderBottomMenu()}
     </>
   );
 };
