@@ -1,6 +1,6 @@
 // MineContent.tsx
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { upgradeLevels } from './upgrades';
 import UpgradeNotification from './UpgradeNotification';
 import './minecontent.css';
@@ -37,7 +37,12 @@ const MineContent: React.FC<MineContentProps> = ({
 }) => {
   const [notificationMessage, setNotificationMessage] = useState<string | null>(null);
   const [isUpgradesMenuOpen, setIsUpgradesMenuOpen] = useState(false);
-  const [selectedMineUpgrade, setSelectedMineUpgrade] = useState<string | null>(null); // Переименовали переменную состояния
+  const [selectedMineUpgrade, setSelectedMineUpgrade] = useState<string | null>(null);
+  
+  // Новые состояния для заработанных монет и таймера
+  const [earnedCoins, setEarnedCoins] = useState<number>(0);
+  const [timer, setTimer] = useState<number>(10800); // 3 часа в секундах
+  const timerRef = useRef<number | null>(null);
 
   const farmLevelMultipliers = [1, 1.2, 1.4, 1.6, 1.8, 2.0];
 
@@ -52,20 +57,89 @@ const MineContent: React.FC<MineContentProps> = ({
     return income * farmLevelMultipliers[farmLevel - 1];
   };
 
+  // Функция для получения данных пользователя с сервера
+  const fetchUserData = async () => {
+    if (userId === null) return;
+
+    try {
+      const response = await fetch(`/app?userId=${userId}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`Ошибка HTTP: ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      const { entryTime, exitTime } = data;
+
+      if (entryTime && exitTime) {
+        const exitDate = new Date(exitTime);
+        const currentDate = new Date();
+
+        const diffInSeconds = Math.floor((currentDate.getTime() - exitDate.getTime()) / 1000);
+
+        const totalAccumulationTime = 10800; // 3 часа в секундах
+
+        let accumulatedCoins = Math.min((diffInSeconds * incomePerHour) / 3600, incomePerHour * 3);
+        accumulatedCoins = Math.floor(accumulatedCoins);
+
+        setEarnedCoins(accumulatedCoins);
+
+        const remainingTime = totalAccumulationTime - Math.floor((accumulatedCoins / incomePerHour) * 3600);
+        setTimer(remainingTime > 0 ? remainingTime : 0);
+      }
+
+    } catch (error) {
+      console.error('Ошибка при получении данных пользователя:', error);
+    }
+  };
+
   useEffect(() => {
+    // При монтировании компонента
+    fetchUserData();
+
+    // Запросить текущие заработанные монеты и таймер
+  }, [userId, incomePerHour]);
+
+  useEffect(() => {
+    // Обновляем доход при изменении улучшений или уровня фермы
     const totalIncome = calculateTotalIncome(upgrades, farmLevel);
     setIncomePerHour(totalIncome);
   }, [upgrades, farmLevel, setIncomePerHour]);
 
   useEffect(() => {
-    const incomePerSecond = incomePerHour / 3600;
-    if (incomePerHour > 0) {
-      const interval = setInterval(() => {
-        setPoints((prevPoints: number) => prevPoints + incomePerSecond);
+    // Таймер для накопления монет
+    if (timer > 0) {
+      timerRef.current = window.setInterval(() => {
+        setTimer((prevTimer) => {
+          if (prevTimer > 0) {
+            return prevTimer - 1;
+          } else {
+            if (timerRef.current) {
+              clearInterval(timerRef.current);
+            }
+            return 0;
+          }
+        });
+
+        setEarnedCoins((prevEarnedCoins) => {
+          const newEarnedCoins = prevEarnedCoins + incomePerHour / 3600;
+          return newEarnedCoins >= incomePerHour * 3 ? incomePerHour * 3 : newEarnedCoins;
+        });
       }, 1000);
-      return () => clearInterval(interval);
     }
-  }, [incomePerHour, setPoints]);
+
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+      }
+    };
+  }, [timer, incomePerHour]);
 
   const handleUpgradeClick = (upgrade: string) => {
     setSelectedMineUpgrade(upgrade);
@@ -156,10 +230,66 @@ const MineContent: React.FC<MineContentProps> = ({
     'upgrade8',
   ];
 
-  // Новое меню внизу страницы
+  // Функция форматирования времени
+  const formatTime = (seconds: number) => {
+    const hrs = Math.floor(seconds / 3600);
+    const mins = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+    return `${hrs}:${mins < 10 ? '0' : ''}${mins}:${secs < 10 ? '0' : ''}${secs}`;
+  };
+
+  // Функция для обработки нажатия кнопки "Забрать"
+  const handleCollectCoins = async () => {
+    if (earnedCoins <= 0) return;
+
+    try {
+      // Добавить заработанные монеты к points
+      const newPoints = points + earnedCoins;
+      setPoints(newPoints);
+      setEarnedCoins(0);
+      setTimer(10800); // Сбросить таймер на 3 часа
+
+      // Обновить entryTime на сервере
+      await fetch('/save-entry-exit-time', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId,
+          action: 'enter',
+        }),
+      });
+
+      // Сохранить обновленные данные на сервере
+      await fetch('/save-data', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId,
+          points: newPoints,
+          tapProfitLevel,
+          tapIncreaseLevel,
+          remainingClicks,
+          ...upgrades,
+          farmLevel,
+          incomePerHour,
+        }),
+      });
+
+      alert('Монеты успешно забраны!');
+    } catch (error) {
+      console.error('Ошибка при сборе монет:', error);
+      alert('Ошибка при сборе монет. Попробуйте снова.');
+    }
+  };
+
+  // Новое меню внизу страницы с отступом 50 пикселей выше навигационной панели
   const renderBottomMenu = () => {
     return (
-      <div className="fixed bottom-16 left-0 right-0 px-4">
+      <div className="fixed left-0 right-0 px-4" style={{ bottom: '50px' }}>
         <div className="bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg shadow-lg p-4 flex flex-col items-center space-y-2">
           <div className="flex items-center space-x-2">
             <svg
@@ -175,13 +305,19 @@ const MineContent: React.FC<MineContentProps> = ({
                 d="M12 8c-1.104 0-2 .896-2 2s.896 2 2 2 2-.896 2-2-.896-2-2-2zm0 6c-1.104 0-2 .896-2 2s.896 2 2 2 2-.896 2-2-.896-2-2-2z"
               />
             </svg>
-            <span className="text-white text-lg font-semibold">{Math.floor(points).toLocaleString()} монет</span>
+            <span className="text-white text-lg font-semibold">{Math.floor(earnedCoins).toLocaleString()} монет</span>
           </div>
           <div className="flex flex-col items-center">
             <span className="text-white text-sm">Осталось времени:</span>
-            <span className="text-yellow-400 text-xl font-bold">3:00:00</span>
+            <span className="text-yellow-400 text-xl font-bold">{formatTime(timer)}</span>
           </div>
-          <button className="w-full bg-yellow-500 hover:bg-yellow-600 text-gray-800 font-bold py-2 px-4 rounded-lg shadow-md transition duration-300">
+          <button
+            onClick={handleCollectCoins}
+            className={`w-full bg-yellow-500 hover:bg-yellow-600 text-gray-800 font-bold py-2 px-4 rounded-lg shadow-md transition duration-300 ${
+              earnedCoins > 0 ? 'cursor-pointer' : 'opacity-50 cursor-not-allowed'
+            }`}
+            disabled={earnedCoins <= 0}
+          >
             Забрать
           </button>
         </div>
