@@ -34,10 +34,7 @@ const App: React.FC = () => {
     const savedLevel = localStorage.getItem('tapIncreaseLevel');
     return savedLevel ? parseInt(savedLevel) : 1;
   });
-  const [remainingClicks, setRemainingClicks] = useState<number>(() => {
-    const savedClicks = localStorage.getItem('remainingClicks');
-    return savedClicks ? parseInt(savedClicks) : maxClicks;
-  });
+  const [remainingClicks, setRemainingClicks] = useState<number>(maxClicks);
   const [points, setPoints] = useState<number>(() => {
     const savedPoints = localStorage.getItem('points');
     return savedPoints ? parseInt(savedPoints) : 0;
@@ -123,15 +120,13 @@ const App: React.FC = () => {
 
   const [levelIndex, setLevelIndex] = useState(0);
 
-  // Ref to track previous page for handling page transitions
+  // Ref для отслеживания предыдущей страницы
   const previousPageRef = useRef<string>(currentPage);
 
-  // Function to update remaining clicks
+  // Функция обновления оставшихся кликов
   const updateRemainingClicks = useCallback(
     async (newRemainingClicks: number) => {
       setRemainingClicks(newRemainingClicks);
-      localStorage.setItem('remainingClicks', newRemainingClicks.toString());
-      
       if (userId !== null) {
         try {
           const response = await fetch('/update-clicks', {
@@ -163,65 +158,31 @@ const App: React.FC = () => {
     [userId]
   );
 
-  // Handle visibility change to restore clicks
+  // useEffect для восстановления кликов при входе в приложение
   useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'hidden') {
-        // Сохранить время выхода
-        localStorage.setItem('lastExitTime', Date.now().toString());
-      } else if (document.visibilityState === 'visible') {
-        // Восстановить клики на основе прошедшего времени
-        const lastExitTime = localStorage.getItem('lastExitTime');
-        if (lastExitTime) {
-          const elapsedTime = Date.now() - parseInt(lastExitTime);
-          const elapsedSeconds = Math.floor(elapsedTime / 1000);
-          const recoveredClicks = Math.floor(elapsedSeconds / (RECOVERY_RATE / 1000)) * RECOVERY_AMOUNT;
+    const restoreClicks = () => {
+      const lastExitTime = localStorage.getItem('lastExitTime');
+      if (lastExitTime) {
+        const exitTime = new Date(parseInt(lastExitTime, 10));
+        const currentTime = new Date();
+        const elapsedSeconds = Math.floor((currentTime.getTime() - exitTime.getTime()) / 1000);
 
-          if (recoveredClicks > 0) {
-            setRemainingClicks((prev) => {
-              const newRemaining = Math.min(prev + recoveredClicks, maxClicks);
-              updateRemainingClicks(newRemaining);
-              return newRemaining;
-            });
-          }
-
-          // Удалить сохраненное время выхода
+        const restoredClicks = Math.floor(elapsedSeconds / RECOVERY_RATE) * RECOVERY_AMOUNT;
+        if (restoredClicks > 0) {
+          const newRemainingClicks = Math.min(remainingClicks + restoredClicks, maxClicks);
+          setRemainingClicks(newRemainingClicks);
+          localStorage.setItem('remainingClicks', newRemainingClicks.toString());
           localStorage.removeItem('lastExitTime');
         }
       }
     };
 
-    document.addEventListener('visibilitychange', handleVisibilityChange);
+    restoreClicks();
+  }, [remainingClicks, maxClicks]);
 
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
-  }, [maxClicks, updateRemainingClicks]);
-
-  // Восстановление кликов при первом монтировании
+  // useEffect для установки интервала восстановления кликов
   useEffect(() => {
-    const lastExitTime = localStorage.getItem('lastExitTime');
-    if (lastExitTime) {
-      const elapsedTime = Date.now() - parseInt(lastExitTime);
-      const elapsedSeconds = Math.floor(elapsedTime / 1000);
-      const recoveredClicks = Math.floor(elapsedSeconds / (RECOVERY_RATE / 1000)) * RECOVERY_AMOUNT;
-
-      if (recoveredClicks > 0) {
-        setRemainingClicks((prev) => {
-          const newRemaining = Math.min(prev + recoveredClicks, maxClicks);
-          updateRemainingClicks(newRemaining);
-          return newRemaining;
-        });
-      }
-
-      // Удалить сохраненное время выхода
-      localStorage.removeItem('lastExitTime');
-    }
-  }, [maxClicks, updateRemainingClicks]);
-
-  // Восстановление кликов каждую секунду, если приложение активно
-  useEffect(() => {
-    const recoveryInterval = setInterval(() => {
+    const recoveryInterval: number = window.setInterval(() => {
       setRemainingClicks((prevClicks: number) => {
         const newClicks = Math.min(prevClicks + RECOVERY_AMOUNT, maxClicks);
         if (newClicks !== prevClicks) {
@@ -234,6 +195,7 @@ const App: React.FC = () => {
     return () => clearInterval(recoveryInterval);
   }, [maxClicks, updateRemainingClicks]);
 
+  // useEffect для инициализации данных пользователя
   useEffect(() => {
     const initData = WebApp.initDataUnsafe;
     const userIdFromTelegram = initData?.user?.id;
@@ -302,9 +264,14 @@ const App: React.FC = () => {
       .catch((error) => console.error('Ошибка при загрузке данных с сервера:', error));
   }, [tapProfitLevels, tapIncreaseLevels]);
 
+  // useEffect для обработки событий beforeunload
   useEffect(() => {
     const handleBeforeUnload = () => {
       if (userId !== null) {
+        // Сохраняем время выхода
+        const currentTime = Date.now();
+        localStorage.setItem('lastExitTime', currentTime.toString());
+
         if (currentPage === 'mine') {
           // Пользователь закрывает приложение на вкладке MineContent
           navigator.sendBeacon('/save-entry-exit-time', JSON.stringify({
@@ -334,6 +301,7 @@ const App: React.FC = () => {
     };
   }, [userId, remainingClicks, points, currentPage]);
 
+  // useEffect для отслеживания переключения между страницами
   useEffect(() => {
     if (userId !== null) {
       if (currentPage === 'mine' && previousPageRef.current !== 'mine') {
@@ -364,24 +332,6 @@ const App: React.FC = () => {
       previousPageRef.current = currentPage;
     }
   }, [currentPage, userId]);
-
-  useEffect(() => {
-    // Обновление дохода при изменении улучшений или уровня фермы
-    const totalIncome = calculateTotalIncome(upgrades, farmLevel);
-    setIncomePerHour(totalIncome);
-  }, [upgrades, farmLevel]);
-
-  const calculateTotalIncome = (upgrades: { [key: string]: number }, farmLevel: number): number => {
-    let income = 0;
-    for (const [, level] of Object.entries(upgrades)) {
-      const upgradeLevel = tapProfitLevels.find((u) => u.level === level);
-      if (upgradeLevel) {
-        income += upgradeLevel.profit;
-      }
-    }
-    const farmMultiplier = 1 + (farmLevel - 1) * 0.2; // Пример мультипликатора для уровня фермы
-    return income * farmMultiplier;
-  };
 
   const handleMainButtonClick = useCallback(
     async (e: React.TouchEvent<HTMLDivElement>) => {
@@ -575,7 +525,7 @@ const App: React.FC = () => {
     return (
       <button
         key={type}
-        className="w-full h-24 bg-gradient-to-r from-gray-700 to-gray-600 rounded-lg shadow-lg overflow-hidden relative mt-4 transform hover:scale-105 transition-transform"
+        className="w-full h-24 bg-gradient-to-r from-gray-700 to-gray-600 rounded-lg shadow-lg overflow-hidden relative mt-4 transform transition-transform duration-300 hover:scale-105"
         onClick={() => setSelectedUpgrade(type)}
       >
         <div className="absolute top-0 left-0 w-full h-full bg-yellow-400 opacity-10"></div>
@@ -633,7 +583,7 @@ const App: React.FC = () => {
               points >= tapProfitLevels[tapProfitLevel].cost
                 ? 'hover:bg-yellow-600'
                 : 'opacity-50 cursor-not-allowed'
-            } transition-colors`}
+            } transform transition-transform duration-200 hover:scale-105`}
           >
             Улучшить за {tapProfitLevels[tapProfitLevel].cost} монет
           </button>
@@ -646,7 +596,7 @@ const App: React.FC = () => {
               points >= tapIncreaseLevels[tapIncreaseLevel].cost
                 ? 'hover:bg-yellow-600'
                 : 'opacity-50 cursor-not-allowed'
-            } transition-colors`}
+            } transform transition-transform duration-200 hover:scale-105`}
           >
             Улучшить за {tapIncreaseLevels[tapIncreaseLevel].cost} монет
           </button>
@@ -656,7 +606,7 @@ const App: React.FC = () => {
           <p className="text-center text-yellow-400 mt-4">Максимальный уровень достигнут</p>
         ) : null}
         <button
-          className="w-full py-2 mt-4 bg-gray-700 text-white rounded-lg"
+          className="w-full py-2 mt-4 bg-gray-700 text-white rounded-lg transform transition-transform duration-200 hover:scale-105"
           onClick={() => setSelectedUpgrade(null)}
         >
           Закрыть
@@ -710,17 +660,17 @@ const App: React.FC = () => {
         </div>
         <div className="px-4 mt-4 flex justify-center">
           <div
-            className="w-80 h-80 p-4 rounded-full bg-gradient-to-r from-gray-700 to-gray-600 shadow-inner main-button flex items-center justify-center transition-transform transform hover:scale-105"
+            className="w-80 h-80 p-4 rounded-full bg-gradient-to-r from-yellow-400 to-yellow-600 shadow-inner main-button"
             onTouchStart={handleMainButtonClick}
           >
-            <div className="w-full h-full rounded-full bg-gray-600 flex items-center justify-center"></div>
+            <div className="w-full h-full rounded-full bg-yellow-300 flex items-center justify-center transition-transform duration-200 transform hover:scale-105 active:scale-95"></div>
           </div>
         </div>
       </div>
       <div className="absolute bottom-32 right-4 z-50">
         <button
           onClick={toggleBoostMenu}
-          className="bg-yellow-400 text-gray-900 px-4 py-2 rounded-full font-bold shadow-lg hover:bg-yellow-500 transition-colors"
+          className="bg-yellow-400 text-gray-900 px-4 py-2 rounded-full font-bold shadow-lg transform transition-transform duration-200 hover:scale-105 active:scale-95"
         >
           Boost
         </button>
@@ -744,19 +694,147 @@ const App: React.FC = () => {
   const renderBoostContent = () => (
     <>
       {renderUserInfo()}
-      <div className="px-4 mt-4 flex-1 overflow-y-auto">
+      <div className="px-4 mt-4 flex flex-col items-center space-y-4">
         {renderUpgradeOption('multitap')}
         {renderUpgradeOption('tapIncrease')}
       </div>
     </>
   );
 
+  const renderBottomMenu = () => {
+    return (
+      <div className="fixed left-0 right-0 px-4 z-40" style={{ bottom: '100px' }}>
+        <div className="bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg shadow-lg p-4 flex flex-col items-center space-y-2">
+          <div className="flex items-center space-x-2">
+            <svg
+              className="w-6 h-6 text-yellow-400"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 8c-1.104 0-2 .896-2 2s.896 2 2 2 2-.896 2-2-.896-2-2-2zm0 6c-1.104 0-2 .896-2 2s.896 2 2 2 2-.896 2-2-.896-2-2-2z"
+              />
+            </svg>
+            <span className="text-white text-lg font-semibold">{Math.floor(earnedClicks).toLocaleString()} кликов</span>
+          </div>
+          <div className="flex flex-col items-center">
+            <span className="text-white text-sm">Осталось времени:</span>
+            <span className="text-yellow-400 text-xl font-bold">{formatTime(timer)}</span>
+          </div>
+          <button
+            onClick={handleCollectCoins}
+            className={`w-full bg-yellow-500 hover:bg-yellow-600 text-gray-800 font-bold py-2 px-4 rounded-lg shadow-md transition duration-300 ${
+              earnedClicks > 0 ? 'cursor-pointer' : 'opacity-50 cursor-not-allowed'
+            } transform transition-transform duration-200 hover:scale-105 active:scale-95`}
+            disabled={earnedClicks <= 0}
+          >
+            Забрать
+          </button>
+        </div>
+      </div>
+    );
+  };
+
+  // Состояния для заработанных кликов и таймера
+  const [earnedClicks, setEarnedClicks] = useState<number>(() => {
+    const saved = localStorage.getItem('earnedClicks');
+    return saved ? parseInt(saved) : 0;
+  });
+  const [timer, setTimer] = useState<number>(() => {
+    const saved = localStorage.getItem('timer');
+    return saved ? parseInt(saved) : 0;
+  });
+  const timerRef = useRef<number | null>(null);
+
+  // Функция форматирования времени
+  const formatTime = (seconds: number) => {
+    const hrs = Math.floor(seconds / 3600);
+    const mins = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+    return `${hrs}:${mins < 10 ? '0' : ''}${mins}:${secs < 10 ? '0' : ''}${secs}`;
+  };
+
+  // Функция для обработки нажатия кнопки "Забрать"
+  const handleCollectCoins = async () => {
+    if (earnedClicks <= 0) return;
+
+    try {
+      // Добавить заработанные клики к points
+      const newPoints = points + earnedClicks;
+      setPoints(newPoints);
+      setEarnedClicks(0);
+      setTimer(0);
+      localStorage.setItem('earnedClicks', '0');
+      localStorage.setItem('timer', '0');
+
+      // Обновить данные на сервере
+      await fetch('/save-data', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId,
+          points: newPoints,
+          tapProfitLevel,
+          tapIncreaseLevel,
+          remainingClicks,
+          ...upgrades,
+          farmLevel,
+          incomePerHour,
+        }),
+      });
+
+      alert('Клики успешно забраны!');
+    } catch (error) {
+      console.error('Ошибка при сборе кликов:', error);
+      alert('Ошибка при сборе кликов. Попробуйте снова.');
+    }
+  };
+
+  // useEffect для таймера накопления кликов
+  useEffect(() => {
+    if (timer > 0) {
+      timerRef.current = window.setInterval(() => {
+        setTimer((prevTimer) => {
+          if (prevTimer > 0) {
+            const newTimer = prevTimer - 1;
+            localStorage.setItem('timer', newTimer.toString());
+            return newTimer;
+          } else {
+            if (timerRef.current) {
+              clearInterval(timerRef.current);
+            }
+            return 0;
+          }
+        });
+
+        setEarnedClicks((prevEarnedClicks) => {
+          const increment = RECOVERY_AMOUNT;
+          const newEarnedClicks = Math.min(prevEarnedClicks + increment, RECOVERY_AMOUNT * 3600); // Максимум за 1 час
+          localStorage.setItem('earnedClicks', newEarnedClicks.toString());
+          return newEarnedClicks;
+        });
+      }, 1000);
+    }
+
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+      }
+    };
+  }, [timer]);
+
   return (
-    <div className="min-h-screen flex justify-center items-center bg-gradient-to-r from-gray-900 to-gray-800">
+    <div className="min-h-screen flex justify-center items-center bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900">
       {loading ? (
         <LoadingScreen />
       ) : (
-        <div className="w-full max-w-[390px] h-screen font-bold flex flex-col relative overflow-hidden bg-gray-800 shadow-xl">
+        <div className="w-full max-w-[390px] h-screen font-bold flex flex-col relative overflow-hidden bg-gray-800 rounded-xl shadow-2xl">
           {currentPage === 'farm' && !isBoostMenuOpen && renderMainContent()}
           {currentPage === 'mine' && (
             <MineContent
@@ -781,7 +859,7 @@ const App: React.FC = () => {
             <button
               className={`text-center flex flex-col items-center relative ${
                 currentPage === 'farm' ? 'text-yellow-400' : 'text-gray-300'
-              } hover:text-yellow-500 transition-colors`}
+              } transform transition-transform duration-200 hover:scale-110`}
               onClick={() => {
                 setCurrentPage('farm');
                 setIsBoostMenuOpen(false);
@@ -796,7 +874,7 @@ const App: React.FC = () => {
             <button
               className={`text-center flex flex-col items-center relative ${
                 currentPage === 'mine' ? 'text-yellow-400' : 'text-gray-300'
-              } hover:text-yellow-500 transition-colors`}
+              } transform transition-transform duration-200 hover:scale-110`}
               onClick={() => {
                 setCurrentPage('mine');
                 setIsBoostMenuOpen(false);
@@ -808,11 +886,11 @@ const App: React.FC = () => {
                 <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-1 h-1 bg-yellow-400 rounded-full"></div>
               )}
             </button>
-            <button className="text-center text-gray-300 flex flex-col items-center hover:text-yellow-500 transition-colors">
+            <button className="text-center text-gray-300 flex flex-col items-center transform transition-transform duration-200 hover:scale-110">
               <Friends className="w-6 h-6 mb-1" />
               Friends
             </button>
-            <div className="text-center text-gray-300 flex flex-col items-center hover:text-yellow-500 transition-colors">
+            <div className="text-center text-gray-300 flex flex-col items-center transform transition-transform duration-200 hover:scale-110">
               <FaTasks className="w-6 h-6 mb-1" />
               Tasks
             </div>
@@ -823,6 +901,9 @@ const App: React.FC = () => {
               +{click.profit}
             </div>
           ))}
+
+          {/* Новое нижнее меню */}
+          {renderBottomMenu()}
         </div>
       )}
     </div>
