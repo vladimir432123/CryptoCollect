@@ -1,5 +1,3 @@
-// App.tsx
-
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import './App.css';
 import Hamster from './icons/Hamster';
@@ -26,15 +24,18 @@ const App: React.FC = () => {
     const savedLevel = localStorage.getItem('tapProfitLevel');
     return savedLevel ? parseInt(savedLevel) : 1;
   });
-  const [maxClicks, setMaxClicks] = useState<number>(() => {
-    const savedMaxClicks = localStorage.getItem('maxClicks');
-    return savedMaxClicks ? parseInt(savedMaxClicks) : 1000;
-  });
   const [tapIncreaseLevel, setTapIncreaseLevel] = useState<number>(() => {
     const savedLevel = localStorage.getItem('tapIncreaseLevel');
     return savedLevel ? parseInt(savedLevel) : 1;
   });
-  const [remainingClicks, setRemainingClicks] = useState<number>(maxClicks);
+  const [maxClicks, setMaxClicks] = useState<number>(() => {
+    const savedMaxClicks = localStorage.getItem('maxClicks');
+    return savedMaxClicks ? parseInt(savedMaxClicks) : 1000;
+  });
+  const [remainingClicks, setRemainingClicks] = useState<number>(() => {
+    const savedClicks = localStorage.getItem('remainingClicks');
+    return savedClicks ? parseInt(savedClicks) : 1000;
+  });
   const [points, setPoints] = useState<number>(() => {
     const savedPoints = localStorage.getItem('points');
     return savedPoints ? parseInt(savedPoints) : 0;
@@ -127,6 +128,7 @@ const App: React.FC = () => {
   const updateRemainingClicks = useCallback(
     async (newRemainingClicks: number) => {
       setRemainingClicks(newRemainingClicks);
+      localStorage.setItem('remainingClicks', newRemainingClicks.toString());
       if (userId !== null) {
         try {
           const response = await fetch('/update-clicks', {
@@ -217,7 +219,8 @@ const App: React.FC = () => {
           localStorage.setItem('maxClicks', tapIncreaseLevels[data.tapIncreaseLevel - 1].taps.toString());
         }
         if (data.remainingClicks !== undefined) {
-          setRemainingClicks(data.remainingClicks); // Устанавливаем оставшиеся клики из базы
+          setRemainingClicks(data.remainingClicks);
+          localStorage.setItem('remainingClicks', data.remainingClicks.toString());
         }
         if (data.incomePerHour !== undefined) {
           setIncomePerHour(data.incomePerHour);
@@ -352,8 +355,6 @@ const App: React.FC = () => {
 
         const newPoints = points + tapProfit;
         setPoints(newPoints);
-
-        // Сохранение обновлённых очков на сервере и в localStorage
         localStorage.setItem('points', newPoints.toString());
 
         if (userId !== null) {
@@ -427,8 +428,6 @@ const App: React.FC = () => {
 
         const newPoints = points + tapProfit * tapsToProcess;
         setPoints(newPoints);
-
-        // Сохранение обновлённых очков на сервере и в localStorage
         localStorage.setItem('points', newPoints.toString());
 
         if (userId !== null) {
@@ -613,14 +612,14 @@ const App: React.FC = () => {
     return (
       <button
         key={type}
-        className="w-full h-24 bg-gradient-to-r from-gray-700 to-gray-600 rounded-lg shadow-lg overflow-hidden relative mt-4"
+        className="w-full h-24 bg-gradient-to-r from-gray-700 to-gray-600 rounded-lg shadow-lg overflow-hidden relative mt-4 transition transform hover:scale-105"
         onClick={() => setSelectedUpgrade(type)}
       >
         <div className="absolute top-0 left-0 w-full h-full bg-yellow-400 opacity-10"></div>
         <div className="flex flex-col justify-between h-full p-4">
           <div className="flex justify-between items-start">
             <span className="text-lg font-semibold text-gray-300">
-              {isMultitap ? 'Multitap' : 'Tap increase'}
+              {isMultitap ? 'Multitap' : 'Tap Increase'}
             </span>
             <span className="text-xs font-medium text-yellow-400 bg-gray-800 px-2 py-1 rounded-full">
               Level {currentLevel}
@@ -649,7 +648,7 @@ const App: React.FC = () => {
       onClick={() => setSelectedUpgrade(null)}
     >
       <div
-        className="bg-gray-800 w-full max-w-md p-6 rounded-t-lg animate-slide-up"
+        className="bg-gray-800 w-full max-w-md p-6 rounded-t-lg animate-slide-up transition transform"
         onClick={(e) => e.stopPropagation()}
       >
         <h2 className="text-center text-xl text-white mb-4">
@@ -671,7 +670,7 @@ const App: React.FC = () => {
               points >= tapProfitLevels[tapProfitLevel - 1].cost
                 ? 'hover:bg-yellow-600'
                 : 'opacity-50 cursor-not-allowed'
-            }`}
+            } transition-colors`}
           >
             Улучшить за {tapProfitLevels[tapProfitLevel - 1].cost} монет
           </button>
@@ -684,7 +683,7 @@ const App: React.FC = () => {
               points >= tapIncreaseLevels[tapIncreaseLevel - 1].cost
                 ? 'hover:bg-yellow-600'
                 : 'opacity-50 cursor-not-allowed'
-            }`}
+            } transition-colors`}
           >
             Улучшить за {tapIncreaseLevels[tapIncreaseLevel - 1].cost} монет
           </button>
@@ -694,7 +693,7 @@ const App: React.FC = () => {
           <p className="text-center text-yellow-400 mt-4">Максимальный уровень достигнут</p>
         ) : null}
         <button
-          className="w-full py-2 mt-4 bg-gray-700 text-white rounded-lg"
+          className="w-full py-2 mt-4 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors"
           onClick={() => setSelectedUpgrade(null)}
         >
           Закрыть
@@ -725,7 +724,7 @@ const App: React.FC = () => {
             <div className="flex items-center mt-1 border-2 border-gray-600 rounded-full">
               <div className="w-full h-2 bg-gray-700 rounded-full">
                 <div
-                  className="h-2 rounded-full bg-yellow-400"
+                  className="h-2 rounded-full bg-yellow-400 transition-all duration-200 ease-linear"
                   style={{ width: `${calculateProgress}%` }}
                 ></div>
               </div>
@@ -748,24 +747,27 @@ const App: React.FC = () => {
         </div>
         <div className="px-4 mt-4 flex justify-center">
           <div
-            className="w-80 h-80 p-4 rounded-full bg-gray-700 shadow-lg main-button"
+            className="w-80 h-80 p-4 rounded-full bg-gray-700 shadow-lg main-button relative overflow-hidden"
             onClick={handleClick}
             onTouchStart={handleTouchStart}
           >
-            <div className="w-full h-full rounded-full bg-gray-600 flex items-center justify-center"></div>
+            <div className="w-full h-full rounded-full bg-gray-600 flex items-center justify-center transition-transform duration-100">
+              {/* Добавляем анимацию нажатия */}
+              <div className="absolute inset-0 bg-transparent transition-opacity duration-200 pointer-events-none"></div>
+            </div>
           </div>
         </div>
       </div>
       <div className="absolute bottom-32 right-4 z-50">
         <button
           onClick={toggleBoostMenu}
-          className="bg-yellow-400 text-gray-900 px-4 py-2 rounded-full font-bold shadow-lg"
+          className="bg-yellow-400 text-gray-900 px-4 py-2 rounded-full font-bold shadow-lg hover:bg-yellow-500 transition-colors"
         >
           Boost
         </button>
       </div>
       <div className="absolute bottom-16 left-0 right-0 flex flex-col items-center z-40">
-        <div className="w-full px-4 flex items-center justify-between mb-4">
+        <div className="w-full px-4 flex items-center justify-center mb-4">
           <div className="w-[calc(100%-50px)] h-[10px] bg-gray-600 rounded-md overflow-hidden relative">
             <div
               className="h-full bg-yellow-400 transition-all duration-200 ease-linear"
@@ -790,6 +792,24 @@ const App: React.FC = () => {
       </div>
     </>
   );
+
+  // Восстановление кликов при полном выходе из приложения и повторном входе
+  useEffect(() => {
+    const lastExitTime = localStorage.getItem('lastExitTime');
+    if (lastExitTime && userId !== null && currentPage === 'farm') {
+      const exitDate = new Date(lastExitTime);
+      const currentDate = new Date();
+      const diffInSeconds = Math.floor((currentDate.getTime() - exitDate.getTime()) / 1000);
+
+      const clicksToAdd = Math.floor(diffInSeconds / (RECOVERY_RATE / 1000)) * RECOVERY_AMOUNT;
+      const newRemainingClicks = Math.min(remainingClicks + clicksToAdd, maxClicks);
+      setRemainingClicks(newRemainingClicks);
+      updateRemainingClicks(newRemainingClicks);
+
+      // Удаляем записанное время выхода
+      localStorage.removeItem('lastExitTime');
+    }
+  }, [userId, currentPage, remainingClicks, maxClicks, updateRemainingClicks]);
 
   return (
     <div className="min-h-screen flex justify-center items-center bg-gray-900">
@@ -817,6 +837,7 @@ const App: React.FC = () => {
           )}
           {isBoostMenuOpen && renderBoostContent()}
           {selectedUpgrade && renderUpgradeMenu()}
+          {/* Навигационная панель всегда отображается */}
           <div className="absolute bottom-0 left-0 right-0 bg-gray-700 rounded-t-2xl flex justify-around items-center text-xs py-4 px-2 z-50">
             <button
               className={`text-center flex flex-col items-center relative ${
@@ -825,6 +846,7 @@ const App: React.FC = () => {
               onClick={() => {
                 setCurrentPage('farm');
                 setIsBoostMenuOpen(false);
+                localStorage.setItem('lastExitTime', new Date().toISOString());
               }}
             >
               <Farm className="w-6 h-6 mb-1" />
@@ -840,6 +862,7 @@ const App: React.FC = () => {
               onClick={() => {
                 setCurrentPage('mine');
                 setIsBoostMenuOpen(false);
+                localStorage.setItem('lastExitTime', new Date().toISOString());
               }}
             >
               <Mine className="w-6 h-6 mb-1" />
@@ -848,14 +871,38 @@ const App: React.FC = () => {
                 <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-1 h-1 bg-yellow-400 rounded-full"></div>
               )}
             </button>
-            <button className="text-center text-gray-300 flex flex-col items-center">
+            <button
+              className={`text-center flex flex-col items-center relative ${
+                currentPage === 'friends' ? 'text-yellow-400' : 'text-gray-300'
+              }`}
+              onClick={() => {
+                setCurrentPage('friends');
+                setIsBoostMenuOpen(false);
+                localStorage.setItem('lastExitTime', new Date().toISOString());
+              }}
+            >
               <Friends className="w-6 h-6 mb-1" />
               Friends
+              {currentPage === 'friends' && (
+                <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-1 h-1 bg-yellow-400 rounded-full"></div>
+              )}
             </button>
-            <div className="text-center text-gray-300 flex flex-col items-center">
+            <button
+              className={`text-center flex flex-col items-center relative ${
+                currentPage === 'tasks' ? 'text-yellow-400' : 'text-gray-300'
+              }`}
+              onClick={() => {
+                setCurrentPage('tasks');
+                setIsBoostMenuOpen(false);
+                localStorage.setItem('lastExitTime', new Date().toISOString());
+              }}
+            >
               <FaTasks className="w-6 h-6 mb-1" />
               Tasks
-            </div>
+              {currentPage === 'tasks' && (
+                <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-1 h-1 bg-yellow-400 rounded-full"></div>
+              )}
+            </button>
           </div>
 
           {clicks.map((click) => (
