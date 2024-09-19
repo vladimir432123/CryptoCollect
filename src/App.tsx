@@ -26,18 +26,15 @@ const App: React.FC = () => {
     const savedLevel = localStorage.getItem('tapProfitLevel');
     return savedLevel ? parseInt(savedLevel) : 1;
   });
-  const [tapIncreaseLevel, setTapIncreaseLevel] = useState<number>(() => {
-    const savedLevel = localStorage.getItem('tapIncreaseLevel');
-    return savedLevel ? parseInt(savedLevel) : 1;
-  });
   const [maxClicks, setMaxClicks] = useState<number>(() => {
     const savedMaxClicks = localStorage.getItem('maxClicks');
     return savedMaxClicks ? parseInt(savedMaxClicks) : 1000;
   });
-  const [remainingClicks, setRemainingClicks] = useState<number>(() => {
-    const savedClicks = localStorage.getItem('remainingClicks');
-    return savedClicks ? parseInt(savedClicks) : 1000;
+  const [tapIncreaseLevel, setTapIncreaseLevel] = useState<number>(() => {
+    const savedLevel = localStorage.getItem('tapIncreaseLevel');
+    return savedLevel ? parseInt(savedLevel) : 1;
   });
+  const [remainingClicks, setRemainingClicks] = useState<number>(maxClicks);
   const [points, setPoints] = useState<number>(() => {
     const savedPoints = localStorage.getItem('points');
     return savedPoints ? parseInt(savedPoints) : 0;
@@ -126,14 +123,10 @@ const App: React.FC = () => {
   // Reference для отслеживания предыдущего значения currentPage
   const previousPageRef = useRef<string>(currentPage);
 
-  /**
-   * Обновление remainingClicks на сервере и в localStorage
-   */
+  // Обновление remainingClicks на сервере
   const updateRemainingClicks = useCallback(
     async (newRemainingClicks: number) => {
       setRemainingClicks(newRemainingClicks);
-      localStorage.setItem('remainingClicks', newRemainingClicks.toString());
-
       if (userId !== null) {
         try {
           const response = await fetch('/update-clicks', {
@@ -165,28 +158,7 @@ const App: React.FC = () => {
     [userId]
   );
 
-  /**
-   * Восстановление кликов при повторном входе
-   */
-  const restoreClicks = useCallback(() => {
-    const lastExitTime = localStorage.getItem('farmLastExitTime');
-    if (lastExitTime) {
-      const exitDate = new Date(lastExitTime);
-      const currentDate = new Date();
-      const diffInSeconds = Math.floor((currentDate.getTime() - exitDate.getTime()) / 1000);
-
-      const clicksToAdd = Math.floor(diffInSeconds / (RECOVERY_RATE / 1000)) * RECOVERY_AMOUNT;
-      const newRemainingClicks = Math.min(remainingClicks + clicksToAdd, maxClicks);
-      updateRemainingClicks(newRemainingClicks);
-
-      // Удаляем записанное время выхода
-      localStorage.removeItem('farmLastExitTime');
-    }
-  }, [remainingClicks, maxClicks, updateRemainingClicks]);
-
-  /**
-   * Обновление remainingClicks с восстановлением
-   */
+  // Обновление remainingClicks с восстановлением
   useEffect(() => {
     const recoveryInterval = setInterval(() => {
       setRemainingClicks((prevClicks: number) => {
@@ -201,9 +173,7 @@ const App: React.FC = () => {
     return () => clearInterval(recoveryInterval);
   }, [maxClicks, updateRemainingClicks]);
 
-  /**
-   * Загрузка данных пользователя при инициализации
-   */
+  // Загрузка данных пользователя при инициализации
   useEffect(() => {
     const initData = WebApp.initDataUnsafe;
     const userIdFromTelegram = initData?.user?.id;
@@ -247,8 +217,7 @@ const App: React.FC = () => {
           localStorage.setItem('maxClicks', tapIncreaseLevels[data.tapIncreaseLevel - 1].taps.toString());
         }
         if (data.remainingClicks !== undefined) {
-          setRemainingClicks(data.remainingClicks);
-          localStorage.setItem('remainingClicks', data.remainingClicks.toString());
+          setRemainingClicks(data.remainingClicks); // Устанавливаем оставшиеся клики из базы
         }
         if (data.incomePerHour !== undefined) {
           setIncomePerHour(data.incomePerHour);
@@ -267,17 +236,13 @@ const App: React.FC = () => {
         });
         setFarmLevel(data.farmLevel || 1);
       })
-      .catch((error) => console.error('Ошибка при загрузке данных с сервера:', error))
       .finally(() => {
         setLoading(false);
-        // Восстанавливаем клики при инициализации
-        restoreClicks();
-      });
-  }, [tapProfitLevels, tapIncreaseLevels, restoreClicks]);
+      })
+      .catch((error) => console.error('Ошибка при загрузке данных с сервера:', error));
+  }, [tapProfitLevels, tapIncreaseLevels]);
 
-  /**
-   * Обработка закрытия окна или смены страницы
-   */
+  // Обработка закрытия окна или смены страницы
   useEffect(() => {
     const handleBeforeUnload = () => {
       if (userId !== null && currentPage === 'farm') {
@@ -308,9 +273,7 @@ const App: React.FC = () => {
     };
   }, [userId, remainingClicks, points, currentPage]);
 
-  /**
-   * Обработка переключения между страницами
-   */
+  // Обработка переключения между страницами
   useEffect(() => {
     if (userId !== null) {
       if (currentPage === 'mine' && previousPageRef.current === 'farm') {
@@ -319,16 +282,29 @@ const App: React.FC = () => {
         localStorage.setItem('farmLastExitTime', exitTime);
       } else if (currentPage === 'farm' && previousPageRef.current !== 'farm') {
         // Пользователь вошел в 'farm'
-        restoreClicks();
+        const lastExitTime = localStorage.getItem('farmLastExitTime');
+        if (lastExitTime) {
+          const exitDate = new Date(lastExitTime);
+          const currentDate = new Date();
+          const diffInSeconds = Math.floor((currentDate.getTime() - exitDate.getTime()) / 1000);
+
+          const clicksToAdd = Math.floor(diffInSeconds / (RECOVERY_RATE / 1000)) * RECOVERY_AMOUNT;
+          const newRemainingClicks = Math.min(remainingClicks + clicksToAdd, maxClicks);
+          setRemainingClicks(newRemainingClicks);
+
+          // Обновляем оставшиеся клики на сервере
+          updateRemainingClicks(newRemainingClicks);
+
+          // Удаляем записанное время выхода
+          localStorage.removeItem('farmLastExitTime');
+        }
       }
 
       previousPageRef.current = currentPage;
     }
-  }, [currentPage, userId, restoreClicks]);
+  }, [currentPage, userId, remainingClicks, maxClicks, updateRemainingClicks]);
 
-  /**
-   * Обработка видимости страницы (например, блокировка экрана)
-   */
+  // Обработка видимости страницы (например, блокировка экрана)
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.hidden) {
@@ -339,7 +315,22 @@ const App: React.FC = () => {
         }
       } else {
         if (currentPage === 'farm' && userId !== null) {
-          restoreClicks();
+          const lastExitTime = localStorage.getItem('farmLastExitTime');
+          if (lastExitTime) {
+            const exitDate = new Date(lastExitTime);
+            const currentDate = new Date();
+            const diffInSeconds = Math.floor((currentDate.getTime() - exitDate.getTime()) / 1000);
+
+            const clicksToAdd = Math.floor(diffInSeconds / (RECOVERY_RATE / 1000)) * RECOVERY_AMOUNT;
+            const newRemainingClicks = Math.min(remainingClicks + clicksToAdd, maxClicks);
+            setRemainingClicks(newRemainingClicks);
+
+            // Обновляем оставшиеся клики на сервере
+            updateRemainingClicks(newRemainingClicks);
+
+            // Удаляем записанное время выхода
+            localStorage.removeItem('farmLastExitTime');
+          }
         }
       }
     };
@@ -349,20 +340,20 @@ const App: React.FC = () => {
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [currentPage, userId, restoreClicks]);
+  }, [currentPage, userId, remainingClicks, maxClicks, updateRemainingClicks]);
 
-  /**
-   * Обработка клика мышью
-   */
+  // Обработка клика мышью
   const handleClick = useCallback(
     async (e: React.MouseEvent<HTMLDivElement>) => {
       e.preventDefault();
       if (remainingClicks > 0) {
         const newRemainingClicks = remainingClicks - 1;
-        await updateRemainingClicks(newRemainingClicks);
+        updateRemainingClicks(newRemainingClicks);
 
         const newPoints = points + tapProfit;
         setPoints(newPoints);
+
+        // Сохранение обновлённых очков на сервере и в localStorage
         localStorage.setItem('points', newPoints.toString());
 
         if (userId !== null) {
@@ -403,7 +394,6 @@ const App: React.FC = () => {
           );
         }, 1000);
 
-        // Добавление анимации
         const button = e.currentTarget;
         button.classList.add('clicked');
         setTimeout(() => {
@@ -425,9 +415,7 @@ const App: React.FC = () => {
     ]
   );
 
-  /**
-   * Обработка касания экрана
-   */
+  // Обработка касания экрана
   const handleTouchStart = useCallback(
     async (e: React.TouchEvent<HTMLDivElement>) => {
       e.preventDefault();
@@ -435,10 +423,12 @@ const App: React.FC = () => {
       if (taps > 0 && taps <= 5 && remainingClicks > 0) {
         const tapsToProcess = Math.min(taps, remainingClicks);
         const newRemainingClicks = remainingClicks - tapsToProcess;
-        await updateRemainingClicks(newRemainingClicks);
+        updateRemainingClicks(newRemainingClicks);
 
         const newPoints = points + tapProfit * tapsToProcess;
         setPoints(newPoints);
+
+        // Сохранение обновлённых очков на сервере и в localStorage
         localStorage.setItem('points', newPoints.toString());
 
         if (userId !== null) {
@@ -479,7 +469,6 @@ const App: React.FC = () => {
           );
         }, 1000);
 
-        // Добавление анимации
         const button = e.currentTarget;
         button.classList.add('clicked');
         setTimeout(() => {
@@ -501,9 +490,7 @@ const App: React.FC = () => {
     ]
   );
 
-  /**
-   * Функция сохранения данных после улучшения
-   */
+  // Функция сохранения данных после улучшения
   const saveUpgradeData = useCallback(
     async (newTapProfitLevel: number, newTapIncreaseLevel: number) => {
       if (userId !== null) {
@@ -554,9 +541,7 @@ const App: React.FC = () => {
     [userId, points, remainingClicks, upgrades, farmLevel, tapIncreaseLevels, incomePerHour]
   );
 
-  /**
-   * Улучшение прибыли за тап
-   */
+  // Улучшение прибыли за тап
   const upgradeTapProfit = async () => {
     const nextLevelData = tapProfitLevels[tapProfitLevel - 1];
     if (nextLevelData && points >= nextLevelData.cost) {
@@ -573,9 +558,7 @@ const App: React.FC = () => {
     }
   };
 
-  /**
-   * Улучшение увеличения количества кликов
-   */
+  // Улучшение увеличения количества кликов
   const upgradeTapIncrease = async () => {
     const nextLevelData = tapIncreaseLevels[tapIncreaseLevel - 1];
     if (nextLevelData && points >= nextLevelData.cost) {
@@ -593,9 +576,7 @@ const App: React.FC = () => {
     }
   };
 
-  /**
-   * Расчёт прогресса уровня
-   */
+  // Расчёт прогресса уровня
   const calculateProgress = useMemo(() => {
     if (levelIndex >= levelNames.length - 1) {
       return 100;
@@ -606,9 +587,7 @@ const App: React.FC = () => {
     return Math.min(progress, 100);
   }, [points, levelIndex, levelMinPoints, levelNames.length]);
 
-  /**
-   * Обновление индекса уровня
-   */
+  // Обновление индекса уровня
   useEffect(() => {
     const currentLevelMin = levelMinPoints[levelIndex];
     const nextLevelMin = levelMinPoints[levelIndex + 1];
@@ -619,16 +598,10 @@ const App: React.FC = () => {
     }
   }, [points, levelIndex, levelMinPoints, levelNames.length]);
 
-  /**
-   * Переключение меню Boost
-   */
   const toggleBoostMenu = () => {
     setIsBoostMenuOpen(!isBoostMenuOpen);
   };
 
-  /**
-   * Рендеринг блока улучшения
-   */
   const renderUpgradeOption = (type: 'multitap' | 'tapIncrease') => {
     const isMultitap = type === 'multitap';
     const currentLevel = isMultitap ? tapProfitLevel : tapIncreaseLevel;
@@ -640,23 +613,23 @@ const App: React.FC = () => {
     return (
       <button
         key={type}
-        className="w-full bg-white rounded-lg shadow-lg overflow-hidden relative mt-4 transition-transform transform hover:scale-105"
+        className="w-full h-24 bg-gradient-to-r from-gray-700 to-gray-600 rounded-lg shadow-lg overflow-hidden relative mt-4"
         onClick={() => setSelectedUpgrade(type)}
       >
-        <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-r from-blue-400 to-purple-500 opacity-30"></div>
+        <div className="absolute top-0 left-0 w-full h-full bg-yellow-400 opacity-10"></div>
         <div className="flex flex-col justify-between h-full p-4">
           <div className="flex justify-between items-start">
-            <span className="text-lg font-semibold text-gray-800">
-              {isMultitap ? 'Multitap' : 'Tap Increase'}
+            <span className="text-lg font-semibold text-gray-300">
+              {isMultitap ? 'Multitap' : 'Tap increase'}
             </span>
-            <span className="text-xs font-medium text-white bg-blue-600 px-2 py-1 rounded-full">
+            <span className="text-xs font-medium text-yellow-400 bg-gray-800 px-2 py-1 rounded-full">
               Level {currentLevel}
             </span>
           </div>
           <div className="flex justify-between items-end">
-            <span className="text-sm text-gray-600">{description}</span>
+            <span className="text-sm text-gray-400">{description}</span>
             <svg
-              className="w-6 h-6 text-white"
+              className="w-6 h-6 text-yellow-400"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -670,38 +643,35 @@ const App: React.FC = () => {
     );
   };
 
-  /**
-   * Рендеринг меню улучшений
-   */
   const renderUpgradeMenu = () => (
     <div
       className="fixed inset-0 bg-black bg-opacity-50 flex items-end justify-center z-50"
       onClick={() => setSelectedUpgrade(null)}
     >
       <div
-        className="bg-white w-full max-w-md p-6 rounded-t-lg shadow-lg animate-slide-up"
+        className="bg-gray-800 w-full max-w-md p-6 rounded-t-lg animate-slide-up"
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 className="text-center text-xl text-gray-800 mb-4">
+        <h2 className="text-center text-xl text-white mb-4">
           {selectedUpgrade === 'multitap' ? 'Multitap' : 'Tap Increase'}
         </h2>
-        <p className="text-center text-gray-600 mb-4">
+        <p className="text-center text-gray-400 mb-4">
           {selectedUpgrade === 'multitap'
             ? 'Увеличивает прибыль за каждый тап, позволяя вам быстрее накапливать монеты. Это улучшение поможет вам быстрее достигать новых уровней и зарабатывать больше очков.'
             : 'Увеличивает максимальное количество доступных кликов. Это улучшение позволит вам играть дольше без необходимости ждать восстановления кликов.'}
         </p>
-        <p className="text-center text-gray-700 mb-4">
+        <p className="text-center text-gray-300 mb-4">
           Текущий уровень: {selectedUpgrade === 'multitap' ? tapProfitLevel : tapIncreaseLevel}
         </p>
         {selectedUpgrade === 'multitap' && tapProfitLevel < 10 && (
           <button
             onClick={upgradeTapProfit}
             disabled={points < tapProfitLevels[tapProfitLevel - 1].cost}
-            className={`w-full py-3 bg-blue-500 text-white rounded-lg ${
+            className={`w-full py-3 bg-yellow-500 text-black rounded-lg ${
               points >= tapProfitLevels[tapProfitLevel - 1].cost
-                ? 'hover:bg-blue-600'
+                ? 'hover:bg-yellow-600'
                 : 'opacity-50 cursor-not-allowed'
-            } transition-colors`}
+            }`}
           >
             Улучшить за {tapProfitLevels[tapProfitLevel - 1].cost} монет
           </button>
@@ -710,18 +680,18 @@ const App: React.FC = () => {
           <button
             onClick={upgradeTapIncrease}
             disabled={points < tapIncreaseLevels[tapIncreaseLevel - 1].cost}
-            className={`w-full py-3 bg-green-500 text-white rounded-lg ${
+            className={`w-full py-3 bg-yellow-500 text-black rounded-lg ${
               points >= tapIncreaseLevels[tapIncreaseLevel - 1].cost
-                ? 'hover:bg-green-600'
+                ? 'hover:bg-yellow-600'
                 : 'opacity-50 cursor-not-allowed'
-            } transition-colors`}
+            }`}
           >
             Улучшить за {tapIncreaseLevels[tapIncreaseLevel - 1].cost} монет
           </button>
         )}
         {(selectedUpgrade === 'multitap' && tapProfitLevel >= 10) ||
         (selectedUpgrade === 'tapIncrease' && tapIncreaseLevel >= 10) ? (
-          <p className="text-center text-yellow-500 mt-4">Максимальный уровень достигнут</p>
+          <p className="text-center text-yellow-400 mt-4">Максимальный уровень достигнут</p>
         ) : null}
         <button
           className="w-full py-2 mt-4 bg-gray-700 text-white rounded-lg"
@@ -733,32 +703,29 @@ const App: React.FC = () => {
     </div>
   );
 
-  /**
-   * Рендеринг информации о пользователе
-   */
   const renderUserInfo = () => (
     <div className="px-4 z-10 pt-4">
       <div className="flex items-center space-x-2">
-        <div className="p-1 rounded-lg bg-gray-200">
-          <Hamster size={24} className="text-blue-500" />
+        <div className="p-1 rounded-lg bg-gray-800">
+          <Hamster size={24} className="text-yellow-400" />
         </div>
         <div>
-          <p className="text-sm text-gray-800">{username ? username : 'Гость'}</p>
+          <p className="text-sm text-gray-300">{username ? username : 'Гость'}</p>
         </div>
       </div>
       <div className="flex items-center justify-between space-x-4 mt-1">
         <div className="flex items-center w-full">
           <div className="w-full">
             <div className="flex justify-between">
-              <p className="text-sm text-gray-800">{levelNames[levelIndex]}</p>
-              <p className="text-sm text-gray-800">
-                {levelIndex + 1} <span className="text-blue-500">/ {levelNames.length}</span>
+              <p className="text-sm text-gray-300">{levelNames[levelIndex]}</p>
+              <p className="text-sm text-gray-300">
+                {levelIndex + 1} <span className="text-yellow-400">/ {levelNames.length}</span>
               </p>
             </div>
-            <div className="flex items-center mt-1 border-2 border-gray-300 rounded-full">
-              <div className="w-full h-2 bg-gray-200 rounded-full">
+            <div className="flex items-center mt-1 border-2 border-gray-600 rounded-full">
+              <div className="w-full h-2 bg-gray-700 rounded-full">
                 <div
-                  className="h-2 rounded-full bg-blue-500 transition-all duration-200 ease-linear"
+                  className="h-2 rounded-full bg-yellow-400"
                   style={{ width: `${calculateProgress}%` }}
                 ></div>
               </div>
@@ -769,9 +736,6 @@ const App: React.FC = () => {
     </div>
   );
 
-  /**
-   * Рендеринг основного контента (farm)
-   */
   const renderMainContent = () => (
     <>
       {renderUserInfo()}
@@ -779,37 +743,35 @@ const App: React.FC = () => {
         <div className="px-4 mt-4 flex justify-center">
           <div className="px-4 py-2 flex items-center space-x-2">
             <img src={dollarCoin} alt="Dollar Coin" className="w-10 h-10" />
-            <p className="text-4xl text-blue-500">{Math.floor(points).toLocaleString()}</p>
+            <p className="text-4xl text-yellow-400">{Math.floor(points).toLocaleString()}</p>
           </div>
         </div>
         <div className="px-4 mt-4 flex justify-center">
           <div
-            className="w-80 h-80 p-4 rounded-full bg-gray-200 shadow-lg main-button transition-transform duration-200"
+            className="w-80 h-80 p-4 rounded-full bg-gray-700 shadow-lg main-button"
             onClick={handleClick}
             onTouchStart={handleTouchStart}
           >
-            <div className="w-full h-full rounded-full bg-gray-400 flex items-center justify-center">
-              {/* Можно добавить иконку или текст внутри кнопки */}
-            </div>
+            <div className="w-full h-full rounded-full bg-gray-600 flex items-center justify-center"></div>
           </div>
         </div>
       </div>
       <div className="absolute bottom-32 right-4 z-50">
         <button
           onClick={toggleBoostMenu}
-          className="bg-blue-500 text-white px-4 py-2 rounded-full font-bold shadow-lg hover:bg-blue-600 transition-colors"
+          className="bg-yellow-400 text-gray-900 px-4 py-2 rounded-full font-bold shadow-lg"
         >
           Boost
         </button>
       </div>
       <div className="absolute bottom-16 left-0 right-0 flex flex-col items-center z-40">
-        <div className="w-full px-4 flex items-center justify-center mb-4">
-          <div className="w-full max-w-xs h-3 bg-gray-300 rounded-full overflow-hidden relative">
+        <div className="w-full px-4 flex items-center justify-between mb-4">
+          <div className="w-[calc(100%-50px)] h-[10px] bg-gray-600 rounded-md overflow-hidden relative">
             <div
-              className="h-full bg-blue-500 transition-all duration-200 ease-linear"
+              className="h-full bg-yellow-400 transition-all duration-200 ease-linear"
               style={{ width: `${(remainingClicks / maxClicks) * 100}%` }}
             ></div>
-            <div className="absolute right-0 top-1/2 transform -translate-y-1/2 pr-2 text-sm text-gray-800">
+            <div className="absolute right-0 top-1/2 transform -translate-y-1/2 pr-2 text-sm text-gray-300">
               {remainingClicks} / {maxClicks}
             </div>
           </div>
@@ -818,29 +780,23 @@ const App: React.FC = () => {
     </>
   );
 
-  /**
-   * Рендеринг контента Boost
-   */
   const renderBoostContent = () => (
     <>
       {renderUserInfo()}
       <div className="px-4 mt-4">
-        <div className="h-px bg-gray-300 my-4"></div>
+        <div className="h-px bg-gray-600 my-4"></div>
         {renderUpgradeOption('multitap')}
         {renderUpgradeOption('tapIncrease')}
       </div>
     </>
   );
 
-  /**
-   * Основной рендеринг компонента
-   */
   return (
-    <div className="min-h-screen flex justify-center items-center bg-gray-100">
+    <div className="min-h-screen flex justify-center items-center bg-gray-900">
       {loading ? (
         <LoadingScreen />
       ) : (
-        <div className="w-full max-w-[390px] h-screen font-bold flex flex-col relative overflow-hidden bg-white shadow-lg">
+        <div className="w-full max-w-[390px] h-screen font-bold flex flex-col relative overflow-hidden bg-gray-800">
           {currentPage === 'farm' && !isBoostMenuOpen && renderMainContent()}
           {currentPage === 'mine' && (
             <MineContent
@@ -861,10 +817,10 @@ const App: React.FC = () => {
           )}
           {isBoostMenuOpen && renderBoostContent()}
           {selectedUpgrade && renderUpgradeMenu()}
-          <div className="absolute bottom-0 left-0 right-0 bg-gray-200 rounded-t-2xl flex justify-around items-center text-xs py-4 px-2 z-50 shadow-inner">
+          <div className="absolute bottom-0 left-0 right-0 bg-gray-700 rounded-t-2xl flex justify-around items-center text-xs py-4 px-2 z-50">
             <button
               className={`text-center flex flex-col items-center relative ${
-                currentPage === 'farm' ? 'text-blue-500' : 'text-gray-600'
+                currentPage === 'farm' ? 'text-yellow-400' : 'text-gray-300'
               }`}
               onClick={() => {
                 setCurrentPage('farm');
@@ -874,12 +830,12 @@ const App: React.FC = () => {
               <Farm className="w-6 h-6 mb-1" />
               Farm
               {currentPage === 'farm' && (
-                <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-1 h-1 bg-blue-500 rounded-full"></div>
+                <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-1 h-1 bg-yellow-400 rounded-full"></div>
               )}
             </button>
             <button
               className={`text-center flex flex-col items-center relative ${
-                currentPage === 'mine' ? 'text-blue-500' : 'text-gray-600'
+                currentPage === 'mine' ? 'text-yellow-400' : 'text-gray-300'
               }`}
               onClick={() => {
                 setCurrentPage('mine');
@@ -889,25 +845,21 @@ const App: React.FC = () => {
               <Mine className="w-6 h-6 mb-1" />
               Mine
               {currentPage === 'mine' && (
-                <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-1 h-1 bg-blue-500 rounded-full"></div>
+                <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-1 h-1 bg-yellow-400 rounded-full"></div>
               )}
             </button>
-            <button className="text-center text-gray-600 flex flex-col items-center">
+            <button className="text-center text-gray-300 flex flex-col items-center">
               <Friends className="w-6 h-6 mb-1" />
               Friends
             </button>
-            <div className="text-center text-gray-600 flex flex-col items-center">
+            <div className="text-center text-gray-300 flex flex-col items-center">
               <FaTasks className="w-6 h-6 mb-1" />
               Tasks
             </div>
           </div>
 
           {clicks.map((click) => (
-            <div
-              key={click.id}
-              className="absolute transition-all duration-1000 ease-out text-yellow-500 font-bold"
-              style={{ top: click.y, left: click.x }}
-            >
+            <div key={click.id} className="clicked-number" style={{ top: click.y, left: click.x }}>
               +{click.profit}
             </div>
           ))}
