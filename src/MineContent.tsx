@@ -1,5 +1,3 @@
-// MineContent.tsx
-
 import React, { useEffect, useState, useRef } from 'react';
 import { upgradeLevels } from './upgrades';
 import UpgradeNotification from './UpgradeNotification';
@@ -32,14 +30,13 @@ const MineContent: React.FC<MineContentProps> = ({
   upgrades,
   setUpgrades,
   farmLevel,
-  
   incomePerHour,
   setIncomePerHour,
 }) => {
   const [notificationMessage, setNotificationMessage] = useState<string | null>(null);
   const [isUpgradesMenuOpen, setIsUpgradesMenuOpen] = useState(false);
   const [selectedMineUpgrade, setSelectedMineUpgrade] = useState<string | null>(null);
-  
+
   // Новые состояния для заработанных монет и таймера
   const [earnedCoins, setEarnedCoins] = useState<number>(() => {
     const saved = localStorage.getItem('earnedCoins');
