@@ -1,5 +1,3 @@
-// App.tsx
-
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import './App.css';
 import Hamster from './icons/Hamster';
@@ -21,18 +19,24 @@ const RECOVERY_RATE = 1000; // Время восстановления одно�
 const RECOVERY_AMOUNT = 1;  // Количество восстанавливаемых кликов за интервал
 
 const App: React.FC = () => {
-  // Инициализация состояний из localStorage
-  const getInitialState = (key: string, defaultValue: number) => {
-    const saved = localStorage.getItem(key);
-    return saved ? parseInt(saved) : defaultValue;
-  };
-
   const [tapProfit, setTapProfit] = useState(1);
-  const [tapProfitLevel, setTapProfitLevel] = useState<number>(() => getInitialState('tapProfitLevel', 1));
-  const [maxClicks, setMaxClicks] = useState<number>(() => getInitialState('maxClicks', 1000));
-  const [tapIncreaseLevel, setTapIncreaseLevel] = useState<number>(() => getInitialState('tapIncreaseLevel', 1));
-  const [remainingClicks, setRemainingClicks] = useState<number>(() => getInitialState('remainingClicks', 1000));
-  const [points, setPoints] = useState<number>(() => getInitialState('points', 0));
+  const [tapProfitLevel, setTapProfitLevel] = useState<number>(() => {
+    const savedLevel = localStorage.getItem('tapProfitLevel');
+    return savedLevel ? parseInt(savedLevel) : 1;
+  });
+  const [maxClicks, setMaxClicks] = useState<number>(() => {
+    const savedMaxClicks = localStorage.getItem('maxClicks');
+    return savedMaxClicks ? parseInt(savedMaxClicks) : 1000;
+  });
+  const [tapIncreaseLevel, setTapIncreaseLevel] = useState<number>(() => {
+    const savedLevel = localStorage.getItem('tapIncreaseLevel');
+    return savedLevel ? parseInt(savedLevel) : 1;
+  });
+  const [remainingClicks, setRemainingClicks] = useState<number>(maxClicks);
+  const [points, setPoints] = useState<number>(() => {
+    const savedPoints = localStorage.getItem('points');
+    return savedPoints ? parseInt(savedPoints) : 0;
+  });
   const [username, setUsername] = useState<string | null>(null);
   const [userId, setUserId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
@@ -114,129 +118,6 @@ const App: React.FC = () => {
 
   const [levelIndex, setLevelIndex] = useState(0);
 
-  // Ref для отслеживания предыдущей страницы
-  const previousPageRef = useRef<string>(currentPage);
-
-  // Функция для хранения времени выхода
-  const storeExitTime = useCallback(() => {
-    const timestamp = Date.now();
-    localStorage.setItem('lastExitTime', timestamp.toString());
-  }, []);
-
-  // Функция для восстановления кликов на основе прошедшего времени
-  const restoreClicks = useCallback(() => {
-    const lastExitTime = localStorage.getItem('lastExitTime');
-    if (!lastExitTime) return;
-
-    const currentTime = Date.now();
-    const exitTime = parseInt(lastExitTime, 10);
-    const elapsedMilliseconds = currentTime - exitTime;
-
-    const restoredClicks = Math.floor(elapsedMilliseconds / RECOVERY_RATE) * RECOVERY_AMOUNT;
-
-    if (restoredClicks > 0) {
-      setRemainingClicks((prevClicks) => {
-        const newClicks = Math.min(prevClicks + restoredClicks, maxClicks);
-        localStorage.setItem('remainingClicks', newClicks.toString());
-        return newClicks;
-      });
-
-      // Очистка времени выхода после восстановления
-      localStorage.removeItem('lastExitTime');
-    }
-  }, [maxClicks]);
-
-  // Объявляем функцию updateRemainingClicks перед использованием в useEffect
-  const updateRemainingClicks = useCallback(
-    async (newRemainingClicks: number) => {
-      setRemainingClicks(newRemainingClicks);
-      localStorage.setItem('remainingClicks', newRemainingClicks.toString());
-
-      if (userId !== null) {
-        try {
-          const response = await fetch('/update-clicks', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              userId,
-              remainingClicks: newRemainingClicks,
-            }),
-          });
-
-          if (!response.ok) {
-            throw new Error(`Ошибка HTTP: ${response.status}`);
-          }
-
-          const result = await response.json();
-          if (result.success) {
-            console.log('Клики успешно обновлены на сервере.');
-          } else {
-            console.error('Ошибка при обновлении кликов на сервере:', result.error);
-          }
-        } catch (error) {
-          console.error('Ошибка при обновлении кликов:', error);
-        }
-      }
-    },
-    [userId]
-  );
-
-  // Восстановление кликов при монтировании компонента
-  useEffect(() => {
-    restoreClicks();
-  }, [restoreClicks]);
-
-  // Обработка видимости страницы (для блокировки экрана и переключения вкладок)
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (document.hidden) {
-        if (currentPage === 'farm') {
-          storeExitTime();
-        }
-      } else {
-        if (currentPage === 'farm') {
-          restoreClicks();
-        }
-      }
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
-  }, [currentPage, restoreClicks, storeExitTime]);
-
-  // Обработка смены страницы (например, переход с Farm на Mine и обратно)
-  useEffect(() => {
-    if (previousPageRef.current === 'farm' && currentPage !== 'farm') {
-      // Пользователь покидает Farm
-      storeExitTime();
-    } else if (previousPageRef.current !== 'farm' && currentPage === 'farm') {
-      // Пользователь возвращается на Farm
-      restoreClicks();
-    }
-    previousPageRef.current = currentPage;
-  }, [currentPage, restoreClicks, storeExitTime]);
-
-  // Обработка выхода из приложения (например, закрытие вкладки)
-  useEffect(() => {
-    const handleBeforeUnload = () => {
-      if (currentPage === 'farm') {
-        storeExitTime();
-      }
-    };
-
-    window.addEventListener('beforeunload', handleBeforeUnload);
-
-    return () => {
-      window.removeEventListener('beforeunload', handleBeforeUnload);
-    };
-  }, [currentPage, storeExitTime]);
-
-  // Восстановление кликов через интервалы
   useEffect(() => {
     const recoveryInterval = setInterval(() => {
       setRemainingClicks((prevClicks: number) => {
@@ -249,7 +130,7 @@ const App: React.FC = () => {
     }, RECOVERY_RATE);
 
     return () => clearInterval(recoveryInterval);
-  }, [maxClicks, updateRemainingClicks]);
+  }, [maxClicks]);
 
   useEffect(() => {
     const initData = WebApp.initDataUnsafe;
@@ -294,7 +175,6 @@ const App: React.FC = () => {
         }
         if (data.remainingClicks !== undefined) {
           setRemainingClicks(data.remainingClicks); // Устанавливаем оставшиеся клики из базы
-          localStorage.setItem('remainingClicks', data.remainingClicks.toString());
         }
         if (data.incomePerHour !== undefined) {
           setIncomePerHour(data.incomePerHour);
@@ -351,6 +231,8 @@ const App: React.FC = () => {
     };
   }, [userId, remainingClicks, points, currentPage]);
 
+  const previousPageRef = useRef<string>(currentPage);
+
   useEffect(() => {
     if (userId !== null) {
       if (currentPage === 'mine' && previousPageRef.current !== 'mine') {
@@ -381,6 +263,40 @@ const App: React.FC = () => {
       previousPageRef.current = currentPage;
     }
   }, [currentPage, userId]);
+
+  const updateRemainingClicks = useCallback(
+    async (newRemainingClicks: number) => {
+      setRemainingClicks(newRemainingClicks);
+      if (userId !== null) {
+        try {
+          const response = await fetch('/update-clicks', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              userId,
+              remainingClicks: newRemainingClicks,
+            }),
+          });
+
+          if (!response.ok) {
+            throw new Error(`Ошибка HTTP: ${response.status}`);
+          }
+
+          const result = await response.json();
+          if (result.success) {
+            console.log('Клики успешно обновлены на сервере.');
+          } else {
+            console.error('Ошибка при обновлении кликов на сервере:', result.error);
+          }
+        } catch (error) {
+          console.error('Ошибка при обновлении кликов:', error);
+        }
+      }
+    },
+    [userId]
+  );
 
   const handleMainButtonClick = useCallback(
     async (e: React.TouchEvent<HTMLDivElement>) => {
@@ -495,11 +411,9 @@ const App: React.FC = () => {
             );
           } else {
             console.error('Ошибка при сохранении данных на сервере:', result.error);
-            alert('Не удалось сохранить данные на сервере. Пожалуйста, попробуйте позже.');
           }
         } catch (error) {
           console.error('Ошибка при сохранении данных:', error);
-          alert('Произошла ошибка при сохранении данных. Пожалуйста, попробуйте позже.');
         }
       } else {
         console.log('userId равен null, запрос POST не отправлен');
@@ -753,83 +667,79 @@ const App: React.FC = () => {
     </>
   );
 
-  const renderMainApp = () => (
-    <div className="w-full max-w-[390px] h-screen font-bold flex flex-col relative overflow-hidden bg-gray-800">
-      {currentPage === 'farm' && !isBoostMenuOpen && renderMainContent()}
-      {currentPage === 'mine' && (
-        <MineContent
-          points={points}
-          setPoints={setPoints}
-          username={username || 'Гость'}
-          userId={userId}
-          tapProfitLevel={tapProfitLevel}
-          tapIncreaseLevel={tapIncreaseLevel}
-          remainingClicks={remainingClicks}
-          upgrades={upgrades}
-          setUpgrades={setUpgrades}
-          farmLevel={farmLevel}
-          setFarmLevel={setFarmLevel}
-          incomePerHour={incomePerHour}
-          setIncomePerHour={setIncomePerHour}
-        />
-      )}
-      {isBoostMenuOpen && renderBoostContent()}
-      {selectedUpgrade && renderUpgradeMenu()}
-      <div className="absolute bottom-0 left-0 right-0 bg-gray-700 rounded-t-2xl flex justify-around items-center text-xs py-4 px-2 z-50">
-        <button
-          className={`text-center flex flex-col items-center relative ${
-            currentPage === 'farm' ? 'text-yellow-400' : 'text-gray-300'
-          }`}
-          onClick={() => {
-            setCurrentPage('farm');
-            setIsBoostMenuOpen(false);
-          }}
-        >
-          <Farm className="w-6 h-6 mb-1" />
-          Farm
-          {currentPage === 'farm' && (
-            <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-1 h-1 bg-yellow-400 rounded-full"></div>
-          )}
-        </button>
-        <button
-          className={`text-center flex flex-col items-center relative ${
-            currentPage === 'mine' ? 'text-yellow-400' : 'text-gray-300'
-          }`}
-          onClick={() => {
-            setCurrentPage('mine');
-            setIsBoostMenuOpen(false);
-          }}
-        >
-          <Mine className="w-6 h-6 mb-1" />
-          Mine
-          {currentPage === 'mine' && (
-            <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-1 h-1 bg-yellow-400 rounded-full"></div>
-          )}
-        </button>
-        <button className="text-center text-gray-300 flex flex-col items-center">
-          <Friends className="w-6 h-6 mb-1" />
-          Friends
-        </button>
-        <div className="text-center text-gray-300 flex flex-col items-center">
-          <FaTasks className="w-6 h-6 mb-1" />
-          Tasks
-        </div>
-      </div>
-
-      {clicks.map((click) => (
-        <div key={click.id} className="clicked-number" style={{ top: click.y, left: click.x }}>
-          +{click.profit}
-        </div>
-      ))}
-    </div>
-  );
-
   return (
     <div className="min-h-screen flex justify-center items-center bg-gray-900">
       {loading ? (
         <LoadingScreen />
       ) : (
-        renderMainApp()
+        <div className="w-full max-w-[390px] h-screen font-bold flex flex-col relative overflow-hidden bg-gray-800">
+          {currentPage === 'farm' && !isBoostMenuOpen && renderMainContent()}
+          {currentPage === 'mine' && (
+            <MineContent
+              points={points}
+              setPoints={setPoints}
+              username={username || 'Гость'}
+              userId={userId}
+              tapProfitLevel={tapProfitLevel}
+              tapIncreaseLevel={tapIncreaseLevel}
+              remainingClicks={remainingClicks}
+              upgrades={upgrades}
+              setUpgrades={setUpgrades}
+              farmLevel={farmLevel}
+              setFarmLevel={setFarmLevel}
+              incomePerHour={incomePerHour}
+              setIncomePerHour={setIncomePerHour}
+            />
+          )}
+          {isBoostMenuOpen && renderBoostContent()}
+          {selectedUpgrade && renderUpgradeMenu()}
+          <div className="absolute bottom-0 left-0 right-0 bg-gray-700 rounded-t-2xl flex justify-around items-center text-xs py-4 px-2 z-50">
+            <button
+              className={`text-center flex flex-col items-center relative ${
+                currentPage === 'farm' ? 'text-yellow-400' : 'text-gray-300'
+              }`}
+              onClick={() => {
+                setCurrentPage('farm');
+                setIsBoostMenuOpen(false);
+              }}
+            >
+              <Farm className="w-6 h-6 mb-1" />
+              Farm
+              {currentPage === 'farm' && (
+                <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-1 h-1 bg-yellow-400 rounded-full"></div>
+              )}
+            </button>
+            <button
+              className={`text-center flex flex-col items-center relative ${
+                currentPage === 'mine' ? 'text-yellow-400' : 'text-gray-300'
+              }`}
+              onClick={() => {
+                setCurrentPage('mine');
+                setIsBoostMenuOpen(false);
+              }}
+            >
+              <Mine className="w-6 h-6 mb-1" />
+              Mine
+              {currentPage === 'mine' && (
+                <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-1 h-1 bg-yellow-400 rounded-full"></div>
+              )}
+            </button>
+            <button className="text-center text-gray-300 flex flex-col items-center">
+              <Friends className="w-6 h-6 mb-1" />
+              Friends
+            </button>
+            <div className="text-center text-gray-300 flex flex-col items-center">
+              <FaTasks className="w-6 h-6 mb-1" />
+              Tasks
+            </div>
+          </div>
+
+          {clicks.map((click) => (
+            <div key={click.id} className="clicked-number" style={{ top: click.y, left: click.x }}>
+              +{click.profit}
+            </div>
+          ))}
+        </div>
       )}
     </div>
   );
