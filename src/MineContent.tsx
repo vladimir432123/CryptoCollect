@@ -38,104 +38,78 @@ const MineContent: React.FC<MineContentProps> = ({
   const [isUpgradesMenuOpen, setIsUpgradesMenuOpen] = useState(false);
   const [selectedMineUpgrade, setSelectedMineUpgrade] = useState<string | null>(null);
 
-  // Новые состояния для заработанных монет и таймера
+  // Константы
+  const TOTAL_TIMER_SECONDS = 10800; // 3 часа в секундах
+
+  // Состояния для заработанных монет и таймера
   const [earnedCoins, setEarnedCoins] = useState<number>(() => {
     const saved = localStorage.getItem('earnedCoins');
     return saved ? parseInt(saved) : 0;
   });
-  
-  // Измененный таймер
-  const [timer, setTimer] = useState<number>(() => {
-    const storedLastCollectTime = localStorage.getItem('lastCollectTime');
-    if (storedLastCollectTime) {
-      const lastCollectTimestamp = parseInt(storedLastCollectTime);
-      const now = Date.now();
-      const elapsedSeconds = Math.floor((now - lastCollectTimestamp) / 1000);
-      const remaining = 10800 - elapsedSeconds; // 3 часа в секундах
-      return remaining > 0 ? remaining : 0;
-    }
-    return 0;
-  });
-  
+
+  // Оставшееся время таймера в секундах
+  const [timer, setTimer] = useState<number>(0);
+
   const timerRef = useRef<number | null>(null);
 
   const farmLevelMultipliers = [1, 1.2, 1.4, 1.6, 1.8, 2.0];
 
-  const calculateTotalIncome = useCallback((upgrades: { [key: string]: number }, farmLevel: number): number => {
-    let income = 0;
-    for (const [key, level] of Object.entries(upgrades)) {
-      const upgradeLevel = upgradeLevels[key as keyof typeof upgradeLevels][level - 1];
-      if ('profit' in upgradeLevel) {
-        income += upgradeLevel.profit;
+  // Функция для расчета общего дохода
+  const calculateTotalIncome = useCallback(
+    (upgrades: { [key: string]: number }, farmLevel: number): number => {
+      let income = 0;
+      for (const [key, level] of Object.entries(upgrades)) {
+        const upgradeLevel = upgradeLevels[key as keyof typeof upgradeLevels][level - 1];
+        if ('profit' in upgradeLevel) {
+          income += upgradeLevel.profit;
+        }
       }
-    }
-    return income * farmLevelMultipliers[farmLevel - 1];
-  }, [farmLevelMultipliers]);
+      return income * farmLevelMultipliers[farmLevel - 1];
+    },
+    [farmLevelMultipliers]
+  );
 
-  // Функция для получения данных пользователя с сервера
-  const fetchUserData = useCallback(async () => {
-    if (userId === null) return;
-
-    try {
-      const response = await fetch(`/app?userId=${userId}`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error(`Ошибка HTTP: ${response.status}`);
-      }
-
-      const data = await response.json();
-
-      const { entryTime, exitTime } = data;
-
-      if (entryTime && exitTime) {
-        const exitDate = new Date(exitTime);
-        const currentDate = new Date();
-
-        const diffInSeconds = Math.floor((currentDate.getTime() - exitDate.getTime()) / 1000);
-
-        const totalAccumulationTime = 10800; // 3 часа в секундах
-
-        const newEarnedCoins = Math.min((diffInSeconds * incomePerHour) / 3600, incomePerHour * 3);
-        const flooredEarnedCoins = Math.floor(newEarnedCoins);
-
-        // Получаем существующие заработанные монеты из состояния
-        const existingEarnedCoins = earnedCoins;
-
-        // Добавляем новые заработанные монеты к существующим, с ограничением до 3 часов
-        const updatedEarnedCoins = Math.min(existingEarnedCoins + flooredEarnedCoins, incomePerHour * 3);
-        setEarnedCoins(updatedEarnedCoins);
-        localStorage.setItem('earnedCoins', updatedEarnedCoins.toString());
-
-        // Рассчитываем оставшееся время на таймере
-        const additionalTime = Math.floor((flooredEarnedCoins / incomePerHour) * 3600);
-        const updatedTimer = Math.min(timer + additionalTime, totalAccumulationTime);
-        setTimer(updatedTimer);
-        localStorage.setItem('timer', updatedTimer.toString());
-      }
-
-    } catch (error) {
-      console.error('Ошибка при получении данных пользователя:', error);
-    }
-  }, [userId, incomePerHour, earnedCoins, timer]);
-
+  // Получение данных пользователя с сервера при монтировании компонента
   useEffect(() => {
-    // При монтировании компонента
-    fetchUserData();
-  }, [fetchUserData]);
+    const fetchLastCollectTime = async () => {
+      if (!userId) return;
+      try {
+        const response = await fetch(`/app?userId=${userId}`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+        if (!response.ok) {
+          throw new Error(`Ошибка HTTP: ${response.status}`);
+        }
+        const data = await response.json();
+        const lastCollectTimestamp = data.last_collect_time ? new Date(data.last_collect_time).getTime() : null;
 
+        if (lastCollectTimestamp) {
+          const now = Date.now();
+          const elapsedSeconds = Math.floor((now - lastCollectTimestamp) / 1000);
+          const remaining = TOTAL_TIMER_SECONDS - elapsedSeconds;
+          setTimer(remaining > 0 ? remaining : 0);
+        } else {
+          // Если пользователь еще не собирал монеты, разрешаем сразу собрать
+          setTimer(0);
+        }
+      } catch (error) {
+        console.error('Ошибка при получении last_collect_time:', error);
+      }
+    };
+    fetchLastCollectTime();
+  }, [userId]);
+
+  // Обновление дохода при изменении улучшений или уровня фермы
   useEffect(() => {
-    // Обновляем доход при изменении улучшений или уровня фермы
     const totalIncome = calculateTotalIncome(upgrades, farmLevel);
     setIncomePerHour(totalIncome);
   }, [upgrades, farmLevel, calculateTotalIncome, setIncomePerHour]);
 
+  // Логика таймера
   useEffect(() => {
-    // Таймер для накопления монет
     if (timer > 0) {
       timerRef.current = window.setInterval(() => {
         setTimer((prevTimer) => {
@@ -165,19 +139,60 @@ const MineContent: React.FC<MineContentProps> = ({
     };
   }, [timer, incomePerHour]);
 
+  // Обработчик кнопки "Забрать"
+  const handleCollectCoins = async () => {
+    if (earnedCoins <= 0) return;
+
+    try {
+      // Добавить заработанные монеты к points
+      const newPoints = points + Math.floor(earnedCoins);
+      setPoints(newPoints);
+      setEarnedCoins(0);
+
+      // Обновить last_collect_time на сервере
+      const response = await fetch('/save-data', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId,
+          points: newPoints,
+          tapProfitLevel,
+          tapIncreaseLevel,
+          remainingClicks,
+          ...upgrades,
+          farmLevel,
+          incomePerHour,
+          last_collect_time: new Date().toISOString(), // Устанавливаем текущее время
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Ошибка HTTP: ${response.status}`);
+      }
+
+      const data = await response.json();
+      if (data.success) {
+        setTimer(TOTAL_TIMER_SECONDS);
+      } else {
+        throw new Error('Ошибка на сервере');
+      }
+
+      alert('Монеты успешно забраны!');
+    } catch (error) {
+      console.error('Ошибка при сборе монет:', error);
+      alert('Ошибка при сборе монет. Попробуйте снова.');
+    }
+  };
+
+  // Обработчики для меню улучшений
   const handleUpgradeClick = (upgrade: string) => {
     setSelectedMineUpgrade(upgrade);
     setIsUpgradesMenuOpen(false); // Закрываем меню улучшений
   };
 
-  const closeUpgradeMenu = () => {
-    setSelectedMineUpgrade(null);
-  };
-
-  const closeUpgradesMenu = () => {
-    setIsUpgradesMenuOpen(false);
-  };
-
+  // Обработчик улучшений
   const handleUpgrade = async () => {
     if (selectedMineUpgrade) {
       const currentLevel = upgrades[selectedMineUpgrade] || 1;
@@ -197,7 +212,7 @@ const MineContent: React.FC<MineContentProps> = ({
           setUpgrades(newUpgrades);
           setNotificationMessage(`Улучшено ${selectedMineUpgrade} до уровня ${nextLevel}`);
 
-          // Обновляем incomePerHour
+          // Обновляем доход
           const totalIncome = calculateTotalIncome(newUpgrades, farmLevel);
           setIncomePerHour(totalIncome);
 
@@ -241,71 +256,6 @@ const MineContent: React.FC<MineContentProps> = ({
     }
   };
 
-  // Обработчик кнопки "Забрать"
-  const handleCollectCoins = async () => {
-    if (earnedCoins <= 0) return;
-
-    try {
-      // Добавить заработанные монеты к points
-      const newPoints = points + earnedCoins;
-      setPoints(newPoints);
-      setEarnedCoins(0);
-      
-      // Установить новое время сброса таймера
-      const newLastCollectTime = Date.now();
-      localStorage.setItem('lastCollectTime', newLastCollectTime.toString());
-      setTimer(10800); // 3 часа
-      localStorage.setItem('timer', '10800');
-
-      // Обновить entryTime на сервере
-      await fetch('/save-entry-exit-time', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          userId,
-          action: 'enter',
-        }),
-      });
-
-      // Сохранить обновленные данные на сервере
-      await fetch('/save-data', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          userId,
-          points: newPoints,
-          tapProfitLevel,
-          tapIncreaseLevel,
-          remainingClicks,
-          ...upgrades,
-          farmLevel,
-          incomePerHour,
-        }),
-      });
-
-      alert('Монеты успешно забраны!');
-    } catch (error) {
-      console.error('Ошибка при сборе монет:', error);
-      alert('Ошибка при сборе монет. Попробуйте снова.');
-    }
-  };
-
-  // Список улучшений без 'farmlevel'
-  const upgradesList = [
-    'upgrade1',
-    'upgrade2',
-    'upgrade3',
-    'upgrade4',
-    'upgrade5',
-    'upgrade6',
-    'upgrade7',
-    'upgrade8',
-  ];
-
   // Функция форматирования времени
   const formatTime = (seconds: number) => {
     const hrs = Math.floor(seconds / 3600);
@@ -314,7 +264,7 @@ const MineContent: React.FC<MineContentProps> = ({
     return `${hrs}:${mins < 10 ? '0' : ''}${mins}:${secs < 10 ? '0' : ''}${secs}`;
   };
 
-  // Новое меню внизу страницы с отступом 100 пикселей выше навигационной панели
+  // Рендер нижнего меню
   const renderBottomMenu = () => {
     return (
       <div className="fixed left-0 right-0 px-4 z-40" style={{ bottom: '100px' }}>
@@ -353,6 +303,66 @@ const MineContent: React.FC<MineContentProps> = ({
     );
   };
 
+  // Список улучшений без 'farmlevel'
+  const upgradesList = [
+    'upgrade1',
+    'upgrade2',
+    'upgrade3',
+    'upgrade4',
+    'upgrade5',
+    'upgrade6',
+    'upgrade7',
+    'upgrade8',
+  ];
+
+  // Рендер меню улучшений
+  const renderUpgradesMenu = () => (
+    <div
+      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+      onClick={() => setSelectedMineUpgrade(null)}
+    >
+      <div
+        className="bg-gray-800 w-11/12 max-w-md p-6 rounded-lg animate-slide-up overflow-y-auto"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h2 className="text-center text-xl text-white mb-4">
+          {selectedMineUpgrade ? `Улучшение ${selectedMineUpgrade}` : ''}
+        </h2>
+        <p className="text-center text-gray-400 mb-4">
+          {/* Добавьте индивидуальное описание для каждого улучшения */}
+          {selectedMineUpgrade
+            ? `Описание улучшения ${selectedMineUpgrade}. Это улучшение поможет вам увеличить производительность и заработать больше монет.`
+            : ''}
+        </p>
+        <p className="text-center text-gray-300 mb-4">
+          Текущий уровень: {selectedMineUpgrade ? (upgrades[selectedMineUpgrade] || 1) : ''}
+        </p>
+        {selectedMineUpgrade && (upgrades[selectedMineUpgrade] || 1) < 10 ? (
+          <button
+            className={`w-full py-3 bg-yellow-500 text-black rounded-lg ${
+              points >= upgradeLevels[selectedMineUpgrade as keyof typeof upgradeLevels][(upgrades[selectedMineUpgrade] || 1) - 1].cost
+                ? 'hover:bg-yellow-600'
+                : 'opacity-50 cursor-not-allowed'
+            }`}
+            onClick={handleUpgrade}
+            disabled={points < upgradeLevels[selectedMineUpgrade as keyof typeof upgradeLevels][(upgrades[selectedMineUpgrade] || 1) - 1].cost}
+          >
+            Улучшить за {upgradeLevels[selectedMineUpgrade as keyof typeof upgradeLevels][(upgrades[selectedMineUpgrade] || 1) - 1].cost} монет
+          </button>
+        ) : (
+          <p className="text-center text-yellow-400 mt-4">Максимальный уровень достигнут</p>
+        )}
+        <button
+          className="w-full py-2 mt-4 bg-gray-700 text-white rounded-lg"
+          onClick={() => setSelectedMineUpgrade(null)}
+        >
+          Закрыть
+        </button>
+      </div>
+    </div>
+  );
+
+  // Рендер основного содержимого
   return (
     <>
       {notificationMessage && <UpgradeNotification message={notificationMessage} />}
@@ -417,16 +427,16 @@ const MineContent: React.FC<MineContentProps> = ({
       {isUpgradesMenuOpen && (
         <div
           className="fixed inset-0 bg-black bg-opacity-50 flex items-end justify-center z-50"
-          onClick={closeUpgradesMenu}
+          onClick={() => setIsUpgradesMenuOpen(false)}
         >
           <div
-            className="bg-gray-900 w-full max-w-md p-6 rounded-t-lg animate-slide-up"
+            className="bg-gray-900 w-full max-w-md p-6 rounded-t-lg animate-slide-up overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
             style={{ maxHeight: '90%' }}
           >
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl text-white">Улучшения</h2>
-              <button className="text-gray-400" onClick={closeUpgradesMenu}>
+              <button className="text-gray-400" onClick={() => setIsUpgradesMenuOpen(false)}>
                 ✕
               </button>
             </div>
@@ -457,52 +467,9 @@ const MineContent: React.FC<MineContentProps> = ({
         </div>
       )}
 
-      {selectedMineUpgrade && (
-        <div
-          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
-          onClick={closeUpgradeMenu}
-        >
-          <div
-            className="bg-gray-900 w-11/12 max-w-md p-6 rounded-lg"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h2 className="text-center text-xl text-white mb-2">{`Улучшение ${selectedMineUpgrade}`}</h2>
-            <p className="text-center text-gray-300 mb-4">
-              Уровень: {upgrades[selectedMineUpgrade] || 1}
-            </p>
-            <p className="text-center text-gray-400 mb-4">
-              {/* Здесь можно добавить индивидуальное описание для каждого улучшения */}
-              Описание улучшения. Это улучшение поможет вам увеличить производительность и заработать больше монет.
-            </p>
-            {upgrades[selectedMineUpgrade] === 10 ? (
-              <p className="text-center text-yellow-400 mb-4">Максимальный уровень</p>
-            ) : (
-              <>
-                <button
-                  className="w-full py-3 bg-yellow-500 text-black rounded-lg"
-                  onClick={handleUpgrade}
-                >
-                  Улучшить (
-                  {
-                    upgradeLevels[selectedMineUpgrade as keyof typeof upgradeLevels][
-                      upgrades[selectedMineUpgrade]
-                    ].cost
-                  }{' '}
-                  монет)
-                </button>
-              </>
-            )}
-            <button
-              className="w-full py-2 mt-2 bg-gray-700 text-white rounded-lg"
-              onClick={closeUpgradeMenu}
-            >
-              Закрыть
-            </button>
-          </div>
-        </div>
-      )}
+      {selectedMineUpgrade && renderUpgradesMenu()}
 
-      {/* Новое нижнее меню */}
+      {/* Нижнее меню */}
       {renderBottomMenu()}
     </>
   );
