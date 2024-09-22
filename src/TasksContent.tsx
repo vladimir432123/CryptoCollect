@@ -8,7 +8,7 @@ interface TasksContentProps {
   points: number;
   setPoints: React.Dispatch<React.SetStateAction<number>>;
   userId: number | null;
-  username: string | null; // Добавлен username
+  username: string | null; // Добавлено имя пользователя
 }
 
 interface Task {
@@ -18,7 +18,7 @@ interface Task {
   canCollect: boolean;
 }
 
-const TasksContent: React.FC<TasksContentProps> = ({setPoints, userId, username }) => {
+const TasksContent: React.FC<TasksContentProps> = ({ setPoints, userId, username }) => {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [isMenuOpen, setIsMenuOpen] = useState<boolean>(false);
   const [notification, setNotification] = useState<string | null>(null);
@@ -33,8 +33,8 @@ const TasksContent: React.FC<TasksContentProps> = ({setPoints, userId, username 
             initialTasks.push({
               day: i,
               reward: getRewardByDay(i),
-              collected: data.collectedDays.includes(i),
-              canCollect: i === data.currentDay && data.canCollect, // Теперь правильная проверка
+              collected: i < data.currentDay,
+              canCollect: i === data.currentDay && data.canCollect,
             });
           }
           setTasks(initialTasks);
@@ -84,7 +84,7 @@ const TasksContent: React.FC<TasksContentProps> = ({setPoints, userId, username 
           setTasks((prevTasks) =>
             prevTasks.map((task) =>
               task.day === day
-                ? { ...task, collected: true }
+                ? { ...task, collected: true, canCollect: false }
                 : task
             )
           );
@@ -101,7 +101,7 @@ const TasksContent: React.FC<TasksContentProps> = ({setPoints, userId, username 
 
   const renderTasksList = () => (
     <div className="tasks-menu">
-      <h2 className="text-center text-2xl text-white mb-4">Ежедневные награды</h2>
+      <h2 className="text-center text-2xl text-white mb-4">{username ? username : 'Гость'}</h2>
       <div className="space-y-4">
         {tasks.map((task) => (
           <div key={task.day} className="flex justify-between items-center bg-gray-700 p-4 rounded-lg shadow-md">
@@ -112,19 +112,25 @@ const TasksContent: React.FC<TasksContentProps> = ({setPoints, userId, username 
             <button
               onClick={() => handleCollect(task.day)}
               className={`px-4 py-2 rounded-lg font-semibold ${
-                task.collected
-                  ? 'bg-gray-500 text-gray-300 cursor-not-allowed'
-                  : task.canCollect
+                task.canCollect
                   ? 'bg-yellow-500 text-gray-900 hover:bg-yellow-600'
-                  : 'bg-gray-500 text-gray-300 cursor-not-allowed' // Неактивная кнопка
+                  : task.collected
+                  ? 'bg-gray-500 text-gray-300 cursor-not-allowed'
+                  : 'bg-gray-500 text-gray-300 cursor-not-allowed'
               }`}
-              disabled={task.collected || !task.canCollect}
+              disabled={!task.canCollect}
             >
               {task.collected ? 'Собрано' : 'Забрать'}
             </button>
           </div>
         ))}
       </div>
+      {/* Заголовок "Задания" */}
+      <h2 className="text-center text-2xl text-white mt-8">Задания</h2>
+      {/* Текст ниже "Задания" */}
+      <p className="text-center text-gray-300 mt-2">
+        Тут будут задания за которые можно получить больше монет.
+      </p>
     </div>
   );
 
@@ -142,7 +148,6 @@ const TasksContent: React.FC<TasksContentProps> = ({setPoints, userId, username 
         </div>
       )}
       <div className="px-4 z-10 pt-4">
-        {/* Отображение имени пользователя */}
         <div className="flex items-center space-x-2">
           <div className="p-1 rounded-lg bg-gray-800">
             <FaTasks size={24} className="text-yellow-400" />
@@ -176,16 +181,10 @@ const TasksContent: React.FC<TasksContentProps> = ({setPoints, userId, username 
             style={{ maxHeight: '80vh' }}
           >
             {renderTasksList()}
+            {/* Удалена кнопка "Закрыть" */}
           </div>
         </div>
       )}
-      {/* Задания */}
-      <div className="px-4 mt-8">
-        <h3 className="text-xl text-white font-bold text-center">Задания</h3>
-        <p className="text-center text-gray-400 mt-2">
-          Тут будут задания, за которые можно получить больше монет.
-        </p>
-      </div>
     </>
   );
 };
