@@ -12,16 +12,19 @@ import { FaTasks } from 'react-icons/fa';
 import WebApp from '@twa-dev/sdk';
 import LoadingScreen from './LoadingScreen.tsx';
 
+// Компонент Farm (иконка)
 const Farm: React.FC<{ className?: string }> = ({ className }) => (
   <svg className={className} viewBox="0 0 24 24" fill="currentColor">
     <path d="M1 22h22V8l-11-6-11 6v14zm2-2v-9h18v9H3zm9-4.5a2.5 2.5 0 100-5 2.5 2.5 0 000 5z" />
   </svg>
 );
 
+// Константы для восстановления кликов
 const RECOVERY_RATE = 1000; // Время восстановления одного клика (в миллисекундах)
 const RECOVERY_AMOUNT = 1;  // Количество восстанавливаемых кликов за интервал
 
 const App: React.FC = () => {
+  // Состояния приложения
   const [tapProfit, setTapProfit] = useState(1);
   const [tapProfitLevel, setTapProfitLevel] = useState<number>(() => {
     const savedLevel = localStorage.getItem('tapProfitLevel');
@@ -69,6 +72,7 @@ const App: React.FC = () => {
   const [currentPage, setCurrentPage] = useState('farm');
   const [selectedUpgrade, setSelectedUpgrade] = useState<string | null>(null);
 
+  // Уровни улучшений
   const tapProfitLevels = useMemo(
     () => [
       { level: 1, profit: 1, cost: 1000 },
@@ -130,14 +134,9 @@ const App: React.FC = () => {
   // Функция для расчета максимального количества кликов на основе улучшений
   const calculateMaxClicks = useCallback((upgrades: { [key: string]: number }): number => {
     let baseClicks = 1000; // Базовое количество кликов
-    if (upgrades.upgrade1) baseClicks += (upgrades.upgrade1 - 1) * 500; // Пример: каждое улучшение увеличивает на 500
-    if (upgrades.upgrade2) baseClicks += (upgrades.upgrade2 - 1) * 500;
-    if (upgrades.upgrade3) baseClicks += (upgrades.upgrade3 - 1) * 500;
-    if (upgrades.upgrade4) baseClicks += (upgrades.upgrade4 - 1) * 500;
-    if (upgrades.upgrade5) baseClicks += (upgrades.upgrade5 - 1) * 500;
-    if (upgrades.upgrade6) baseClicks += (upgrades.upgrade6 - 1) * 500;
-    if (upgrades.upgrade7) baseClicks += (upgrades.upgrade7 - 1) * 500;
-    if (upgrades.upgrade8) baseClicks += (upgrades.upgrade8 - 1) * 500;
+    Object.values(upgrades).forEach((level) => {
+      baseClicks += (level - 1) * 500; // Пример: каждое улучшение увеличивает на 500
+    });
     return baseClicks;
   }, []);
 
@@ -171,9 +170,23 @@ const App: React.FC = () => {
         });
         // Очистка времени выхода
         localStorage.setItem('lastExitTime', '0');
+
+        // Обновление сервера
+        if (userId !== null) {
+          fetch('/save-data', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              userId,
+              remainingClicks: Math.min(remainingClicks + clicksToRestore, maxClicks),
+            }),
+          }).catch((error) => console.error('Ошибка при обновлении кликов на сервере:', error));
+        }
       }
     }
-  }, [maxClicks]);
+  }, [maxClicks, remainingClicks, userId]);
 
   // Обработчик изменения видимости страницы
   const handleVisibilityChange = useCallback(() => {
@@ -223,6 +236,21 @@ const App: React.FC = () => {
           setRemainingClicks((prevClicks) => {
             const updatedClicks = Math.min(prevClicks + RECOVERY_AMOUNT, maxClicks);
             localStorage.setItem('remainingClicks', updatedClicks.toString());
+
+            // Обновление сервера
+            if (userId !== null) {
+              fetch('/save-data', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  userId,
+                  remainingClicks: updatedClicks,
+                }),
+              }).catch((error) => console.error('Ошибка при обновлении кликов на сервере:', error));
+            }
+
             if (updatedClicks === maxClicks && restoreIntervalRef.current) {
               clearInterval(restoreIntervalRef.current);
               restoreIntervalRef.current = null;
@@ -243,7 +271,7 @@ const App: React.FC = () => {
         clearInterval(restoreIntervalRef.current);
       }
     };
-  }, [remainingClicks, maxClicks]);
+  }, [remainingClicks, maxClicks, userId]);
 
   // Функция для получения данных пользователя с сервера
   useEffect(() => {
@@ -394,7 +422,7 @@ const App: React.FC = () => {
       localStorage.setItem('remainingClicks', newRemainingClicks.toString());
       if (userId !== null) {
         try {
-          const response = await fetch('/update-clicks', {
+          const response = await fetch('/save-data', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -629,12 +657,13 @@ const App: React.FC = () => {
         key={type}
         className="w-full h-24 bg-gradient-to-r from-gray-700 to-gray-600 rounded-lg shadow-lg overflow-hidden relative mt-4"
         onClick={() => setSelectedUpgrade(type)}
+        aria-label={`${isMultitap ? 'Multitap' : 'Tap Increase'} Upgrade`}
       >
         <div className="absolute top-0 left-0 w-full h-full bg-yellow-400 opacity-10"></div>
         <div className="flex flex-col justify-between h-full p-4">
           <div className="flex justify-between items-start">
             <span className="text-lg font-semibold text-gray-300">
-              {isMultitap ? 'Multitap' : 'Tap increase'}
+              {isMultitap ? 'Multitap' : 'Tap Increase'}
             </span>
             <span className="text-xs font-medium text-yellow-400 bg-gray-800 px-2 py-1 rounded-full">
               Level {currentLevel}
@@ -664,8 +693,9 @@ const App: React.FC = () => {
       onClick={() => setSelectedUpgrade(null)}
     >
       <div
-        className="bg-gray-800 w-full max-w-md p-6 rounded-t-lg animate-slide-up"
+        className="bg-gray-800 w-full max-w-md p-6 rounded-t-lg animate-slide-up flex flex-col"
         onClick={(e) => e.stopPropagation()}
+        style={{ maxHeight: '90%' }}
       >
         <h2 className="text-center text-xl text-white mb-4">
           {selectedUpgrade === 'multitap' ? 'Multitap' : 'Tap Increase'}
