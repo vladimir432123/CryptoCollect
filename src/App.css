@@ -1,6 +1,7 @@
 .progress-gradient {
-  background: linear-gradient(to right, #90ef89, #d692dd, #726edd);
+  background: linear-gradient(to right, #90ef89, #d692dd, #726edd); /* Можно изменить на более светлые оттенки */
 }
+
 
 .top-glow {
   box-shadow: 0 -26px 20px rgba(243, 186, 47, 0.3);
@@ -32,26 +33,18 @@
 }
 /* Apply the animation to the dot class */
 .dot {
-  width: 6px;
-  height: 6px;
-  background-color: white;
-  border-radius: 50%;
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  animation: blink 1s infinite;
+  background-color: #000; /* Изменить на темный цвет для видимости на светлом фоне */
 }
 
+
 .circle-outer {
-  background: linear-gradient(to bottom, #575def, #202731);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 90vw;
-  height: 90vw;
-  max-width: 360px;
-  max-height: 360px;
+  background: linear-gradient(to bottom, #d0e7ff, #ffffff); /* Светлые градиенты */
 }
+
+.circle-inner {
+  background: radial-gradient(circle, #a3c4f3, #ffffff);
+}
+
 
 .circle-inner {
   background: radial-gradient(circle, #4960b2, #282e3e);
@@ -122,11 +115,9 @@
   transform: scale(0.97);
 }
 .clicked-number {
-  position: absolute;
-  color: yellow;
-  font-size: 20px; /* Увеличенный размер текста */
-  animation: fadeOut 1s forwards;
+  color: #f59e0b; /* Желтый цвет для контраста */
 }
+
 
 @keyframes fadeOut {
   0% {
