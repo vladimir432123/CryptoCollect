@@ -94,6 +94,8 @@ const addColumnIfNotExists = (columnName, columnDefinition) => {
 addColumnIfNotExists('incomePerHour', 'DOUBLE DEFAULT 0');
 addColumnIfNotExists('entryTime', 'TIMESTAMP NULL DEFAULT NULL');
 addColumnIfNotExists('exitTime', 'TIMESTAMP NULL DEFAULT NULL');
+addColumnIfNotExists('currentTaskDay', 'INT DEFAULT 1');
+addColumnIfNotExists('lastCollectedDate', 'DATE NULL DEFAULT NULL');
 
 const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN);
 
