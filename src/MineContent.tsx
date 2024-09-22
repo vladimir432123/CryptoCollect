@@ -254,6 +254,7 @@ const MineContent: React.FC<MineContentProps> = ({
     'upgrade6',
     'upgrade7',
     'upgrade8',
+    // Добавьте больше улучшений при необходимости
   ];
 
   // Функция форматирования времени
@@ -308,6 +309,7 @@ const MineContent: React.FC<MineContentProps> = ({
           ...upgrades,
           farmLevel,
           incomePerHour,
+          lastResetTime: currentTimestamp, // Добавляем lastResetTime при сохранении
         }),
       });
 
@@ -358,24 +360,6 @@ const MineContent: React.FC<MineContentProps> = ({
       </div>
     );
   };
-
-  // Обновление таймера при монтировании и обновлении lastResetTime
-  useEffect(() => {
-    const lastReset = localStorage.getItem('lastResetTime');
-    if (lastReset) {
-      const lastResetTime = parseInt(lastReset, 10);
-      const now = Date.now();
-      const elapsedSeconds = Math.floor((now - lastResetTime) / 1000);
-      const remaining = 10800 - elapsedSeconds; // 3 часа в секундах
-
-      if (remaining > 0) {
-        setTimer(remaining);
-      } else {
-        setTimer(0);
-        setEarnedCoins(incomePerHour * 3); // Максимальное количество монет
-      }
-    }
-  }, [incomePerHour]);
 
   return (
     <>
@@ -444,7 +428,7 @@ const MineContent: React.FC<MineContentProps> = ({
           onClick={closeUpgradesMenu}
         >
           <div
-            className="bg-gray-900 w-full max-w-md p-6 rounded-t-lg animate-slide-up"
+            className="bg-gray-900 w-full max-w-md p-6 rounded-t-lg animate-slide-up flex flex-col"
             onClick={(e) => e.stopPropagation()}
             style={{ maxHeight: '90%' }}
           >
@@ -455,7 +439,7 @@ const MineContent: React.FC<MineContentProps> = ({
               </button>
             </div>
             {/* Список улучшений со скроллингом */}
-            <div className="grid grid-cols-2 gap-4 overflow-y-auto" style={{ maxHeight: '75vh' }}>
+            <div className="grid grid-cols-2 gap-4 overflow-y-auto flex-grow">
               {upgradesList.map((upgrade, index) => (
                 <button
                   key={index}
