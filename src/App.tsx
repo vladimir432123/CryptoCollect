@@ -302,13 +302,17 @@ const App: React.FC = () => {
   );
 
   const handleMainButtonClick = useCallback(
-    async (e: React.TouchEvent<HTMLDivElement>) => {
-      const touches = e.touches;
-      if (remainingClicks > 0 && touches.length <= 5) {
-        const newRemainingClicks = remainingClicks - touches.length;
+    async (e: React.TouchEvent<HTMLDivElement> | React.MouseEvent<HTMLDivElement>) => {
+      const touches = (e as React.TouchEvent<HTMLDivElement>).touches;
+      const clientX = (e as React.MouseEvent<HTMLDivElement>).clientX || (touches ? touches[0]?.clientX : 0);
+      const clientY = (e as React.MouseEvent<HTMLDivElement>).clientY || (touches ? touches[0]?.clientY : 0);
+
+      if (remainingClicks > 0 && (touches ? touches.length <= 5 : true)) {
+        const tapCount = touches ? touches.length : 1;
+        const newRemainingClicks = remainingClicks - tapCount;
         updateRemainingClicks(newRemainingClicks);
 
-        const newPoints = points + tapProfit * touches.length;
+        const newPoints = points + tapProfit * tapCount;
         setPoints(newPoints);
 
         // Сохранение обновлённых очков на сервере и в localStorage
@@ -337,10 +341,11 @@ const App: React.FC = () => {
           }
         }
 
-        const newClicks = Array.from(touches).map((touch) => ({
-          id: Date.now() + touch.identifier,
-          x: touch.clientX,
-          y: touch.clientY,
+        // Добавляем клики для отображения монет в точке нажатия
+        const newClicks = Array.from(touches || []).map((_touch, index) => ({
+          id: Date.now() + index,
+          x: clientX,
+          y: clientY,
           profit: tapProfit,
         }));
 
@@ -352,7 +357,8 @@ const App: React.FC = () => {
           );
         }, 1000);
 
-        const button = e.currentTarget;
+        // Добавляем класс для анимации нажатия
+        const button = e.currentTarget as HTMLElement;
         button.classList.add('clicked');
         setTimeout(() => {
           button.classList.remove('clicked');
@@ -487,29 +493,28 @@ const App: React.FC = () => {
     const currentLevel = isMultitap ? tapProfitLevel : tapIncreaseLevel;
 
     const description = isMultitap
-      ? 'Увеличивает прибыль за каждый тап, позволяя вам быстрее накапливать монеты. Это улучшение поможет вам быстрее достигать новых уровней и зарабатывать больше очков.'
-      : 'Увеличивает максимальное количество доступных кликов. Это улучшение позволит вам играть дольше без необходимости ждать восстановления кликов.';
+      
 
     return (
       <button
         key={type}
-        className="w-full h-24 bg-white rounded-lg shadow-lg overflow-hidden relative mt-4 transition transform hover:scale-105"
+        className="w-full h-24 bg-gray-100 rounded-lg shadow-md overflow-hidden relative mt-4 transition transform hover:scale-105"
         onClick={() => setSelectedUpgrade(type)}
       >
-        <div className="absolute top-0 left-0 w-full h-full bg-blue-100 opacity-50"></div>
+        <div className="absolute top-0 left-0 w-full h-full bg-blue-50 opacity-50"></div>
         <div className="flex flex-col justify-between h-full p-4">
           <div className="flex justify-between items-start">
             <span className="text-lg font-semibold text-gray-800">
               {isMultitap ? 'Multitap' : 'Tap Increase'}
             </span>
-            <span className="text-xs font-medium text-blue-600 bg-gray-200 px-2 py-1 rounded-full">
+            <span className="text-xs font-medium text-blue-500 bg-gray-200 px-2 py-1 rounded-full">
               Level {currentLevel}
             </span>
           </div>
           <div className="flex justify-between items-end">
             <span className="text-sm text-gray-600">{description}</span>
             <svg
-              className="w-6 h-6 text-blue-600"
+              className="w-6 h-6 text-blue-500"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -587,7 +592,7 @@ const App: React.FC = () => {
     <div className="px-4 z-10 pt-4">
       <div className="flex items-center space-x-2">
         <div className="p-2 rounded-full bg-blue-100">
-          <Hamster size={24} className="text-blue-600" />
+          <Hamster size={24} className="text-blue-500" />
         </div>
         <div>
           <p className="text-sm text-gray-800">{username ? username : 'Гость'}</p>
@@ -598,7 +603,7 @@ const App: React.FC = () => {
           <div className="flex justify-between">
             <p className="text-sm text-gray-800">{levelNames[levelIndex]}</p>
             <p className="text-sm text-gray-800">
-              {levelIndex + 1} <span className="text-blue-600">/ {levelNames.length}</span>
+              {levelIndex + 1} <span className="text-blue-500">/ {levelNames.length}</span>
             </p>
           </div>
           <div className="flex items-center mt-1 border-2 border-blue-200 rounded-full">
@@ -626,8 +631,9 @@ const App: React.FC = () => {
         </div>
         <div className="px-4 mt-4 flex justify-center">
           <div
-            className="w-80 h-80 p-4 rounded-full bg-blue-100 shadow-lg main-button"
+            className="w-80 h-80 p-4 rounded-full bg-blue-100 shadow-lg main-button transform transition-transform duration-200"
             onTouchStart={handleMainButtonClick}
+            onClick={handleMainButtonClick}
           >
             <div className="w-full h-full rounded-full bg-blue-200 flex items-center justify-center"></div>
           </div>
@@ -677,12 +683,28 @@ const App: React.FC = () => {
     </>
   );
 
+  const renderClickPoints = () => (
+    clicks.map((click) => (
+      <div
+        key={click.id}
+        className="clicked-number text-green-500 font-bold"
+        style={{
+          top: click.y,
+          left: click.x,
+          transform: 'translate(-50%, -100%)',
+        }}
+      >
+        +{click.profit}
+      </div>
+    ))
+  );
+
   return (
-    <div className="min-h-screen bg-gray-50 flex justify-center items-center">
+    <div className="min-h-screen bg-gray-100 flex justify-center items-center">
       {loading ? (
         <LoadingScreen />
       ) : (
-        <div className="w-full max-w-[390px] h-screen font-bold flex flex-col relative overflow-hidden bg-white shadow-lg">
+        <div className="w-full max-w-[390px] h-screen font-bold flex flex-col relative overflow-hidden bg-gray-50 shadow-lg">
           {currentPage === 'farm' && !isBoostMenuOpen && renderMainContent()}
           {currentPage === 'mine' && (
             <MineContent
@@ -704,50 +726,50 @@ const App: React.FC = () => {
           {currentPage === 'tasks' && renderTasksContent()} {/* Добавлено отображение TasksContent */}
           {isBoostMenuOpen && renderBoostContent()}
           {selectedUpgrade && renderUpgradeMenu()}
-          <div className="absolute bottom-0 left-0 right-0 bg-white rounded-t-2xl flex justify-around items-center text-xs py-4 px-2 z-50 shadow-inner">
+          <div className="absolute bottom-0 left-0 right-0 bg-gray-100 rounded-t-2xl flex justify-around items-center text-xs py-4 px-2 z-50 shadow-inner">
             <button
               className={`text-center flex flex-col items-center relative ${
-                currentPage === 'farm' ? 'text-blue-600' : 'text-gray-600'
+                currentPage === 'farm' ? 'text-blue-500' : 'text-gray-600'
               }`}
               onClick={() => {
                 setCurrentPage('farm');
                 setIsBoostMenuOpen(false);
               }}
             >
-              <Farm className="w-6 h-6 mb-1 text-blue-600" />
+              <Farm className="w-6 h-6 mb-1 text-blue-500" />
               Farm
               {currentPage === 'farm' && (
-                <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-2 h-2 bg-blue-600 rounded-full"></div>
+                <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-2 h-2 bg-blue-500 rounded-full"></div>
               )}
             </button>
             <button
               className={`text-center flex flex-col items-center relative ${
-                currentPage === 'mine' ? 'text-blue-600' : 'text-gray-600'
+                currentPage === 'mine' ? 'text-blue-500' : 'text-gray-600'
               }`}
               onClick={() => {
                 setCurrentPage('mine');
                 setIsBoostMenuOpen(false);
               }}
             >
-              <Mine className="w-6 h-6 mb-1 text-blue-600" />
+              <Mine className="w-6 h-6 mb-1 text-blue-500" />
               Mine
               {currentPage === 'mine' && (
-                <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-2 h-2 bg-blue-600 rounded-full"></div>
+                <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-2 h-2 bg-blue-500 rounded-full"></div>
               )}
             </button>
             <button
               className={`text-center flex flex-col items-center relative ${
-                currentPage === 'tasks' ? 'text-blue-600' : 'text-gray-600'
+                currentPage === 'tasks' ? 'text-blue-500' : 'text-gray-600'
               }`}
               onClick={() => {
                 setCurrentPage('tasks');
                 setIsBoostMenuOpen(false);
               }}
             >
-              <FaTasks className="w-6 h-6 mb-1 text-blue-600" />
+              <FaTasks className="w-6 h-6 mb-1 text-blue-500" />
               Tasks
               {currentPage === 'tasks' && (
-                <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-2 h-2 bg-blue-600 rounded-full"></div>
+                <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-2 h-2 bg-blue-500 rounded-full"></div>
               )}
             </button>
             <button className="text-center text-gray-600 flex flex-col items-center">
@@ -756,11 +778,7 @@ const App: React.FC = () => {
             </button>
           </div>
 
-          {clicks.map((click) => (
-            <div key={click.id} className="clicked-number" style={{ top: click.y, left: click.x }}>
-              +{click.profit}
-            </div>
-          ))}
+          {renderClickPoints()}
         </div>
       )}
     </div>
