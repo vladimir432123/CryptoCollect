@@ -16,6 +16,7 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'dist')));
 
+// Конфигурация базы данных
 const dbConfig = {
   host: process.env.DB_HOST,
   user: process.env.DB_USER,
@@ -24,25 +25,28 @@ const dbConfig = {
   port: process.env.DB_PORT || 3306,
 };
 
-const db = mysql.createConnection(dbConfig);
+// Создание пула соединений
+const pool = mysql.createPool(dbConfig);
 
-db.connect((err) => {
+// Проверка соединения с базой данных
+pool.getConnection((err, connection) => {
   if (err) {
     console.error('Ошибка подключения к базе данных:', err);
     return;
   }
   console.log('Успешное подключение к базе данных');
+  connection.release();
 });
 
 // Функция для добавления столбца, если он не существует
 const addColumnIfNotExists = (columnName, columnDefinition) => {
-  db.query(`SHOW COLUMNS FROM user LIKE '${columnName}'`, (err, results) => {
+  pool.query(`SHOW COLUMNS FROM user LIKE '${columnName}'`, (err, results) => {
     if (err) {
       console.error(`Ошибка при проверке наличия столбца ${columnName}:`, err);
       return;
     }
     if (results.length === 0) {
-      db.query(`ALTER TABLE user ADD COLUMN ${columnName} ${columnDefinition}`, (err) => {
+      pool.query(`ALTER TABLE user ADD COLUMN ${columnName} ${columnDefinition}`, (err) => {
         if (err) {
           console.error(`Ошибка при добавлении столбца ${columnName}:`, err);
         } else {
@@ -54,7 +58,7 @@ const addColumnIfNotExists = (columnName, columnDefinition) => {
 };
 
 // Создание/обновление таблицы 'user' в базе данных
-db.query(
+pool.query(
   `
   CREATE TABLE IF NOT EXISTS user (
       id INT AUTO_INCREMENT PRIMARY KEY,
@@ -80,7 +84,8 @@ db.query(
       entryTime TIMESTAMP NULL DEFAULT NULL,
       exitTime TIMESTAMP NULL DEFAULT NULL,
       tasks_current_day INT DEFAULT 1,
-      tasks_last_collected DATETIME NULL DEFAULT NULL
+      tasks_last_collected DATETIME NULL DEFAULT NULL,
+      last_collect_time TIMESTAMP NULL DEFAULT NULL
   )
 `,
   (err) => {
@@ -91,19 +96,23 @@ db.query(
       // Добавляем недостающие столбцы
       addColumnIfNotExists('tasks_current_day', 'INT DEFAULT 1');
       addColumnIfNotExists('tasks_last_collected', 'DATETIME NULL DEFAULT NULL');
+      addColumnIfNotExists('last_collect_time', 'TIMESTAMP NULL DEFAULT NULL');
     }
   }
 );
 
+// Инициализация бота Telegram
 const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN);
 
+// Функция для генерации токена сессии
 function generateSessionToken(telegramId) {
   return crypto.randomBytes(64).toString('hex');
 }
 
+// Функция для сохранения токена сессии в базе данных
 function saveSessionToken(telegramId, sessionToken) {
   return new Promise((resolve, reject) => {
-    db.query(
+    pool.query(
       'UPDATE user SET session_token = ? WHERE telegram_id = ?',
       [sessionToken, telegramId],
       (err, results) => {
@@ -117,9 +126,10 @@ function saveSessionToken(telegramId, sessionToken) {
   });
 }
 
+// Функция для валидации токена сессии
 function validateSessionToken(token) {
   return new Promise((resolve, reject) => {
-    db.query(
+    pool.query(
       'SELECT * FROM user WHERE session_token = ?',
       [token],
       (err, results) => {
@@ -137,24 +147,25 @@ function validateSessionToken(token) {
   });
 }
 
+// Обработчик команды /start
 bot.start(async (ctx) => {
   const telegramId = ctx.message.from.id;
   const username = ctx.message.from.username || `user_${telegramId}`;
 
   const sessionToken = generateSessionToken(telegramId);
 
-  db.query('SELECT points FROM user WHERE telegram_id = ?', [telegramId], (err, results) => {
+  pool.query('SELECT points FROM user WHERE telegram_id = ?', [telegramId], (err, results) => {
     if (err) {
       return ctx.reply('Произошла ошибка, попробуйте позже.');
     }
 
     if (results.length > 0) {
-      db.query('UPDATE user SET session_token = ?, auth_date = NOW() WHERE telegram_id = ?', [
+      pool.query('UPDATE user SET session_token = ?, auth_date = NOW() WHERE telegram_id = ?', [
         sessionToken,
         telegramId,
       ]);
     } else {
-      db.query(
+      pool.query(
         'INSERT INTO user (telegram_id, username, session_token, points, remainingClicks) VALUES (?, ?, ?, 10000, 1000)',
         [telegramId, username, sessionToken]
       );
@@ -169,7 +180,7 @@ bot.start(async (ctx) => {
   });
 });
 
-// Сохранение времени входа и выхода с вкладки
+// Маршрут для сохранения времени входа и выхода
 app.post('/save-entry-exit-time', (req, res) => {
   const { userId, action } = req.body;
 
@@ -185,7 +196,7 @@ app.post('/save-entry-exit-time', (req, res) => {
         WHERE telegram_id = ?
     `;
 
-  db.query(query, [userId], (err) => {
+  pool.query(query, [userId], (err) => {
     if (err) {
       console.error('Ошибка при сохранении времени:', err);
       return res.status(500).json({ error: 'Server error' });
@@ -199,6 +210,7 @@ app.post('/save-entry-exit-time', (req, res) => {
   });
 });
 
+// Маршрут для выхода пользователя
 app.post('/logout', (req, res) => {
   const { userId, remainingClicks, lastLogout } = req.body;
 
@@ -212,7 +224,7 @@ app.post('/logout', (req, res) => {
         WHERE telegram_id = ?
     `;
 
-  db.query(query, [lastLogout, remainingClicks, userId], (err) => {
+  pool.query(query, [lastLogout, remainingClicks, userId], (err) => {
     if (err) {
       console.error('Ошибка при обновлении времени выхода:', err);
       return res.status(500).json({ error: 'Server error' });
@@ -221,6 +233,7 @@ app.post('/logout', (req, res) => {
   });
 });
 
+// Маршрут для получения данных пользователя
 app.get('/app', async (req, res) => {
   const userId = req.query.userId;
 
@@ -233,7 +246,7 @@ app.get('/app', async (req, res) => {
 
   try {
     const query = 'SELECT * FROM user WHERE telegram_id = ?';
-    db.query(query, [userId], (err, results) => {
+    pool.query(query, [userId], (err, results) => {
       if (err) {
         console.error('Ошибка проверки User ID:', err);
         return res.status(500).json({ error: 'Ошибка сервера' });
@@ -261,6 +274,7 @@ app.get('/app', async (req, res) => {
           exitTime: userData.exitTime,
           tasks_current_day: userData.tasks_current_day,
           tasks_last_collected: userData.tasks_last_collected,
+          last_collect_time: userData.last_collect_time, // Добавлено
         });
       } else {
         console.error('Пользователь не найден с User ID:', userId);
@@ -273,7 +287,7 @@ app.get('/app', async (req, res) => {
   }
 });
 
-// Сохранение данных пользователя (улучшения, клики и т.д.)
+// Маршрут для сохранения данных пользователя
 app.post('/save-data', (req, res) => {
   const { userId, ...dataToUpdate } = req.body;
 
@@ -297,6 +311,7 @@ app.post('/save-data', (req, res) => {
     'upgrade8',
     'farmLevel',
     'incomePerHour',
+    'last_collect_time', // Добавлено
   ];
 
   const fieldsToUpdate = {};
@@ -321,7 +336,7 @@ app.post('/save-data', (req, res) => {
         WHERE telegram_id = ?
     `;
 
-  db.query(query, [...values, userId], (err) => {
+  pool.query(query, [...values, userId], (err) => {
     if (err) {
       console.error('Ошибка при сохранении данных:', err);
       return res.status(500).json({ error: 'Server error' });
@@ -336,7 +351,7 @@ app.post('/save-data', (req, res) => {
   });
 });
 
-// Обработка ежедневных наград
+// Маршрут для сбора ежедневных наград
 
 // Получение состояния задач пользователя
 app.get('/tasks', (req, res) => {
@@ -347,7 +362,7 @@ app.get('/tasks', (req, res) => {
   }
 
   const query = 'SELECT tasks_current_day, tasks_last_collected FROM user WHERE telegram_id = ?';
-  db.query(query, [userId], (err, results) => {
+  pool.query(query, [userId], (err, results) => {
     if (err) {
       console.error('Ошибка при получении данных задач:', err);
       return res.status(500).json({ error: 'Ошибка сервера' });
@@ -370,7 +385,7 @@ app.get('/tasks', (req, res) => {
         } else if (diffDays > 1) {
           // Пользователь пропустил день, сбрасываем задачи
           const resetQuery = 'UPDATE user SET tasks_current_day = 1, tasks_last_collected = NULL WHERE telegram_id = ?';
-          db.query(resetQuery, [userId], (resetErr) => {
+          pool.query(resetQuery, [userId], (resetErr) => {
             if (resetErr) {
               console.error('Ошибка при сбросе задач:', resetErr);
               return res.status(500).json({ error: 'Ошибка сервера' });
@@ -421,7 +436,7 @@ app.post('/collect-task', (req, res) => {
 
   // Получение текущих данных пользователя
   const query = 'SELECT tasks_current_day, tasks_last_collected, points FROM user WHERE telegram_id = ?';
-  db.query(query, [userId], (err, results) => {
+  pool.query(query, [userId], (err, results) => {
     if (err) {
       console.error('Ошибка при получении данных пользователя:', err);
       return res.status(500).json({ error: 'Ошибка сервера' });
@@ -451,7 +466,7 @@ app.post('/collect-task', (req, res) => {
       } else if (diffDays > 1) {
         // Пользователь пропустил день, сбрасываем задачи
         const resetQuery = 'UPDATE user SET tasks_current_day = 1, tasks_last_collected = NULL WHERE telegram_id = ?';
-        db.query(resetQuery, [userId], (resetErr) => {
+        pool.query(resetQuery, [userId], (resetErr) => {
           if (resetErr) {
             console.error('Ошибка при сбросе задач:', resetErr);
             return res.status(500).json({ error: 'Ошибка сервера' });
@@ -473,7 +488,7 @@ app.post('/collect-task', (req, res) => {
       WHERE telegram_id = ?
     `;
 
-    db.query(updateQuery, [newPoints, newDay, newLastCollected, userId], (err) => {
+    pool.query(updateQuery, [newPoints, newDay, newLastCollected, userId], (err) => {
       if (err) {
         console.error('Ошибка при обновлении данных пользователя:', err);
         return res.status(500).json({ error: 'Ошибка сервера' });
@@ -502,11 +517,15 @@ app.post('/webhook', (req, res) => {
     });
 });
 
+// Функция для запуска сервера и установки вебхука
 const startServer = async () => {
   try {
     await bot.telegram.deleteWebhook({ drop_pending_updates: true });
 
     const webhookUrl = process.env.WEBHOOK_URL;
+    if (!webhookUrl) {
+      throw new Error('WEBHOOK_URL не задан в переменных окружения');
+    }
     await bot.telegram.setWebhook(webhookUrl);
     console.log('Webhook успешно установлен:', webhookUrl);
 
