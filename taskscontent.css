@@ -1,0 +1,102 @@
+/* taskscontent.css */
+
+.animate-slide-up {
+    animation: slide-up 0.3s ease-out forwards;
+  }
+  
+  @keyframes slide-up {
+    from {
+      transform: translateY(100%);
+    }
+    to {
+      transform: translateY(0);
+    }
+  }
+  
+  /* Дополнительные стили для улучшения внешнего вида */
+  
+  .bg-gradient-to-r {
+    background-image: linear-gradient(to right, #4299e1, #9f7aea);
+  }
+  
+  .bg-gray-900 {
+    background-color: #1a202c;
+  }
+  
+  .bg-gray-800 {
+    background-color: #2d3748;
+  }
+  
+  .bg-gray-700 {
+    background-color: #4a5568;
+  }
+  
+  .text-yellow-400 {
+    color: #f6ad55;
+  }
+  
+  .text-gray-300 {
+    color: #e2e8f0;
+  }
+  
+  .text-gray-400 {
+    color: #cbd5e0;
+  }
+  
+  .text-gray-200 {
+    color: #edf2f7;
+  }
+  
+  .text-white {
+    color: #ffffff;
+  }
+  
+  .rounded-lg {
+    border-radius: 0.5rem;
+  }
+  
+  .rounded-full {
+    border-radius: 9999px;
+  }
+  
+  .shadow-lg {
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1),
+                0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  }
+  
+  .p-6 {
+    padding: 1.5rem;
+  }
+  
+  .mb-2 {
+    margin-bottom: 0.5rem;
+  }
+  
+  .mb-4 {
+    margin-bottom: 1rem;
+  }
+  
+  .mt-2 {
+    margin-top: 0.5rem;
+  }
+  
+  .cursor-pointer {
+    cursor: pointer;
+  }
+  
+  .cursor-not-allowed {
+    cursor: not-allowed;
+  }
+  
+  .hover\:opacity-90:hover {
+    opacity: 0.9;
+  }
+  
+  .transition-opacity {
+    transition-property: opacity;
+  }
+  
+  .duration-300 {
+    transition-duration: 300ms;
+  }
+  
