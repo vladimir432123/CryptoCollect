@@ -12,36 +12,30 @@ import { FaTasks } from 'react-icons/fa';
 import WebApp from '@twa-dev/sdk';
 import LoadingScreen from './LoadingScreen.tsx';
 
-// Компонент Farm (иконка)
 const Farm: React.FC<{ className?: string }> = ({ className }) => (
   <svg className={className} viewBox="0 0 24 24" fill="currentColor">
     <path d="M1 22h22V8l-11-6-11 6v14zm2-2v-9h18v9H3zm9-4.5a2.5 2.5 0 100-5 2.5 2.5 0 000 5z" />
   </svg>
 );
 
-// Константы для восстановления кликов
 const RECOVERY_RATE = 1000; // Время восстановления одного клика (в миллисекундах)
 const RECOVERY_AMOUNT = 1;  // Количество восстанавливаемых кликов за интервал
 
 const App: React.FC = () => {
-  // Состояния приложения
   const [tapProfit, setTapProfit] = useState(1);
   const [tapProfitLevel, setTapProfitLevel] = useState<number>(() => {
     const savedLevel = localStorage.getItem('tapProfitLevel');
-    return savedLevel ? parseInt(savedLevel) : 1;
-  });
-  const [tapIncreaseLevel, setTapIncreaseLevel] = useState<number>(() => {
-    const savedLevel = localStorage.getItem('tapIncreaseLevel');
     return savedLevel ? parseInt(savedLevel) : 1;
   });
   const [maxClicks, setMaxClicks] = useState<number>(() => {
     const savedMaxClicks = localStorage.getItem('maxClicks');
     return savedMaxClicks ? parseInt(savedMaxClicks) : 1000;
   });
-  const [remainingClicks, setRemainingClicks] = useState<number>(() => {
-    const savedClicks = localStorage.getItem('remainingClicks');
-    return savedClicks ? parseInt(savedClicks) : maxClicks;
+  const [tapIncreaseLevel, setTapIncreaseLevel] = useState<number>(() => {
+    const savedLevel = localStorage.getItem('tapIncreaseLevel');
+    return savedLevel ? parseInt(savedLevel) : 1;
   });
+  const [remainingClicks, setRemainingClicks] = useState<number>(maxClicks);
   const [points, setPoints] = useState<number>(() => {
     const savedPoints = localStorage.getItem('points');
     return savedPoints ? parseInt(savedPoints) : 0;
@@ -72,7 +66,6 @@ const App: React.FC = () => {
   const [currentPage, setCurrentPage] = useState('farm');
   const [selectedUpgrade, setSelectedUpgrade] = useState<string | null>(null);
 
-  // Уровни улучшений
   const tapProfitLevels = useMemo(
     () => [
       { level: 1, profit: 1, cost: 1000 },
@@ -128,152 +121,20 @@ const App: React.FC = () => {
 
   const [levelIndex, setLevelIndex] = useState(0);
 
-  // Ссылка на интервал восстановления кликов
-  const restoreIntervalRef = useRef<number | null>(null);
-
-  // Функция для расчета максимального количества кликов на основе улучшений
-  const calculateMaxClicks = useCallback((upgrades: { [key: string]: number }): number => {
-    let baseClicks = 1000; // Базовое количество кликов
-    Object.values(upgrades).forEach((level) => {
-      baseClicks += (level - 1) * 500; // Пример: каждое улучшение увеличивает на 500
-    });
-    return baseClicks;
-  }, []);
-
-  // Обновление maxClicks при изменении улучшений
   useEffect(() => {
-    const newMaxClicks = calculateMaxClicks(upgrades);
-    setMaxClicks(newMaxClicks);
-    localStorage.setItem('maxClicks', newMaxClicks.toString());
-
-    // Обновляем remainingClicks, чтобы оно не превышало новое maxClicks
-    setRemainingClicks((prevClicks) => {
-      const updatedClicks = Math.min(prevClicks, newMaxClicks);
-      localStorage.setItem('remainingClicks', updatedClicks.toString());
-      return updatedClicks;
-    });
-  }, [upgrades, calculateMaxClicks]);
-
-  // Функция для восстановления кликов на основе прошедшего времени
-  const restoreClicks = useCallback(() => {
-    const lastExit = localStorage.getItem('lastExitTime');
-    if (lastExit) {
-      const lastExitTime = parseInt(lastExit, 10);
-      const currentTime = Date.now();
-      const elapsedSeconds = Math.floor((currentTime - lastExitTime) / 1000);
-      if (elapsedSeconds > 0) {
-        const clicksToRestore = elapsedSeconds * RECOVERY_AMOUNT;
-        setRemainingClicks((prevClicks) => {
-          const newClicks = Math.min(prevClicks + clicksToRestore, maxClicks);
-          localStorage.setItem('remainingClicks', newClicks.toString());
-          return newClicks;
-        });
-        // Очистка времени выхода
-        localStorage.setItem('lastExitTime', '0');
-
-        // Обновление сервера
-        if (userId !== null) {
-          fetch('/save-data', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              userId,
-              remainingClicks: Math.min(remainingClicks + clicksToRestore, maxClicks),
-            }),
-          }).catch((error) => console.error('Ошибка при обновлении кликов на сервере:', error));
+    const recoveryInterval = setInterval(() => {
+      setRemainingClicks((prevClicks: number) => {
+        const newClicks = Math.min(prevClicks + RECOVERY_AMOUNT, maxClicks);
+        if (newClicks !== prevClicks) {
+          updateRemainingClicks(newClicks);
         }
-      }
-    }
-  }, [maxClicks, remainingClicks, userId]);
+        return newClicks;
+      });
+    }, RECOVERY_RATE);
 
-  // Обработчик изменения видимости страницы
-  const handleVisibilityChange = useCallback(() => {
-    if (document.visibilityState === 'hidden') {
-      // Сохраняем время выхода
-      const exitTime = Date.now();
-      localStorage.setItem('lastExitTime', exitTime.toString());
-    } else if (document.visibilityState === 'visible') {
-      // Восстанавливаем клики
-      restoreClicks();
-    }
-  }, [restoreClicks]);
+    return () => clearInterval(recoveryInterval);
+  }, [maxClicks]);
 
-  // Обработчик фокуса окна
-  const handleFocus = useCallback(() => {
-    restoreClicks();
-  }, [restoreClicks]);
-
-  // Обработчик ухода фокуса окна
-  const handleBlur = useCallback(() => {
-    // Сохраняем время выхода
-    const exitTime = Date.now();
-    localStorage.setItem('lastExitTime', exitTime.toString());
-  }, []);
-
-  // Добавление обработчиков событий
-  useEffect(() => {
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    window.addEventListener('focus', handleFocus);
-    window.addEventListener('blur', handleBlur);
-
-    // Восстанавливаем клики при монтировании
-    restoreClicks();
-
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-      window.removeEventListener('focus', handleFocus);
-      window.removeEventListener('blur', handleBlur);
-    };
-  }, [handleVisibilityChange, handleFocus, handleBlur, restoreClicks]);
-
-  // Таймер для автоматического восстановления кликов при активном приложении
-  useEffect(() => {
-    if (remainingClicks < maxClicks) {
-      if (!restoreIntervalRef.current) {
-        restoreIntervalRef.current = window.setInterval(() => {
-          setRemainingClicks((prevClicks) => {
-            const updatedClicks = Math.min(prevClicks + RECOVERY_AMOUNT, maxClicks);
-            localStorage.setItem('remainingClicks', updatedClicks.toString());
-
-            // Обновление сервера
-            if (userId !== null) {
-              fetch('/save-data', {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                  userId,
-                  remainingClicks: updatedClicks,
-                }),
-              }).catch((error) => console.error('Ошибка при обновлении кликов на сервере:', error));
-            }
-
-            if (updatedClicks === maxClicks && restoreIntervalRef.current) {
-              clearInterval(restoreIntervalRef.current);
-              restoreIntervalRef.current = null;
-            }
-            return updatedClicks;
-          });
-        }, RECOVERY_RATE);
-      }
-    } else {
-      if (restoreIntervalRef.current) {
-        clearInterval(restoreIntervalRef.current);
-        restoreIntervalRef.current = null;
-      }
-    }
-
-    return () => {
-      if (restoreIntervalRef.current) {
-        clearInterval(restoreIntervalRef.current);
-      }
-    };
-  }, [remainingClicks, maxClicks, userId]);
-
-  // Функция для получения данных пользователя с сервера
   useEffect(() => {
     const initData = WebApp.initDataUnsafe;
     const userIdFromTelegram = initData?.user?.id;
@@ -311,14 +172,12 @@ const App: React.FC = () => {
         }
         if (data.tapIncreaseLevel !== undefined) {
           setTapIncreaseLevel(data.tapIncreaseLevel);
-          const newMaxClicks = tapIncreaseLevels[data.tapIncreaseLevel - 1].taps;
-          setMaxClicks(newMaxClicks);
+          setMaxClicks(tapIncreaseLevels[data.tapIncreaseLevel - 1].taps);
           localStorage.setItem('tapIncreaseLevel', data.tapIncreaseLevel.toString());
-          localStorage.setItem('maxClicks', newMaxClicks.toString());
+          localStorage.setItem('maxClicks', tapIncreaseLevels[data.tapIncreaseLevel - 1].taps.toString());
         }
         if (data.remainingClicks !== undefined) {
           setRemainingClicks(data.remainingClicks); // Устанавливаем оставшиеся клики из базы
-          localStorage.setItem('remainingClicks', data.remainingClicks.toString());
         }
         if (data.incomePerHour !== undefined) {
           setIncomePerHour(data.incomePerHour);
@@ -343,7 +202,6 @@ const App: React.FC = () => {
       .catch((error) => console.error('Ошибка при загрузке данных с сервера:', error));
   }, [tapProfitLevels, tapIncreaseLevels]);
 
-  // Обработчик события beforeunload для сохранения времени выхода
   useEffect(() => {
     const handleBeforeUnload = () => {
       if (userId !== null) {
@@ -354,11 +212,6 @@ const App: React.FC = () => {
             action: 'exit',
           }));
         }
-        // Сохраняем время выхода
-        const exitTime = Date.now();
-        localStorage.setItem('lastExitTime', exitTime.toString());
-
-        // Отправляем данные на сервер
         fetch('/logout', {
           method: 'POST',
           headers: {
@@ -383,7 +236,6 @@ const App: React.FC = () => {
 
   const previousPageRef = useRef<string>(currentPage);
 
-  // Обработчик смены страницы для сохранения входа/выхода из MineContent
   useEffect(() => {
     if (userId !== null) {
       if (currentPage === 'mine' && previousPageRef.current !== 'mine') {
@@ -415,14 +267,12 @@ const App: React.FC = () => {
     }
   }, [currentPage, userId]);
 
-  // Функция для обновления оставшихся кликов и синхронизации с сервером
   const updateRemainingClicks = useCallback(
     async (newRemainingClicks: number) => {
       setRemainingClicks(newRemainingClicks);
-      localStorage.setItem('remainingClicks', newRemainingClicks.toString());
       if (userId !== null) {
         try {
-          const response = await fetch('/save-data', {
+          const response = await fetch('/update-clicks', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -451,7 +301,6 @@ const App: React.FC = () => {
     [userId]
   );
 
-  // Обработчик нажатия на главную кнопку
   const handleMainButtonClick = useCallback(
     async (e: React.TouchEvent<HTMLDivElement>) => {
       const touches = e.touches;
@@ -461,9 +310,10 @@ const App: React.FC = () => {
 
         const newPoints = points + tapProfit * touches.length;
         setPoints(newPoints);
-        localStorage.setItem('points', newPoints.toString());
 
         // Сохранение обновлённых очков на сервере и в localStorage
+        localStorage.setItem('points', newPoints.toString());
+
         if (userId !== null) {
           try {
             await fetch('/save-data', {
@@ -523,7 +373,6 @@ const App: React.FC = () => {
     ]
   );
 
-  // Функция для сохранения данных улучшений на сервере
   const saveUpgradeData = useCallback(
     async (newTapProfitLevel: number, newTapIncreaseLevel: number) => {
       if (userId !== null) {
@@ -558,16 +407,11 @@ const App: React.FC = () => {
             // Сохранение в localStorage
             localStorage.setItem('tapProfitLevel', result.tapProfitLevel.toString());
             localStorage.setItem('tapIncreaseLevel', result.tapIncreaseLevel.toString());
-            const newMaxClicks = tapIncreaseLevels[result.tapIncreaseLevel - 1].taps;
-            setMaxClicks(newMaxClicks);
-            localStorage.setItem('maxClicks', newMaxClicks.toString());
-
-            // Обновляем remainingClicks, если необходимо
-            setRemainingClicks((prevClicks) => {
-              const updatedClicks = Math.min(prevClicks, newMaxClicks);
-              localStorage.setItem('remainingClicks', updatedClicks.toString());
-              return updatedClicks;
-            });
+            setMaxClicks(tapIncreaseLevels[result.tapIncreaseLevel - 1].taps);
+            localStorage.setItem(
+              'maxClicks',
+              tapIncreaseLevels[result.tapIncreaseLevel - 1].taps.toString()
+            );
           } else {
             console.error('Ошибка при сохранении данных на сервере:', result.error);
           }
@@ -581,7 +425,6 @@ const App: React.FC = () => {
     [userId, points, remainingClicks, upgrades, farmLevel, tapIncreaseLevels, incomePerHour]
   );
 
-  // Функция для улучшения tapProfit
   const upgradeTapProfit = async () => {
     const nextLevelData = tapProfitLevels[tapProfitLevel];
     if (nextLevelData && points >= nextLevelData.cost) {
@@ -598,7 +441,6 @@ const App: React.FC = () => {
     }
   };
 
-  // Функция для улучшения tapIncrease
   const upgradeTapIncrease = async () => {
     const nextLevelData = tapIncreaseLevels[tapIncreaseLevel];
     if (nextLevelData && points >= nextLevelData.cost) {
@@ -606,10 +448,9 @@ const App: React.FC = () => {
 
       setPoints((prevPoints) => prevPoints - nextLevelData.cost);
       setTapIncreaseLevel(newLevel);
-      const newMaxClicks = tapIncreaseLevels[newLevel - 1].taps;
-      setMaxClicks(newMaxClicks);
+      setMaxClicks(tapIncreaseLevels[newLevel - 1].taps);
       localStorage.setItem('tapIncreaseLevel', newLevel.toString());
-      localStorage.setItem('maxClicks', newMaxClicks.toString());
+      localStorage.setItem('maxClicks', tapIncreaseLevels[newLevel - 1].taps.toString());
 
       await saveUpgradeData(tapProfitLevel, newLevel);
     } else {
@@ -617,7 +458,6 @@ const App: React.FC = () => {
     }
   };
 
-  // Расчет прогресса уровня
   const calculateProgress = useMemo(() => {
     if (levelIndex >= levelNames.length - 1) {
       return 100;
@@ -628,7 +468,6 @@ const App: React.FC = () => {
     return Math.min(progress, 100);
   }, [points, levelIndex, levelMinPoints, levelNames.length]);
 
-  // Обновление уровня при накоплении очков
   useEffect(() => {
     const currentLevelMin = levelMinPoints[levelIndex];
     const nextLevelMin = levelMinPoints[levelIndex + 1];
@@ -643,7 +482,6 @@ const App: React.FC = () => {
     setIsBoostMenuOpen(!isBoostMenuOpen);
   };
 
-  // Рендеринг опции улучшения
   const renderUpgradeOption = (type: 'multitap' | 'tapIncrease') => {
     const isMultitap = type === 'multitap';
     const currentLevel = isMultitap ? tapProfitLevel : tapIncreaseLevel;
@@ -657,13 +495,12 @@ const App: React.FC = () => {
         key={type}
         className="w-full h-24 bg-gradient-to-r from-gray-700 to-gray-600 rounded-lg shadow-lg overflow-hidden relative mt-4"
         onClick={() => setSelectedUpgrade(type)}
-        aria-label={`${isMultitap ? 'Multitap' : 'Tap Increase'} Upgrade`}
       >
         <div className="absolute top-0 left-0 w-full h-full bg-yellow-400 opacity-10"></div>
         <div className="flex flex-col justify-between h-full p-4">
           <div className="flex justify-between items-start">
             <span className="text-lg font-semibold text-gray-300">
-              {isMultitap ? 'Multitap' : 'Tap Increase'}
+              {isMultitap ? 'Multitap' : 'Tap increase'}
             </span>
             <span className="text-xs font-medium text-yellow-400 bg-gray-800 px-2 py-1 rounded-full">
               Level {currentLevel}
@@ -686,16 +523,14 @@ const App: React.FC = () => {
     );
   };
 
-  // Рендеринг меню улучшений
   const renderUpgradeMenu = () => (
     <div
       className="fixed inset-0 bg-black bg-opacity-50 flex items-end justify-center z-50"
       onClick={() => setSelectedUpgrade(null)}
     >
       <div
-        className="bg-gray-800 w-full max-w-md p-6 rounded-t-lg animate-slide-up flex flex-col"
+        className="bg-gray-800 w-full max-w-md p-6 rounded-t-lg animate-slide-up"
         onClick={(e) => e.stopPropagation()}
-        style={{ maxHeight: '90%' }}
       >
         <h2 className="text-center text-xl text-white mb-4">
           {selectedUpgrade === 'multitap' ? 'Multitap' : 'Tap Increase'}
@@ -748,7 +583,6 @@ const App: React.FC = () => {
     </div>
   );
 
-  // Рендеринг информации о пользователе
   const renderUserInfo = () => (
     <div className="px-4 z-10 pt-4">
       <div className="flex items-center space-x-2">
@@ -760,19 +594,21 @@ const App: React.FC = () => {
         </div>
       </div>
       <div className="flex items-center justify-between space-x-4 mt-1">
-        <div className="w-full">
-          <div className="flex justify-between">
-            <p className="text-sm text-gray-300">{levelNames[levelIndex]}</p>
-            <p className="text-sm text-gray-300">
-              {levelIndex + 1} <span className="text-yellow-400">/ {levelNames.length}</span>
-            </p>
-          </div>
-          <div className="flex items-center mt-1 border-2 border-gray-600 rounded-full">
-            <div className="flex-1 h-2 bg-gray-700 rounded-full">
-              <div
-                className="h-full bg-yellow-400 rounded-full transition-all duration-500"
-                style={{ width: `${calculateProgress}%` }}
-              ></div>
+        <div className="flex items-center w-full">
+          <div className="w-full">
+            <div className="flex justify-between">
+              <p className="text-sm text-gray-300">{levelNames[levelIndex]}</p>
+              <p className="text-sm text-gray-300">
+                {levelIndex + 1} <span className="text-yellow-400">/ {levelNames.length}</span>
+              </p>
+            </div>
+            <div className="flex items-center mt-1 border-2 border-gray-600 rounded-full">
+              <div className="w-full h-2 bg-gray-700 rounded-full">
+                <div
+                  className="h-2 rounded-full bg-yellow-400"
+                  style={{ width: `${calculateProgress}%` }}
+                ></div>
+              </div>
             </div>
           </div>
         </div>
@@ -780,7 +616,6 @@ const App: React.FC = () => {
     </div>
   );
 
-  // Рендеринг основного содержимого (Farm)
   const renderMainContent = () => (
     <>
       {renderUserInfo()}
@@ -824,7 +659,6 @@ const App: React.FC = () => {
     </>
   );
 
-  // Рендеринг содержимого задач
   const renderTasksContent = () => (
     <TasksContent
       points={points}
@@ -834,7 +668,6 @@ const App: React.FC = () => {
     />
   );
 
-  // Рендеринг содержимого Boost меню
   const renderBoostContent = () => (
     <>
       {renderUserInfo()}
