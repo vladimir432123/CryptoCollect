@@ -1,4 +1,6 @@
-import React, { useEffect, useState, useRef } from 'react';
+// src/MineContent.tsx
+
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { upgradeLevels } from './upgrades';
 import UpgradeNotification from './UpgradeNotification';
 import './minecontent.css';
@@ -14,7 +16,6 @@ interface MineContentProps {
   upgrades: { [key: string]: number };
   setUpgrades: React.Dispatch<React.SetStateAction<{ [key: string]: number }>>;
   farmLevel: number;
-  setFarmLevel: React.Dispatch<React.SetStateAction<number>>;
   incomePerHour: number;
   setIncomePerHour: React.Dispatch<React.SetStateAction<number>>;
 }
@@ -42,15 +43,25 @@ const MineContent: React.FC<MineContentProps> = ({
     const saved = localStorage.getItem('earnedCoins');
     return saved ? parseInt(saved) : 0;
   });
+  
+  // Измененный таймер
   const [timer, setTimer] = useState<number>(() => {
-    const saved = localStorage.getItem('timer');
-    return saved ? parseInt(saved) : 10800; // 3 часа в секундах
+    const storedLastCollectTime = localStorage.getItem('lastCollectTime');
+    if (storedLastCollectTime) {
+      const lastCollectTimestamp = parseInt(storedLastCollectTime);
+      const now = Date.now();
+      const elapsedSeconds = Math.floor((now - lastCollectTimestamp) / 1000);
+      const remaining = 10800 - elapsedSeconds; // 3 часа в секундах
+      return remaining > 0 ? remaining : 0;
+    }
+    return 0;
   });
+  
   const timerRef = useRef<number | null>(null);
 
   const farmLevelMultipliers = [1, 1.2, 1.4, 1.6, 1.8, 2.0];
 
-  const calculateTotalIncome = (upgrades: { [key: string]: number }, farmLevel: number): number => {
+  const calculateTotalIncome = useCallback((upgrades: { [key: string]: number }, farmLevel: number): number => {
     let income = 0;
     for (const [key, level] of Object.entries(upgrades)) {
       const upgradeLevel = upgradeLevels[key as keyof typeof upgradeLevels][level - 1];
@@ -59,10 +70,10 @@ const MineContent: React.FC<MineContentProps> = ({
       }
     }
     return income * farmLevelMultipliers[farmLevel - 1];
-  };
+  }, [farmLevelMultipliers]);
 
   // Функция для получения данных пользователя с сервера
-  const fetchUserData = async () => {
+  const fetchUserData = useCallback(async () => {
     if (userId === null) return;
 
     try {
@@ -110,28 +121,26 @@ const MineContent: React.FC<MineContentProps> = ({
     } catch (error) {
       console.error('Ошибка при получении данных пользователя:', error);
     }
-  };
+  }, [userId, incomePerHour, earnedCoins, timer]);
 
   useEffect(() => {
     // При монтировании компонента
     fetchUserData();
-  }, [userId, incomePerHour]);
+  }, [fetchUserData]);
 
   useEffect(() => {
     // Обновляем доход при изменении улучшений или уровня фермы
     const totalIncome = calculateTotalIncome(upgrades, farmLevel);
     setIncomePerHour(totalIncome);
-  }, [upgrades, farmLevel, setIncomePerHour]);
+  }, [upgrades, farmLevel, calculateTotalIncome, setIncomePerHour]);
 
   useEffect(() => {
     // Таймер для накопления монет
     if (timer > 0) {
       timerRef.current = window.setInterval(() => {
         setTimer((prevTimer) => {
-          if (prevTimer > 0) {
-            const newTimer = prevTimer - 1;
-            localStorage.setItem('timer', newTimer.toString());
-            return newTimer;
+          if (prevTimer > 1) {
+            return prevTimer - 1;
           } else {
             if (timerRef.current) {
               clearInterval(timerRef.current);
@@ -169,7 +178,7 @@ const MineContent: React.FC<MineContentProps> = ({
     setIsUpgradesMenuOpen(false);
   };
 
-  const handleUpgrade = () => {
+  const handleUpgrade = async () => {
     if (selectedMineUpgrade) {
       const currentLevel = upgrades[selectedMineUpgrade] || 1;
 
@@ -193,39 +202,38 @@ const MineContent: React.FC<MineContentProps> = ({
           setIncomePerHour(totalIncome);
 
           // Сохранение данных на сервере
-          fetch('/save-data', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              userId,
-              points: newPoints,
-              tapProfitLevel,
-              tapIncreaseLevel,
-              remainingClicks,
-              ...newUpgrades,
-              farmLevel,
-              incomePerHour: totalIncome,
-            }),
-          })
-            .then((response) => {
-              if (!response.ok) {
-                throw new Error(`Ошибка HTTP: ${response.status}`);
-              }
-              return response.json();
-            })
-            .then((data) => {
-              if (data.success) {
-                console.log('Данные успешно сохранены.');
-              } else {
-                console.error('Ошибка на сервере: данные не были сохранены');
-              }
-            })
-            .catch((error) => {
-              console.error('Ошибка сохранения данных:', error);
-              alert('Ошибка сохранения данных. Попробуйте снова.');
+          try {
+            const response = await fetch('/save-data', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                userId,
+                points: newPoints,
+                tapProfitLevel,
+                tapIncreaseLevel,
+                remainingClicks,
+                ...newUpgrades,
+                farmLevel,
+                incomePerHour: totalIncome,
+              }),
             });
+
+            if (!response.ok) {
+              throw new Error(`Ошибка HTTP: ${response.status}`);
+            }
+
+            const data = await response.json();
+            if (data.success) {
+              console.log('Данные успешно сохранены.');
+            } else {
+              console.error('Ошибка на сервере: данные не были сохранены');
+            }
+          } catch (error) {
+            console.error('Ошибка сохранения данных:', error);
+            alert('Ошибка сохранения данных. Попробуйте снова.');
+          }
         } else {
           alert('Недостаточно монет для улучшения');
         }
@@ -233,27 +241,7 @@ const MineContent: React.FC<MineContentProps> = ({
     }
   };
 
-  // Список улучшений без 'farmlevel'
-  const upgradesList = [
-    'upgrade1',
-    'upgrade2',
-    'upgrade3',
-    'upgrade4',
-    'upgrade5',
-    'upgrade6',
-    'upgrade7',
-    'upgrade8',
-  ];
-
-  // Функция форматирования времени
-  const formatTime = (seconds: number) => {
-    const hrs = Math.floor(seconds / 3600);
-    const mins = Math.floor((seconds % 3600) / 60);
-    const secs = seconds % 60;
-    return `${hrs}:${mins < 10 ? '0' : ''}${mins}:${secs < 10 ? '0' : ''}${secs}`;
-  };
-
-  // Функция для обработки нажатия кнопки "Забрать"
+  // Обработчик кнопки "Забрать"
   const handleCollectCoins = async () => {
     if (earnedCoins <= 0) return;
 
@@ -262,8 +250,11 @@ const MineContent: React.FC<MineContentProps> = ({
       const newPoints = points + earnedCoins;
       setPoints(newPoints);
       setEarnedCoins(0);
-      setTimer(10800); // Сбросить таймер на 3 часа
-      localStorage.setItem('earnedCoins', '0');
+      
+      // Установить новое время сброса таймера
+      const newLastCollectTime = Date.now();
+      localStorage.setItem('lastCollectTime', newLastCollectTime.toString());
+      setTimer(10800); // 3 часа
       localStorage.setItem('timer', '10800');
 
       // Обновить entryTime на сервере
@@ -301,6 +292,26 @@ const MineContent: React.FC<MineContentProps> = ({
       console.error('Ошибка при сборе монет:', error);
       alert('Ошибка при сборе монет. Попробуйте снова.');
     }
+  };
+
+  // Список улучшений без 'farmlevel'
+  const upgradesList = [
+    'upgrade1',
+    'upgrade2',
+    'upgrade3',
+    'upgrade4',
+    'upgrade5',
+    'upgrade6',
+    'upgrade7',
+    'upgrade8',
+  ];
+
+  // Функция форматирования времени
+  const formatTime = (seconds: number) => {
+    const hrs = Math.floor(seconds / 3600);
+    const mins = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+    return `${hrs}:${mins < 10 ? '0' : ''}${mins}:${secs < 10 ? '0' : ''}${secs}`;
   };
 
   // Новое меню внизу страницы с отступом 100 пикселей выше навигационной панели
