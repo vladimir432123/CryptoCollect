@@ -18,10 +18,9 @@ interface Task {
   canCollect: boolean;
 }
 
-const TasksContent: React.FC<TasksContentProps> = ({ setPoints, userId, username }) => {
+const TasksContent: React.FC<TasksContentProps> = ({  setPoints, userId, username }) => {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [isMenuOpen, setIsMenuOpen] = useState<boolean>(false);
-  const [notification, setNotification] = useState<string | null>(null);
 
   useEffect(() => {
     if (userId !== null) {
@@ -33,7 +32,7 @@ const TasksContent: React.FC<TasksContentProps> = ({ setPoints, userId, username
             initialTasks.push({
               day: i,
               reward: getRewardByDay(i),
-              collected: i < data.currentDay,
+              collected: false, // Изначально задачи не собраны
               canCollect: i === data.currentDay && data.canCollect,
             });
           }
@@ -41,7 +40,6 @@ const TasksContent: React.FC<TasksContentProps> = ({ setPoints, userId, username
         })
         .catch((error) => {
           console.error('Ошибка при загрузке задач:', error);
-          setNotification('Не удалось загрузить задачи. Попробуйте позже.');
         });
     }
   }, [userId]);
@@ -88,25 +86,25 @@ const TasksContent: React.FC<TasksContentProps> = ({ setPoints, userId, username
                 : task
             )
           );
-          setNotification(`Награда за день ${day} успешно забрана!`);
-        } else {
-          setNotification(data.error || 'Ошибка при сборе награды.');
         }
       })
       .catch((error) => {
         console.error('Ошибка при сборе награды:', error);
-        setNotification('Не удалось собрать награду. Попробуйте позже.');
       });
   };
 
   const renderTasksList = () => (
     <div className="tasks-menu">
-      <h2 className="text-center text-2xl text-white mb-4">{username ? username : 'Гость'}</h2>
       <div className="space-y-4">
         {tasks.map((task) => (
-          <div key={task.day} className="flex justify-between items-center bg-gray-700 p-4 rounded-lg shadow-md">
+          <div
+            key={task.day}
+            className={`flex justify-between items-center p-4 rounded-lg shadow-md transition-transform duration-300 ${
+              task.canCollect ? 'bg-yellow-500 transform scale-105' : 'bg-gray-700'
+            }`}
+          >
             <div>
-              <h3 className="text-lg text-yellow-400">День {task.day}</h3>
+              <h3 className="text-lg font-semibold text-white">День {task.day}</h3>
               <p className="text-sm text-gray-300">Награда: {task.reward.toLocaleString()} монет</p>
             </div>
             <button
@@ -125,30 +123,14 @@ const TasksContent: React.FC<TasksContentProps> = ({ setPoints, userId, username
           </div>
         ))}
       </div>
-      {/* Заголовок "Задания" */}
-      <h2 className="text-center text-2xl text-white mt-8">Задания</h2>
-      {/* Текст ниже "Задания" */}
-      <p className="text-center text-gray-300 mt-2">
-        Тут будут задания за которые можно получить больше монет.
-      </p>
     </div>
   );
 
   return (
     <>
-      {notification && (
-        <div className="fixed top-4 left-1/2 transform -translate-x-1/2 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg">
-          {notification}
-          <button
-            className="absolute top-0 right-0 mt-1 mr-2 text-white"
-            onClick={() => setNotification(null)}
-          >
-            ✕
-          </button>
-        </div>
-      )}
-      <div className="px-4 z-10 pt-4">
-        <div className="flex items-center space-x-2">
+      <div className="tasks-content-container px-4 pt-4">
+        {/* Header с именем пользователя, выровненным слева */}
+        <div className="user-header flex items-center space-x-2 mb-4">
           <div className="p-1 rounded-lg bg-gray-800">
             <FaTasks size={24} className="text-yellow-400" />
           </div>
@@ -156,11 +138,18 @@ const TasksContent: React.FC<TasksContentProps> = ({ setPoints, userId, username
             <p className="text-sm text-gray-300">{username ? username : 'Гость'}</p>
           </div>
         </div>
+        {/* Заголовок "Задания" и описание */}
+        <div className="mt-2">
+          <h2 className="text-2xl text-white text-center">Задания</h2>
+          <p className="text-center text-gray-300 mt-2">
+            Тут будут задания за которые можно получить больше монет.
+          </p>
+        </div>
       </div>
       {/* Блок с ежедневными наградами */}
       <div className="px-4 mt-4 flex justify-center">
         <div
-          className="w-full max-w-md p-6 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg shadow-xl cursor-pointer"
+          className="w-full max-w-md p-6 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg shadow-xl cursor-pointer hover:from-blue-600 hover:to-purple-700 transition-colors duration-300"
           onClick={() => setIsMenuOpen(true)}
         >
           <h2 className="text-2xl font-bold text-white text-center">Ежедневные награды</h2>
@@ -181,7 +170,7 @@ const TasksContent: React.FC<TasksContentProps> = ({ setPoints, userId, username
             style={{ maxHeight: '80vh' }}
           >
             {renderTasksList()}
-            {/* Удалена кнопка "Закрыть" */}
+            {/* Кнопка "Закрыть" удалена */}
           </div>
         </div>
       )}
