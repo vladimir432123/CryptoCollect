@@ -302,17 +302,13 @@ const App: React.FC = () => {
   );
 
   const handleMainButtonClick = useCallback(
-    async (e: React.TouchEvent<HTMLDivElement> | React.MouseEvent<HTMLDivElement>) => {
-      const touches = (e as React.TouchEvent<HTMLDivElement>).touches;
-      const clientX = (e as React.MouseEvent<HTMLDivElement>).clientX || (touches ? touches[0]?.clientX : 0);
-      const clientY = (e as React.MouseEvent<HTMLDivElement>).clientY || (touches ? touches[0]?.clientY : 0);
-
-      if (remainingClicks > 0 && (touches ? touches.length <= 5 : true)) {
-        const tapCount = touches ? touches.length : 1;
-        const newRemainingClicks = remainingClicks - tapCount;
+    async (e: React.TouchEvent<HTMLDivElement>) => {
+      const touches = e.touches;
+      if (remainingClicks > 0 && touches.length <= 5) {
+        const newRemainingClicks = remainingClicks - touches.length;
         updateRemainingClicks(newRemainingClicks);
 
-        const newPoints = points + tapProfit * tapCount;
+        const newPoints = points + tapProfit * touches.length;
         setPoints(newPoints);
 
         // Сохранение обновлённых очков на сервере и в localStorage
@@ -341,11 +337,10 @@ const App: React.FC = () => {
           }
         }
 
-        // Добавляем клики для отображения монет в точке нажатия
-        const newClicks = Array.from(touches || []).map((_touch, index) => ({
-          id: Date.now() + index,
-          x: clientX,
-          y: clientY,
+        const newClicks = Array.from(touches).map((touch) => ({
+          id: Date.now() + touch.identifier,
+          x: touch.clientX,
+          y: touch.clientY,
           profit: tapProfit,
         }));
 
@@ -357,8 +352,7 @@ const App: React.FC = () => {
           );
         }, 1000);
 
-        // Добавляем класс для анимации нажатия
-        const button = e.currentTarget as HTMLElement;
+        const button = e.currentTarget;
         button.classList.add('clicked');
         setTimeout(() => {
           button.classList.remove('clicked');
@@ -493,26 +487,27 @@ const App: React.FC = () => {
     const currentLevel = isMultitap ? tapProfitLevel : tapIncreaseLevel;
 
     const description = isMultitap
-      
+      ? 'Увеличивает прибыль за каждый тап, позволяя вам быстрее накапливать монеты. Это улучшение поможет вам быстрее достигать новых уровней и зарабатывать больше очков.'
+      : 'Увеличивает максимальное количество доступных кликов. Это улучшение позволит вам играть дольше без необходимости ждать восстановления кликов.';
 
     return (
       <button
         key={type}
-        className="w-full h-24 bg-gray-100 rounded-lg shadow-md overflow-hidden relative mt-4 transition transform hover:scale-105"
+        className="w-full h-24 bg-gradient-to-r from-blue-100 to-blue-200 rounded-lg shadow-lg overflow-hidden relative mt-4 transition transform hover:scale-105"
         onClick={() => setSelectedUpgrade(type)}
       >
-        <div className="absolute top-0 left-0 w-full h-full bg-blue-50 opacity-50"></div>
+        <div className="absolute top-0 left-0 w-full h-full bg-blue-500 opacity-10"></div>
         <div className="flex flex-col justify-between h-full p-4">
           <div className="flex justify-between items-start">
-            <span className="text-lg font-semibold text-gray-800">
+            <span className="text-lg font-semibold text-blue-600">
               {isMultitap ? 'Multitap' : 'Tap Increase'}
             </span>
-            <span className="text-xs font-medium text-blue-500 bg-gray-200 px-2 py-1 rounded-full">
+            <span className="text-xs font-medium text-blue-500 bg-blue-100 px-2 py-1 rounded-full">
               Level {currentLevel}
             </span>
           </div>
           <div className="flex justify-between items-end">
-            <span className="text-sm text-gray-600">{description}</span>
+            <span className="text-sm text-gray-700">{description}</span>
             <svg
               className="w-6 h-6 text-blue-500"
               fill="none"
@@ -534,7 +529,7 @@ const App: React.FC = () => {
       onClick={() => setSelectedUpgrade(null)}
     >
       <div
-        className="bg-white w-full max-w-md p-6 rounded-t-lg shadow-lg animate-slide-up"
+        className="bg-white w-full max-w-md p-6 rounded-t-lg shadow-lg animate-slide-up flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         <h2 className="text-center text-xl font-semibold text-blue-600 mb-4">
@@ -545,18 +540,18 @@ const App: React.FC = () => {
             ? 'Увеличивает прибыль за каждый тап, позволяя вам быстрее накапливать монеты. Это улучшение поможет вам быстрее достигать новых уровней и зарабатывать больше очков.'
             : 'Увеличивает максимальное количество доступных кликов. Это улучшение позволит вам играть дольше без необходимости ждать восстановления кликов.'}
         </p>
-        <p className="text-center text-gray-800 mb-4">
+        <p className="text-center text-gray-600 mb-4">
           Текущий уровень: {selectedUpgrade === 'multitap' ? tapProfitLevel : tapIncreaseLevel}
         </p>
         {selectedUpgrade === 'multitap' && tapProfitLevel < 10 && (
           <button
             onClick={upgradeTapProfit}
             disabled={points < tapProfitLevels[tapProfitLevel].cost}
-            className={`w-full py-3 bg-blue-600 text-white rounded-lg ${
+            className={`w-full py-3 bg-blue-500 text-white rounded-lg ${
               points >= tapProfitLevels[tapProfitLevel].cost
-                ? 'hover:bg-blue-700'
+                ? 'hover:bg-blue-600'
                 : 'opacity-50 cursor-not-allowed'
-            } transition duration-300 shadow-md`}
+            } transition duration-300`}
           >
             Улучшить за {tapProfitLevels[tapProfitLevel].cost} монет
           </button>
@@ -565,21 +560,21 @@ const App: React.FC = () => {
           <button
             onClick={upgradeTapIncrease}
             disabled={points < tapIncreaseLevels[tapIncreaseLevel].cost}
-            className={`w-full py-3 bg-green-600 text-white rounded-lg ${
+            className={`w-full py-3 bg-green-500 text-white rounded-lg ${
               points >= tapIncreaseLevels[tapIncreaseLevel].cost
-                ? 'hover:bg-green-700'
+                ? 'hover:bg-green-600'
                 : 'opacity-50 cursor-not-allowed'
-            } transition duration-300 shadow-md`}
+            } transition duration-300`}
           >
             Улучшить за {tapIncreaseLevels[tapIncreaseLevel].cost} монет
           </button>
         )}
         {(selectedUpgrade === 'multitap' && tapProfitLevel >= 10) ||
         (selectedUpgrade === 'tapIncrease' && tapIncreaseLevel >= 10) ? (
-          <p className="text-center text-green-600 mt-4">Максимальный уровень достигнут</p>
+          <p className="text-center text-yellow-500 mt-4">Максимальный уровень достигнут</p>
         ) : null}
         <button
-          className="w-full py-2 mt-4 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition duration-300"
+          className="w-full py-2 mt-4 bg-gray-300 text-gray-800 rounded-lg hover:bg-gray-400 transition duration-300"
           onClick={() => setSelectedUpgrade(null)}
         >
           Закрыть
@@ -591,7 +586,7 @@ const App: React.FC = () => {
   const renderUserInfo = () => (
     <div className="px-4 z-10 pt-4">
       <div className="flex items-center space-x-2">
-        <div className="p-2 rounded-full bg-blue-100">
+        <div className="p-1 rounded-lg bg-blue-100">
           <Hamster size={24} className="text-blue-500" />
         </div>
         <div>
@@ -601,15 +596,15 @@ const App: React.FC = () => {
       <div className="flex items-center justify-between space-x-4 mt-1">
         <div className="w-full">
           <div className="flex justify-between">
-            <p className="text-sm text-gray-800">{levelNames[levelIndex]}</p>
-            <p className="text-sm text-gray-800">
+            <p className="text-sm text-gray-700">{levelNames[levelIndex]}</p>
+            <p className="text-sm text-gray-700">
               {levelIndex + 1} <span className="text-blue-500">/ {levelNames.length}</span>
             </p>
           </div>
-          <div className="flex items-center mt-1 border-2 border-blue-200 rounded-full">
+          <div className="flex items-center mt-1 border-2 border-blue-300 rounded-full">
             <div className="w-full h-2 bg-blue-100 rounded-full">
               <div
-                className="h-2 rounded-full bg-blue-600 transition-all duration-200 ease-linear"
+                className="h-2 rounded-full bg-blue-500 transition-all duration-200 ease-linear"
                 style={{ width: `${calculateProgress}%` }}
               ></div>
             </div>
@@ -626,14 +621,13 @@ const App: React.FC = () => {
         <div className="px-4 mt-4 flex justify-center">
           <div className="px-4 py-2 flex items-center space-x-2">
             <img src={dollarCoin} alt="Dollar Coin" className="w-10 h-10" />
-            <p className="text-4xl text-blue-600">{Math.floor(points).toLocaleString()}</p>
+            <p className="text-4xl text-blue-500">{Math.floor(points).toLocaleString()}</p>
           </div>
         </div>
         <div className="px-4 mt-4 flex justify-center">
           <div
-            className="w-80 h-80 p-4 rounded-full bg-blue-100 shadow-lg main-button transform transition-transform duration-200"
+            className="w-80 h-80 p-4 rounded-full bg-blue-100 shadow-lg main-button flex items-center justify-center"
             onTouchStart={handleMainButtonClick}
-            onClick={handleMainButtonClick}
           >
             <div className="w-full h-full rounded-full bg-blue-200 flex items-center justify-center"></div>
           </div>
@@ -642,19 +636,19 @@ const App: React.FC = () => {
       <div className="absolute bottom-32 right-4 z-50">
         <button
           onClick={toggleBoostMenu}
-          className="bg-green-500 text-white px-4 py-2 rounded-full font-bold shadow-lg hover:bg-green-600 transition duration-300"
+          className="bg-yellow-400 text-gray-800 px-4 py-2 rounded-full font-bold shadow-lg hover:bg-yellow-500 transition duration-300"
         >
           Boost
         </button>
       </div>
       <div className="absolute bottom-16 left-0 right-0 flex flex-col items-center z-40">
         <div className="w-full px-4 flex items-center justify-between mb-4">
-          <div className="w-[calc(100%-50px)] h-[10px] bg-blue-100 rounded-md overflow-hidden relative">
+          <div className="w-[calc(100%-50px)] h-[10px] bg-blue-200 rounded-md overflow-hidden relative">
             <div
-              className="h-full bg-blue-600 transition-all duration-200 ease-linear"
+              className="h-full bg-blue-500 transition-all duration-200 ease-linear"
               style={{ width: `${(remainingClicks / maxClicks) * 100}%` }}
             ></div>
-            <div className="absolute right-0 top-1/2 transform -translate-y-1/2 pr-2 text-sm text-gray-800">
+            <div className="absolute right-0 top-1/2 transform -translate-y-1/2 pr-2 text-sm text-gray-700">
               {remainingClicks} / {maxClicks}
             </div>
           </div>
@@ -676,35 +670,19 @@ const App: React.FC = () => {
     <>
       {renderUserInfo()}
       <div className="px-4 mt-4">
-        <div className="h-px bg-blue-200 my-4"></div>
+        <div className="h-px bg-blue-300 my-4"></div>
         {renderUpgradeOption('multitap')}
         {renderUpgradeOption('tapIncrease')}
       </div>
     </>
   );
 
-  const renderClickPoints = () => (
-    clicks.map((click) => (
-      <div
-        key={click.id}
-        className="clicked-number text-green-500 font-bold"
-        style={{
-          top: click.y,
-          left: click.x,
-          transform: 'translate(-50%, -100%)',
-        }}
-      >
-        +{click.profit}
-      </div>
-    ))
-  );
-
   return (
-    <div className="min-h-screen bg-gray-100 flex justify-center items-center">
+    <div className="min-h-screen bg-gray-50 flex justify-center items-center">
       {loading ? (
         <LoadingScreen />
       ) : (
-        <div className="w-full max-w-[390px] h-screen font-bold flex flex-col relative overflow-hidden bg-gray-50 shadow-lg">
+        <div className="w-full max-w-[390px] h-screen font-bold flex flex-col relative overflow-hidden bg-white shadow-lg rounded-lg">
           {currentPage === 'farm' && !isBoostMenuOpen && renderMainContent()}
           {currentPage === 'mine' && (
             <MineContent
@@ -726,40 +704,40 @@ const App: React.FC = () => {
           {currentPage === 'tasks' && renderTasksContent()} {/* Добавлено отображение TasksContent */}
           {isBoostMenuOpen && renderBoostContent()}
           {selectedUpgrade && renderUpgradeMenu()}
-          <div className="absolute bottom-0 left-0 right-0 bg-gray-100 rounded-t-2xl flex justify-around items-center text-xs py-4 px-2 z-50 shadow-inner">
+          <div className="absolute bottom-0 left-0 right-0 bg-white rounded-t-2xl flex justify-around items-center text-xs py-4 px-2 z-50 shadow-inner">
             <button
               className={`text-center flex flex-col items-center relative ${
-                currentPage === 'farm' ? 'text-blue-500' : 'text-gray-600'
+                currentPage === 'farm' ? 'text-blue-500' : 'text-gray-500'
               }`}
               onClick={() => {
                 setCurrentPage('farm');
                 setIsBoostMenuOpen(false);
               }}
             >
-              <Farm className="w-6 h-6 mb-1 text-blue-500" />
+              <Farm className="w-6 h-6 mb-1" />
               Farm
               {currentPage === 'farm' && (
-                <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-2 h-2 bg-blue-500 rounded-full"></div>
+                <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-1 h-1 bg-blue-500 rounded-full"></div>
               )}
             </button>
             <button
               className={`text-center flex flex-col items-center relative ${
-                currentPage === 'mine' ? 'text-blue-500' : 'text-gray-600'
+                currentPage === 'mine' ? 'text-blue-500' : 'text-gray-500'
               }`}
               onClick={() => {
                 setCurrentPage('mine');
                 setIsBoostMenuOpen(false);
               }}
             >
-              <Mine className="w-6 h-6 mb-1 text-blue-500" />
+              <Mine className="w-6 h-6 mb-1" />
               Mine
               {currentPage === 'mine' && (
-                <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-2 h-2 bg-blue-500 rounded-full"></div>
+                <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-1 h-1 bg-blue-500 rounded-full"></div>
               )}
             </button>
             <button
               className={`text-center flex flex-col items-center relative ${
-                currentPage === 'tasks' ? 'text-blue-500' : 'text-gray-600'
+                currentPage === 'tasks' ? 'text-blue-500' : 'text-gray-500'
               }`}
               onClick={() => {
                 setCurrentPage('tasks');
@@ -769,16 +747,20 @@ const App: React.FC = () => {
               <FaTasks className="w-6 h-6 mb-1 text-blue-500" />
               Tasks
               {currentPage === 'tasks' && (
-                <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-2 h-2 bg-blue-500 rounded-full"></div>
+                <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-1 h-1 bg-blue-500 rounded-full"></div>
               )}
             </button>
-            <button className="text-center text-gray-600 flex flex-col items-center">
-              <Friends className="w-6 h-6 mb-1 text-gray-600" />
+            <button className="text-center text-gray-500 flex flex-col items-center">
+              <Friends className="w-6 h-6 mb-1" />
               Friends
             </button>
           </div>
 
-          {renderClickPoints()}
+          {clicks.map((click) => (
+            <div key={click.id} className="clicked-number" style={{ top: click.y, left: click.x }}>
+              +{click.profit}
+            </div>
+          ))}
         </div>
       )}
     </div>
