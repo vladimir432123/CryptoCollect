@@ -1,3 +1,5 @@
+// src/App.tsx
+
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import './App.css';
 import Hamster from './icons/Hamster';
@@ -5,6 +7,7 @@ import { dollarCoin } from './images';
 import Mine from './icons/Mine';
 import Friends from './icons/Friends';
 import MineContent from './MineContent';
+import TasksContent from './TasksContent.tsx'; // Исправленный импорт
 import { FaTasks } from 'react-icons/fa';
 import WebApp from '@twa-dev/sdk';
 import LoadingScreen from './LoadingScreen.tsx';
@@ -656,6 +659,14 @@ const App: React.FC = () => {
     </>
   );
 
+  const renderTasksContent = () => (
+    <TasksContent
+      points={points}
+      setPoints={setPoints}
+      userId={userId}
+    />
+  );
+
   const renderBoostContent = () => (
     <>
       {renderUserInfo()}
@@ -691,6 +702,7 @@ const App: React.FC = () => {
               setIncomePerHour={setIncomePerHour}
             />
           )}
+          {currentPage === 'tasks' && renderTasksContent()} {/* Добавлено отображение TasksContent */}
           {isBoostMenuOpen && renderBoostContent()}
           {selectedUpgrade && renderUpgradeMenu()}
           <div className="absolute bottom-0 left-0 right-0 bg-gray-700 rounded-t-2xl flex justify-around items-center text-xs py-4 px-2 z-50">
@@ -724,14 +736,25 @@ const App: React.FC = () => {
                 <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-1 h-1 bg-yellow-400 rounded-full"></div>
               )}
             </button>
+            <button
+              className={`text-center flex flex-col items-center relative ${
+                currentPage === 'tasks' ? 'text-yellow-400' : 'text-gray-300'
+              }`}
+              onClick={() => {
+                setCurrentPage('tasks');
+                setIsBoostMenuOpen(false);
+              }}
+            >
+              <FaTasks className="w-6 h-6 mb-1" />
+              Tasks
+              {currentPage === 'tasks' && (
+                <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-1 h-1 bg-yellow-400 rounded-full"></div>
+              )}
+            </button>
             <button className="text-center text-gray-300 flex flex-col items-center">
               <Friends className="w-6 h-6 mb-1" />
               Friends
             </button>
-            <div className="text-center text-gray-300 flex flex-col items-center">
-              <FaTasks className="w-6 h-6 mb-1" />
-              Tasks
-            </div>
           </div>
 
           {clicks.map((click) => (
