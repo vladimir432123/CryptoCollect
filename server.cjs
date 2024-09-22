@@ -34,6 +34,25 @@ db.connect((err) => {
   console.log('Успешное подключение к базе данных');
 });
 
+// Функция для добавления столбца, если он не существует
+const addColumnIfNotExists = (columnName, columnDefinition) => {
+  db.query(`SHOW COLUMNS FROM user LIKE '${columnName}'`, (err, results) => {
+    if (err) {
+      console.error(`Ошибка при проверке наличия столбца ${columnName}:`, err);
+      return;
+    }
+    if (results.length === 0) {
+      db.query(`ALTER TABLE user ADD COLUMN ${columnName} ${columnDefinition}`, (err) => {
+        if (err) {
+          console.error(`Ошибка при добавлении столбца ${columnName}:`, err);
+        } else {
+          console.log(`Столбец ${columnName} успешно добавлен в таблицу user`);
+        }
+      });
+    }
+  });
+};
+
 // Создание/обновление таблицы 'user' в базе данных
 db.query(
   `
@@ -59,7 +78,9 @@ db.query(
       farmLevel INT DEFAULT 1,
       incomePerHour DOUBLE DEFAULT 0,
       entryTime TIMESTAMP NULL DEFAULT NULL,
-      exitTime TIMESTAMP NULL DEFAULT NULL
+      exitTime TIMESTAMP NULL DEFAULT NULL,
+      tasks_current_day INT DEFAULT 1,
+      tasks_last_collected DATETIME NULL DEFAULT NULL
   )
 `,
   (err) => {
@@ -67,35 +88,12 @@ db.query(
       console.error('Ошибка создания таблицы:', err);
     } else {
       console.log('Таблица user проверена/создана');
+      // Добавляем недостающие столбцы
+      addColumnIfNotExists('tasks_current_day', 'INT DEFAULT 1');
+      addColumnIfNotExists('tasks_last_collected', 'DATETIME NULL DEFAULT NULL');
     }
   }
 );
-
-// Проверка и добавление недостающих столбцов
-const addColumnIfNotExists = (columnName, columnDefinition) => {
-  db.query(`SHOW COLUMNS FROM user LIKE '${columnName}'`, (err, results) => {
-    if (err) {
-      console.error(`Ошибка при проверке наличия столбца ${columnName}:`, err);
-      return;
-    }
-    if (results.length === 0) {
-      db.query(`ALTER TABLE user ADD COLUMN ${columnName} ${columnDefinition}`, (err) => {
-        if (err) {
-          console.error(`Ошибка при добавлении столбца ${columnName}:`, err);
-        } else {
-          console.log(`Столбец ${columnName} успешно добавлен в таблицу user`);
-        }
-      });
-    }
-  });
-};
-
-// Добавляем недостающие столбцы
-addColumnIfNotExists('incomePerHour', 'DOUBLE DEFAULT 0');
-addColumnIfNotExists('entryTime', 'TIMESTAMP NULL DEFAULT NULL');
-addColumnIfNotExists('exitTime', 'TIMESTAMP NULL DEFAULT NULL');
-addColumnIfNotExists('currentTaskDay', 'INT DEFAULT 1');
-addColumnIfNotExists('lastCollectedDate', 'DATE NULL DEFAULT NULL');
 
 const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN);
 
@@ -261,6 +259,8 @@ app.get('/app', async (req, res) => {
           incomePerHour: parseFloat(userData.incomePerHour), // Добавлено parseFloat для точности
           entryTime: userData.entryTime,
           exitTime: userData.exitTime,
+          tasks_current_day: userData.tasks_current_day,
+          tasks_last_collected: userData.tasks_last_collected,
         });
       } else {
         console.error('Пользователь не найден с User ID:', userId);
@@ -321,7 +321,7 @@ app.post('/save-data', (req, res) => {
         WHERE telegram_id = ?
     `;
 
-  db.query(query, [...values, userId], (err, results) => {
+  db.query(query, [...values, userId], (err) => {
     if (err) {
       console.error('Ошибка при сохранении данных:', err);
       return res.status(500).json({ error: 'Server error' });
@@ -336,35 +336,159 @@ app.post('/save-data', (req, res) => {
   });
 });
 
-app.post('/update-clicks', (req, res) => {
-  const { userId, remainingClicks } = req.body;
+// Обработка ежедневных наград
 
-  if (!userId || remainingClicks === undefined) {
-    console.log('Ошибка: Недостаточно данных для обновления кликов');
-    return res.status(400).json({ error: 'Missing required fields' });
+// Получение состояния задач пользователя
+app.get('/tasks', (req, res) => {
+  const userId = req.query.userId;
+
+  if (!userId) {
+    return res.status(400).json({ error: 'User ID обязателен' });
   }
 
-  const query = `
-        UPDATE user 
-        SET remainingClicks = ?
-        WHERE telegram_id = ?
-    `;
-
-  db.query(query, [remainingClicks, userId], (err) => {
+  const query = 'SELECT tasks_current_day, tasks_last_collected FROM user WHERE telegram_id = ?';
+  db.query(query, [userId], (err, results) => {
     if (err) {
-      console.error('Ошибка при обновлении кликов:', err);
-      return res.status(500).json({ error: 'Server error' });
+      console.error('Ошибка при получении данных задач:', err);
+      return res.status(500).json({ error: 'Ошибка сервера' });
     }
 
-    console.log('Клики успешно обновлены для пользователя с ID:', userId);
+    if (results.length > 0) {
+      const userData = results[0];
+      const currentDay = userData.tasks_current_day;
+      const lastCollected = userData.tasks_last_collected ? new Date(userData.tasks_last_collected) : null;
+      const now = new Date();
 
-    res.json({
-      success: true,
-      remainingClicks,
+      let canCollect = false;
+
+      if (lastCollected) {
+        const diffTime = now.getTime() - lastCollected.getTime();
+        const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+        if (diffDays === 1) {
+          canCollect = true;
+        } else if (diffDays > 1) {
+          // Пользователь пропустил день, сбрасываем задачи
+          const resetQuery = 'UPDATE user SET tasks_current_day = 1, tasks_last_collected = NULL WHERE telegram_id = ?';
+          db.query(resetQuery, [userId], (resetErr) => {
+            if (resetErr) {
+              console.error('Ошибка при сбросе задач:', resetErr);
+              return res.status(500).json({ error: 'Ошибка сервера' });
+            }
+            res.json({
+              currentDay: 1,
+              canCollect: true,
+            });
+          });
+          return;
+        }
+      } else {
+        canCollect = true; // Пользователь еще не собирал награды
+      }
+
+      res.json({
+        currentDay,
+        canCollect,
+      });
+    } else {
+      res.status(404).json({ error: 'Пользователь не найден' });
+    }
+  });
+});
+
+// Сбор награды за день
+app.post('/collect-task', (req, res) => {
+  const { userId, day } = req.body;
+
+  if (!userId || !day) {
+    return res.status(400).json({ error: 'Недостаточно данных для сбора награды' });
+  }
+
+  // Определение наград за каждый день
+  const rewards = {
+    1: 10000,
+    2: 15000,
+    3: 20000,
+    4: 25000,
+    5: 30000,
+    6: 35000,
+    7: 40000,
+  };
+
+  if (!rewards[day]) {
+    return res.status(400).json({ error: 'Некорректный день' });
+  }
+
+  // Получение текущих данных пользователя
+  const query = 'SELECT tasks_current_day, tasks_last_collected, points FROM user WHERE telegram_id = ?';
+  db.query(query, [userId], (err, results) => {
+    if (err) {
+      console.error('Ошибка при получении данных пользователя:', err);
+      return res.status(500).json({ error: 'Ошибка сервера' });
+    }
+
+    if (results.length === 0) {
+      return res.status(404).json({ error: 'Пользователь не найден' });
+    }
+
+    const userData = results[0];
+    const { tasks_current_day, tasks_last_collected, points } = userData;
+
+    const now = new Date();
+    const lastCollected = tasks_last_collected ? new Date(tasks_last_collected) : null;
+
+    // Проверка, можно ли собрать награду
+    if (day !== tasks_current_day) {
+      return res.status(400).json({ error: 'Вы можете собрать только награду за текущий день' });
+    }
+
+    if (lastCollected) {
+      const diffTime = now.getTime() - lastCollected.getTime();
+      const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+      if (diffDays < 1) {
+        return res.status(400).json({ error: 'Награду можно собрать только раз в день' });
+      } else if (diffDays > 1) {
+        // Пользователь пропустил день, сбрасываем задачи
+        const resetQuery = 'UPDATE user SET tasks_current_day = 1, tasks_last_collected = NULL WHERE telegram_id = ?';
+        db.query(resetQuery, [userId], (resetErr) => {
+          if (resetErr) {
+            console.error('Ошибка при сбросе задач:', resetErr);
+            return res.status(500).json({ error: 'Ошибка сервера' });
+          }
+          res.status(400).json({ error: 'Вы пропустили день. Задачи сброшены.' });
+        });
+        return;
+      }
+    }
+
+    // Обновление данных пользователя
+    const newPoints = points + rewards[day];
+    const newDay = day < 7 ? day + 1 : 1;
+    const newLastCollected = now;
+
+    const updateQuery = `
+      UPDATE user 
+      SET points = ?, tasks_current_day = ?, tasks_last_collected = ?
+      WHERE telegram_id = ?
+    `;
+
+    db.query(updateQuery, [newPoints, newDay, newLastCollected, userId], (err) => {
+      if (err) {
+        console.error('Ошибка при обновлении данных пользователя:', err);
+        return res.status(500).json({ error: 'Ошибка сервера' });
+      }
+
+      res.json({
+        success: true,
+        newPoints,
+        newDay,
+      });
     });
   });
 });
 
+// Обработка вебхука Telegram
 app.post('/webhook', (req, res) => {
   console.log('Получен запрос на /webhook:', req.body);
   bot
