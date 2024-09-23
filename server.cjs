@@ -69,15 +69,13 @@ const initializeDatabase = async () => {
           upgrade8 INT DEFAULT 1,
           farmLevel INT DEFAULT 1,
           incomePerHour DOUBLE DEFAULT 0,
-          entryTime TIMESTAMP NULL DEFAULT NULL,
-          exitTime TIMESTAMP NULL DEFAULT NULL,
+          entryTime TIMESTAMP NULL DEFAULT NULL, -- Для MineContent
+          exitTime TIMESTAMP NULL DEFAULT NULL,  -- Для MineContent
           tasks_current_day INT DEFAULT 1,
           tasks_last_collected DATETIME NULL DEFAULT NULL,
           lastResetTime BIGINT DEFAULT 0, -- Для хранения времени последнего сброса таймера
-          farmEntryTime TIMESTAMP NULL DEFAULT NULL, -- Время входа в farm
-          farmExitTime TIMESTAMP NULL DEFAULT NULL,  -- Время выхода из farm
-          mineEntryTime TIMESTAMP NULL DEFAULT NULL, -- Время входа в mine
-          mineExitTime TIMESTAMP NULL DEFAULT NULL  -- Время выхода из mine
+          farmEntryTime TIMESTAMP NULL DEFAULT NULL, -- Время входа в Farm
+          farmExitTime TIMESTAMP NULL DEFAULT NULL  -- Время выхода из Farm
       )
     `);
     console.log('Таблица user проверена/создана');
@@ -88,8 +86,7 @@ const initializeDatabase = async () => {
     await addColumnIfNotExists('lastResetTime', 'BIGINT DEFAULT 0');
     await addColumnIfNotExists('farmEntryTime', 'TIMESTAMP NULL DEFAULT NULL');
     await addColumnIfNotExists('farmExitTime', 'TIMESTAMP NULL DEFAULT NULL');
-    await addColumnIfNotExists('mineEntryTime', 'TIMESTAMP NULL DEFAULT NULL');
-    await addColumnIfNotExists('mineExitTime', 'TIMESTAMP NULL DEFAULT NULL');
+    // Предполагается, что поля entryTime и exitTime уже существуют для MineContent
   } catch (err) {
     console.error('Ошибка при инициализации базы данных:', err);
   }
@@ -180,10 +177,10 @@ app.post('/save-entry-exit-time', async (req, res) => {
       field = 'farmExitTime';
       break;
     case 'enter_mine':
-      field = 'mineEntryTime';
+      field = 'entryTime'; // Используем существующее поле для MineContent
       break;
     case 'exit_mine':
-      field = 'mineExitTime';
+      field = 'exitTime';  // Используем существующее поле для MineContent
       break;
     default:
       return res.status(400).json({ error: 'Invalid action' });
@@ -261,8 +258,6 @@ app.get('/app', async (req, res) => {
         lastResetTime: userData.lastResetTime, // Возвращаем lastResetTime
         farmEntryTime: userData.farmEntryTime, // Возвращаем farmEntryTime
         farmExitTime: userData.farmExitTime,   // Возвращаем farmExitTime
-        mineEntryTime: userData.mineEntryTime, // Возвращаем mineEntryTime
-        mineExitTime: userData.mineExitTime,   // Возвращаем mineExitTime
       });
     } else {
       console.error('Пользователь не найден с User ID:', userId);
