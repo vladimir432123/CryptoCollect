@@ -121,6 +121,41 @@ const App: React.FC = () => {
 
   const [levelIndex, setLevelIndex] = useState(0);
 
+  // Объявление updateRemainingClicks до использования
+  const updateRemainingClicks = useCallback(
+    async (newRemainingClicks: number) => {
+      setRemainingClicks(newRemainingClicks);
+      if (userId !== null) {
+        try {
+          const response = await fetch('/update-clicks', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              userId,
+              remainingClicks: newRemainingClicks,
+            }),
+          });
+
+          if (!response.ok) {
+            throw new Error(`Ошибка HTTP: ${response.status}`);
+          }
+
+          const result = await response.json();
+          if (result.success) {
+            console.log('Клики успешно обновлены на сервере.');
+          } else {
+            console.error('Ошибка при обновлении кликов на сервере:', result.error);
+          }
+        } catch (error) {
+          console.error('Ошибка при обновлении кликов:', error);
+        }
+      }
+    },
+    [userId]
+  );
+
   useEffect(() => {
     const recoveryInterval = setInterval(() => {
       setRemainingClicks((prevClicks: number) => {
@@ -133,31 +168,34 @@ const App: React.FC = () => {
     }, RECOVERY_RATE);
 
     return () => clearInterval(recoveryInterval);
-  }, [maxClicks]);
+  }, [maxClicks, updateRemainingClicks]);
 
   useEffect(() => {
     const initData = WebApp.initDataUnsafe;
     const userIdFromTelegram = initData?.user?.id;
 
     if (!userIdFromTelegram) {
+      setLoading(false); // Если нет userId, прекращаем загрузку
       return;
     }
 
     setUserId(userIdFromTelegram);
 
-    fetch(`/app?userId=${userIdFromTelegram}`, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    })
-      .then((response) => {
+    const fetchData = async () => {
+      try {
+        const response = await fetch(`/app?userId=${userIdFromTelegram}`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+
         if (!response.ok) {
           throw new Error(`Ошибка HTTP: ${response.status}`);
         }
-        return response.json();
-      })
-      .then((data) => {
+
+        const data = await response.json();
+
         if (data.username) {
           setUsername(data.username);
         }
@@ -195,21 +233,46 @@ const App: React.FC = () => {
           upgrade8: data.upgrade8 || 1,
         });
         setFarmLevel(data.farmLevel || 1);
-      })
-      .finally(() => {
+
+        // Отправляем время входа на страницу 'farm'
+        if (currentPage === 'farm') {
+          await fetch('/save-entry-exit-time', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              userId: userIdFromTelegram,
+              action: 'enter_farm',
+            }),
+          });
+        }
+
+      } catch (error) {
+        console.error('Ошибка при загрузке данных с сервера:', error);
+      } finally {
         setLoading(false);
-      })
-      .catch((error) => console.error('Ошибка при загрузке данных с сервера:', error));
-  }, [tapProfitLevels, tapIncreaseLevels]);
+      }
+    };
+
+    fetchData();
+  }, [tapProfitLevels, tapIncreaseLevels, currentPage]);
 
   useEffect(() => {
     const handleBeforeUnload = () => {
       if (userId !== null) {
+        if (currentPage === 'farm') {
+          // Пользователь закрывает приложение на вкладке Farm
+          navigator.sendBeacon('/save-entry-exit-time', JSON.stringify({
+            userId,
+            action: 'exit_farm',
+          }));
+        }
         if (currentPage === 'mine') {
           // Пользователь закрывает приложение на вкладке MineContent
           navigator.sendBeacon('/save-entry-exit-time', JSON.stringify({
             userId,
-            action: 'exit',
+            action: 'exit_mine',
           }));
         }
         fetch('/logout', {
@@ -238,6 +301,7 @@ const App: React.FC = () => {
 
   useEffect(() => {
     if (userId !== null) {
+      // Отправка запросов при смене страницы
       if (currentPage === 'mine' && previousPageRef.current !== 'mine') {
         // Пользователь вошёл в MineContent
         fetch('/save-entry-exit-time', {
@@ -247,9 +311,9 @@ const App: React.FC = () => {
           },
           body: JSON.stringify({
             userId,
-            action: 'enter',
+            action: 'enter_mine',
           }),
-        }).catch((error) => console.error('Ошибка при сохранении времени входа:', error));
+        }).catch((error) => console.error('Ошибка при сохранении времени входа в mine:', error));
       } else if (currentPage !== 'mine' && previousPageRef.current === 'mine') {
         // Пользователь вышел из MineContent
         fetch('/save-entry-exit-time', {
@@ -259,47 +323,40 @@ const App: React.FC = () => {
           },
           body: JSON.stringify({
             userId,
-            action: 'exit',
+            action: 'exit_mine',
           }),
-        }).catch((error) => console.error('Ошибка при сохранении времени выхода:', error));
+        }).catch((error) => console.error('Ошибка при сохранении времени выхода из mine:', error));
       }
+
+      if (currentPage === 'farm' && previousPageRef.current !== 'farm') {
+        // Пользователь вошёл в Farm
+        fetch('/save-entry-exit-time', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            userId,
+            action: 'enter_farm',
+          }),
+        }).catch((error) => console.error('Ошибка при сохранении времени входа в farm:', error));
+      } else if (currentPage !== 'farm' && previousPageRef.current === 'farm') {
+        // Пользователь вышел из Farm
+        fetch('/save-entry-exit-time', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            userId,
+            action: 'exit_farm',
+          }),
+        }).catch((error) => console.error('Ошибка при сохранении времени выхода из farm:', error));
+      }
+
       previousPageRef.current = currentPage;
     }
   }, [currentPage, userId]);
-
-  const updateRemainingClicks = useCallback(
-    async (newRemainingClicks: number) => {
-      setRemainingClicks(newRemainingClicks);
-      if (userId !== null) {
-        try {
-          const response = await fetch('/update-clicks', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              userId,
-              remainingClicks: newRemainingClicks,
-            }),
-          });
-
-          if (!response.ok) {
-            throw new Error(`Ошибка HTTP: ${response.status}`);
-          }
-
-          const result = await response.json();
-          if (result.success) {
-            console.log('Клики успешно обновлены на сервере.');
-          } else {
-            console.error('Ошибка при обновлении кликов на сервере:', result.error);
-          }
-        } catch (error) {
-          console.error('Ошибка при обновлении кликов:', error);
-        }
-      }
-    },
-    [userId]
-  );
 
   const handleMainButtonClick = useCallback(
     async (e: React.TouchEvent<HTMLDivElement>) => {
