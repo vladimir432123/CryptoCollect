@@ -129,7 +129,7 @@ const App: React.FC = () => {
       setRemainingClicks(newRemainingClicks);
       if (userId !== null) {
         try {
-          const response = await fetch('/update-clicks', {
+          const response = await fetch('/save-data', { // Исправлено с '/update-clicks' на '/save-data'
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -247,9 +247,9 @@ const App: React.FC = () => {
             const restoredClicks = diffSeconds * RECOVERY_AMOUNT;
 
             if (restoredClicks > 0) {
-              const newRemainingClicks = Math.min(remainingClicks + restoredClicks, maxClicks);
+              const newRemainingClicks = Math.min(data.remainingClicks + restoredClicks, maxClicks);
               setRemainingClicks(newRemainingClicks);
-              localStorage.setItem('remainingClicks', newRemainingClicks.toString());
+              //localStorage.setItem('remainingClicks', newRemainingClicks.toString()); // Удалено, так как теперь обновляется через сервер
 
               // Обновляем клики на сервере
               try {
@@ -283,7 +283,7 @@ const App: React.FC = () => {
                   },
                   body: JSON.stringify({
                     userId: userIdFromTelegram,
-                    action: 'exit_farm', // Или другой action для очистки
+                    action: 'clear_farm_exit_time', // Новое действие для очистки farmExitTime
                   }),
                 });
                 console.log('farmExitTime очищено после восстановления кликов.');
@@ -302,7 +302,7 @@ const App: React.FC = () => {
     };
 
     fetchData();
-  }, [tapProfitLevels, tapIncreaseLevels, currentPage, remainingClicks]);
+  }, [tapProfitLevels, tapIncreaseLevels]); // Удалены currentPage и remainingClicks из массива зависимостей
 
   useEffect(() => {
     const handleBeforeUnload = () => {
