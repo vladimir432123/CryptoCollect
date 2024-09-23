@@ -73,7 +73,11 @@ const initializeDatabase = async () => {
           exitTime TIMESTAMP NULL DEFAULT NULL,
           tasks_current_day INT DEFAULT 1,
           tasks_last_collected DATETIME NULL DEFAULT NULL,
-          lastResetTime BIGINT DEFAULT 0 -- Добавляем поле для хранения времени последнего сброса таймера
+          lastResetTime BIGINT DEFAULT 0, -- Для хранения времени последнего сброса таймера
+          farmEntryTime TIMESTAMP NULL DEFAULT NULL, -- Время входа в farm
+          farmExitTime TIMESTAMP NULL DEFAULT NULL,  -- Время выхода из farm
+          mineEntryTime TIMESTAMP NULL DEFAULT NULL, -- Время входа в mine
+          mineExitTime TIMESTAMP NULL DEFAULT NULL  -- Время выхода из mine
       )
     `);
     console.log('Таблица user проверена/создана');
@@ -82,6 +86,10 @@ const initializeDatabase = async () => {
     await addColumnIfNotExists('tasks_current_day', 'INT DEFAULT 1');
     await addColumnIfNotExists('tasks_last_collected', 'DATETIME NULL DEFAULT NULL');
     await addColumnIfNotExists('lastResetTime', 'BIGINT DEFAULT 0');
+    await addColumnIfNotExists('farmEntryTime', 'TIMESTAMP NULL DEFAULT NULL');
+    await addColumnIfNotExists('farmExitTime', 'TIMESTAMP NULL DEFAULT NULL');
+    await addColumnIfNotExists('mineEntryTime', 'TIMESTAMP NULL DEFAULT NULL');
+    await addColumnIfNotExists('mineExitTime', 'TIMESTAMP NULL DEFAULT NULL');
   } catch (err) {
     console.error('Ошибка при инициализации базы данных:', err);
   }
@@ -163,19 +171,27 @@ app.post('/save-entry-exit-time', async (req, res) => {
     return res.status(400).json({ error: 'Missing required fields' });
   }
 
-  const field = action === 'enter' ? 'entryTime' : 'exitTime';
-  const query = `
-        UPDATE user 
-        SET ${field} = NOW()
-        WHERE telegram_id = ?
-    `;
+  let field;
+  switch(action) {
+    case 'enter_farm':
+      field = 'farmEntryTime';
+      break;
+    case 'exit_farm':
+      field = 'farmExitTime';
+      break;
+    case 'enter_mine':
+      field = 'mineEntryTime';
+      break;
+    case 'exit_mine':
+      field = 'mineExitTime';
+      break;
+    default:
+      return res.status(400).json({ error: 'Invalid action' });
+  }
 
   try {
-    await pool.query(query, [userId]);
-    console.log(
-      `Время ${action === 'enter' ? 'входа' : 'выхода'} успешно сохранено для пользователя с ID:`,
-      userId
-    );
+    await pool.query(`UPDATE user SET ${field} = NOW() WHERE telegram_id = ?`, [userId]);
+    console.log(`Время ${action} успешно сохранено для пользователя с ID:`, userId);
     res.json({ success: true });
   } catch (err) {
     console.error('Ошибка при сохранении времени:', err);
@@ -243,6 +259,10 @@ app.get('/app', async (req, res) => {
         tasks_current_day: userData.tasks_current_day,
         tasks_last_collected: userData.tasks_last_collected,
         lastResetTime: userData.lastResetTime, // Возвращаем lastResetTime
+        farmEntryTime: userData.farmEntryTime, // Возвращаем farmEntryTime
+        farmExitTime: userData.farmExitTime,   // Возвращаем farmExitTime
+        mineEntryTime: userData.mineEntryTime, // Возвращаем mineEntryTime
+        mineExitTime: userData.mineExitTime,   // Возвращаем mineExitTime
       });
     } else {
       console.error('Пользователь не найден с User ID:', userId);
