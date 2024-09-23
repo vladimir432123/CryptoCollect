@@ -11,6 +11,8 @@ import TasksContent from './TasksContent.tsx'; // Исправленный им�
 import { FaTasks } from 'react-icons/fa';
 import WebApp from '@twa-dev/sdk';
 import LoadingScreen from './LoadingScreen.tsx';
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 const Farm: React.FC<{ className?: string }> = ({ className }) => (
   <svg className={className} viewBox="0 0 24 24" fill="currentColor">
@@ -234,18 +236,62 @@ const App: React.FC = () => {
         });
         setFarmLevel(data.farmLevel || 1);
 
-        // Отправляем время входа на страницу 'farm'
-        if (currentPage === 'farm') {
-          await fetch('/save-entry-exit-time', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              userId: userIdFromTelegram,
-              action: 'enter_farm',
-            }),
-          });
+        // Восстановление кликов на основе времени выхода из Farm
+        if (data.farmExitTime) {
+          const exitTime = new Date(data.farmExitTime);
+          const now = new Date();
+          const diffTime = now.getTime() - exitTime.getTime(); // В миллисекундах
+
+          if (diffTime > 0) {
+            const diffSeconds = Math.floor(diffTime / 1000); // В секундах
+            const restoredClicks = diffSeconds * RECOVERY_AMOUNT;
+
+            if (restoredClicks > 0) {
+              const newRemainingClicks = Math.min(remainingClicks + restoredClicks, maxClicks);
+              setRemainingClicks(newRemainingClicks);
+              localStorage.setItem('remainingClicks', newRemainingClicks.toString());
+
+              // Обновляем клики на сервере
+              try {
+                const updateResponse = await fetch('/save-data', {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify({
+                    userId: userIdFromTelegram,
+                    remainingClicks: newRemainingClicks,
+                  }),
+                });
+
+                const updateData = await updateResponse.json();
+                if (updateData.success) {
+                  console.log('Восстановленные клики успешно сохранены на сервере.');
+                } else {
+                  console.error('Ошибка при сохранении восстановленных кликов на сервере:', updateData.error);
+                }
+              } catch (error) {
+                console.error('Ошибка при отправке восстановленных кликов:', error);
+              }
+
+              // Отправляем запрос на очистку farmExitTime
+              try {
+                await fetch('/save-entry-exit-time', {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify({
+                    userId: userIdFromTelegram,
+                    action: 'exit_farm', // Или другой action для очистки
+                  }),
+                });
+                console.log('farmExitTime очищено после восстановления кликов.');
+              } catch (error) {
+                console.error('Ошибка при очистке farmExitTime:', error);
+              }
+            }
+          }
         }
 
       } catch (error) {
@@ -256,7 +302,7 @@ const App: React.FC = () => {
     };
 
     fetchData();
-  }, [tapProfitLevels, tapIncreaseLevels, currentPage]);
+  }, [tapProfitLevels, tapIncreaseLevels, currentPage, remainingClicks]);
 
   useEffect(() => {
     const handleBeforeUnload = () => {
@@ -494,7 +540,7 @@ const App: React.FC = () => {
 
       await saveUpgradeData(newLevel, tapIncreaseLevel);
     } else {
-      alert('Недостаточно монет для улучшения.');
+      toast.error('Недостаточно монет для улучшения.');
     }
   };
 
@@ -511,7 +557,7 @@ const App: React.FC = () => {
 
       await saveUpgradeData(tapProfitLevel, newLevel);
     } else {
-      alert('Недостаточно монет для улучшения.');
+      toast.error('Недостаточно монет для улучшения.');
     }
   };
 
@@ -738,6 +784,7 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen flex justify-center items-center bg-gray-900">
+      <ToastContainer />
       {loading ? (
         <LoadingScreen />
       ) : (
