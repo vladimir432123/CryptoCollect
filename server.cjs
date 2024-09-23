@@ -169,25 +169,35 @@ app.post('/save-entry-exit-time', async (req, res) => {
   }
 
   let field;
+  let value;
+
   switch(action) {
     case 'enter_farm':
       field = 'farmEntryTime';
+      value = new Date();
       break;
     case 'exit_farm':
       field = 'farmExitTime';
+      value = new Date();
+      break;
+    case 'clear_farm_exit_time':
+      field = 'farmExitTime';
+      value = null;
       break;
     case 'enter_mine':
-      field = 'entryTime'; // Используем существующее поле для MineContent
+      field = 'entryTime';
+      value = new Date();
       break;
     case 'exit_mine':
-      field = 'exitTime';  // Используем существующее поле для MineContent
+      field = 'exitTime';
+      value = new Date();
       break;
     default:
       return res.status(400).json({ error: 'Invalid action' });
   }
 
   try {
-    await pool.query(`UPDATE user SET ${field} = NOW() WHERE telegram_id = ?`, [userId]);
+    await pool.query(`UPDATE user SET ${field} = ? WHERE telegram_id = ?`, [value, userId]);
     console.log(`Время ${action} успешно сохранено для пользователя с ID:`, userId);
     res.json({ success: true });
   } catch (err) {
@@ -204,14 +214,11 @@ app.post('/logout', async (req, res) => {
     return res.status(400).json({ error: 'Missing userId' });
   }
 
-  const query = `
-        UPDATE user
-        SET last_logout = ?, remainingClicks = ?
-        WHERE telegram_id = ?
-    `;
-
   try {
-    await pool.query(query, [lastLogout, remainingClicks, userId]);
+    await pool.query(
+      'UPDATE user SET last_logout = ?, remainingClicks = ? WHERE telegram_id = ?',
+      [lastLogout, remainingClicks, userId]
+    );
     res.json({ success: true });
   } catch (err) {
     console.error('Ошибка при обновлении времени выхода:', err);
@@ -234,29 +241,40 @@ app.get('/app', async (req, res) => {
     const [rows] = await pool.query('SELECT * FROM user WHERE telegram_id = ?', [userId]);
     if (rows.length > 0) {
       const userData = rows[0];
-
-      let { remainingClicks, last_logout, tapIncreaseLevel, tapProfitLevel } = userData;
+      let { remainingClicks, last_logout, tapIncreaseLevel, tapProfitLevel, farmExitTime } = userData;
 
       // Определяем maxClicks на основе tapIncreaseLevel
       const maxClicks = 1000 + (tapIncreaseLevel - 1) * 500; // Пример: каждый уровень увеличивает maxClicks на 500
 
-      // Восстановление кликов на основе разницы во времени
+      let restoredClicks = 0;
+
+      // Восстановление кликов на основе last_logout
       if (last_logout) {
-        const lastLogoutTime = new Date(userData.last_logout);
+        const lastLogoutTime = new Date(last_logout);
         const now = new Date();
         const diffSeconds = Math.floor((now - lastLogoutTime) / 1000); // Разница в секундах
 
-        const restoredClicks = diffSeconds; // 1 клик в секунду
+        restoredClicks += diffSeconds * 1; // 1 клик в секунду
+      }
 
+      // Восстановление кликов на основе farmExitTime
+      if (farmExitTime) {
+        const farmExit = new Date(farmExitTime);
+        const now = new Date();
+        const diffSecondsFarm = Math.floor((now - farmExit) / 1000); // Разница в секундах
+
+        restoredClicks += diffSecondsFarm * 1; // 1 клик в секунду
+      }
+
+      if (restoredClicks > 0) {
         remainingClicks = Math.min(remainingClicks + restoredClicks, maxClicks);
+        console.log(`Восстановлено ${restoredClicks} кликов для пользователя с ID: ${userId}`);
 
-        // Обновляем remainingClicks и сбрасываем last_logout
+        // Обновляем remainingClicks и сбрасываем farmExitTime и last_logout
         await pool.query(
-          'UPDATE user SET remainingClicks = ?, last_logout = NULL WHERE telegram_id = ?',
+          'UPDATE user SET remainingClicks = ?, farmExitTime = NULL, last_logout = NULL WHERE telegram_id = ?',
           [remainingClicks, userId]
         );
-
-        console.log(`Восстановлено ${restoredClicks} кликов для пользователя с ID: ${userId}`);
       }
 
       res.json({
@@ -338,14 +356,14 @@ app.post('/save-data', async (req, res) => {
   const values = Object.values(fieldsToUpdate);
 
   const query = `
-        UPDATE user
-        SET ${setClause}
-        WHERE telegram_id = ?
-    `;
+    UPDATE user
+    SET ${setClause}
+    WHERE telegram_id = ?
+  `;
 
   try {
     await pool.query(query, [...values, userId]);
-    console.log('Данные успешно сохранены для пользователя с ID:', userId);
+    console.log(`Данные успешно сохранены для пользователя с ID: ${userId}`);
 
     res.json({
       success: true,
