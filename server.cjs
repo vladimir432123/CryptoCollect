@@ -219,7 +219,7 @@ app.post('/logout', async (req, res) => {
   }
 });
 
-// Получение данных пользователя
+// Получение данных пользователя с восстановлением кликов
 app.get('/app', async (req, res) => {
   const userId = req.query.userId;
 
@@ -234,12 +234,37 @@ app.get('/app', async (req, res) => {
     const [rows] = await pool.query('SELECT * FROM user WHERE telegram_id = ?', [userId]);
     if (rows.length > 0) {
       const userData = rows[0];
+
+      let { remainingClicks, last_logout, tapIncreaseLevel, tapProfitLevel } = userData;
+
+      // Определяем maxClicks на основе tapIncreaseLevel
+      const maxClicks = 1000 + (tapIncreaseLevel - 1) * 500; // Пример: каждый уровень увеличивает maxClicks на 500
+
+      // Восстановление кликов на основе разницы во времени
+      if (last_logout) {
+        const lastLogoutTime = new Date(userData.last_logout);
+        const now = new Date();
+        const diffSeconds = Math.floor((now - lastLogoutTime) / 1000); // Разница в секундах
+
+        const restoredClicks = diffSeconds; // 1 клик в секунду
+
+        remainingClicks = Math.min(remainingClicks + restoredClicks, maxClicks);
+
+        // Обновляем remainingClicks и сбрасываем last_logout
+        await pool.query(
+          'UPDATE user SET remainingClicks = ?, last_logout = NULL WHERE telegram_id = ?',
+          [remainingClicks, userId]
+        );
+
+        console.log(`Восстановлено ${restoredClicks} кликов для пользователя с ID: ${userId}`);
+      }
+
       res.json({
         username: userData.username,
         points: userData.points,
         tapProfitLevel: userData.tapProfitLevel,
         tapIncreaseLevel: userData.tapIncreaseLevel,
-        remainingClicks: userData.remainingClicks,
+        remainingClicks: remainingClicks,
         lastLogout: userData.last_logout,
         upgrade1: userData.upgrade1,
         upgrade2: userData.upgrade2,
@@ -410,17 +435,20 @@ app.post('/collect-task', async (req, res) => {
 
   try {
     // Получение текущих данных пользователя
-    const [rows] = await pool.query('SELECT tasks_current_day, tasks_last_collected, points FROM user WHERE telegram_id = ?', [userId]);
+    const [rows] = await pool.query('SELECT tasks_current_day, tasks_last_collected, points, tapIncreaseLevel FROM user WHERE telegram_id = ?', [userId]);
 
     if (rows.length === 0) {
       return res.status(404).json({ error: 'Пользователь не найден' });
     }
 
     const userData = rows[0];
-    const { tasks_current_day, tasks_last_collected, points } = userData;
+    const { tasks_current_day, tasks_last_collected, points, tapIncreaseLevel } = userData;
 
     const now = new Date();
-    const lastCollected = tasks_last_collected ? new Date(tasks_last_collected) : null;
+    const lastCollected = tasks_last_collected ? new Date(userData.tasks_last_collected) : null;
+
+    // Определяем maxClicks на основе tapIncreaseLevel
+    const maxClicks = 1000 + (tapIncreaseLevel - 1) * 500; // Пример: каждый уровень увеличивает maxClicks на 500
 
     // Проверка, можно ли собрать награду
     if (day !== tasks_current_day) {
