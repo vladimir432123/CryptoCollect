@@ -7,10 +7,11 @@ import { dollarCoin } from './images';
 import Mine from './icons/Mine';
 import Friends from './icons/Friends';
 import MineContent from './MineContent';
-import TasksContent from './TasksContent.tsx'; // Исправленный импорт
+import TasksContent from './TasksContent';
+import FriendsContent from './FriendsContent.tsx'; // Новый импорт
 import { FaTasks } from 'react-icons/fa';
 import WebApp from '@twa-dev/sdk';
-import LoadingScreen from './LoadingScreen.tsx';
+import LoadingScreen from './LoadingScreen';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
@@ -129,7 +130,7 @@ const App: React.FC = () => {
       setRemainingClicks(newRemainingClicks);
       if (userId !== null) {
         try {
-          const response = await fetch('/save-data', { // Исправлено с '/update-clicks' на '/save-data'
+          const response = await fetch('/save-data', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -217,7 +218,7 @@ const App: React.FC = () => {
           localStorage.setItem('maxClicks', tapIncreaseLevels[data.tapIncreaseLevel - 1].taps.toString());
         }
         if (data.remainingClicks !== undefined) {
-          setRemainingClicks(data.remainingClicks); // Устанавливаем оставшиеся клики из базы
+          setRemainingClicks(data.remainingClicks);
         }
         if (data.incomePerHour !== undefined) {
           setIncomePerHour(data.incomePerHour);
@@ -235,65 +236,6 @@ const App: React.FC = () => {
           upgrade8: data.upgrade8 || 1,
         });
         setFarmLevel(data.farmLevel || 1);
-
-        // Восстановление кликов на основе времени выхода из Farm
-        if (data.farmExitTime) {
-          const exitTime = new Date(data.farmExitTime);
-          const now = new Date();
-          const diffTime = now.getTime() - exitTime.getTime(); // В миллисекундах
-
-          if (diffTime > 0) {
-            const diffSeconds = Math.floor(diffTime / 1000); // В секундах
-            const restoredClicks = diffSeconds * RECOVERY_AMOUNT;
-
-            if (restoredClicks > 0) {
-              const newRemainingClicks = Math.min(data.remainingClicks + restoredClicks, maxClicks);
-              setRemainingClicks(newRemainingClicks);
-              //localStorage.setItem('remainingClicks', newRemainingClicks.toString()); // Удалено, так как теперь обновляется через сервер
-
-              // Обновляем клики на сервере
-              try {
-                const updateResponse = await fetch('/save-data', {
-                  method: 'POST',
-                  headers: {
-                    'Content-Type': 'application/json',
-                  },
-                  body: JSON.stringify({
-                    userId: userIdFromTelegram,
-                    remainingClicks: newRemainingClicks,
-                  }),
-                });
-
-                const updateData = await updateResponse.json();
-                if (updateData.success) {
-                  console.log('Восстановленные клики успешно сохранены на сервере.');
-                } else {
-                  console.error('Ошибка при сохранении восстановленных кликов на сервере:', updateData.error);
-                }
-              } catch (error) {
-                console.error('Ошибка при отправке восстановленных кликов:', error);
-              }
-
-              // Отправляем запрос на очистку farmExitTime
-              try {
-                await fetch('/save-entry-exit-time', {
-                  method: 'POST',
-                  headers: {
-                    'Content-Type': 'application/json',
-                  },
-                  body: JSON.stringify({
-                    userId: userIdFromTelegram,
-                    action: 'clear_farm_exit_time', // Новое действие для очистки farmExitTime
-                  }),
-                });
-                console.log('farmExitTime очищено после восстановления кликов.');
-              } catch (error) {
-                console.error('Ошибка при очистке farmExitTime:', error);
-              }
-            }
-          }
-        }
-
       } catch (error) {
         console.error('Ошибка при загрузке данных с сервера:', error);
       } finally {
@@ -302,20 +244,18 @@ const App: React.FC = () => {
     };
 
     fetchData();
-  }, [tapProfitLevels, tapIncreaseLevels]); // Удалены currentPage и remainingClicks из массива зависимостей
+  }, [tapProfitLevels, tapIncreaseLevels]);
 
   useEffect(() => {
     const handleBeforeUnload = () => {
       if (userId !== null) {
         if (currentPage === 'farm') {
-          // Пользователь закрывает приложение на вкладке Farm
           navigator.sendBeacon('/save-entry-exit-time', JSON.stringify({
             userId,
             action: 'exit_farm',
           }));
         }
         if (currentPage === 'mine') {
-          // Пользователь закрывает приложение на вкладке MineContent
           navigator.sendBeacon('/save-entry-exit-time', JSON.stringify({
             userId,
             action: 'exit_mine',
@@ -347,9 +287,7 @@ const App: React.FC = () => {
 
   useEffect(() => {
     if (userId !== null) {
-      // Отправка запросов при смене страницы
       if (currentPage === 'mine' && previousPageRef.current !== 'mine') {
-        // Пользователь вошёл в MineContent
         fetch('/save-entry-exit-time', {
           method: 'POST',
           headers: {
@@ -361,7 +299,6 @@ const App: React.FC = () => {
           }),
         }).catch((error) => console.error('Ошибка при сохранении времени входа в mine:', error));
       } else if (currentPage !== 'mine' && previousPageRef.current === 'mine') {
-        // Пользователь вышел из MineContent
         fetch('/save-entry-exit-time', {
           method: 'POST',
           headers: {
@@ -375,7 +312,6 @@ const App: React.FC = () => {
       }
 
       if (currentPage === 'farm' && previousPageRef.current !== 'farm') {
-        // Пользователь вошёл в Farm
         fetch('/save-entry-exit-time', {
           method: 'POST',
           headers: {
@@ -387,7 +323,6 @@ const App: React.FC = () => {
           }),
         }).catch((error) => console.error('Ошибка при сохранении времени входа в farm:', error));
       } else if (currentPage !== 'farm' && previousPageRef.current === 'farm') {
-        // Пользователь вышел из Farm
         fetch('/save-entry-exit-time', {
           method: 'POST',
           headers: {
@@ -414,7 +349,6 @@ const App: React.FC = () => {
         const newPoints = points + tapProfit * touches.length;
         setPoints(newPoints);
 
-        // Сохранение обновлённых очков на сервере и в localStorage
         localStorage.setItem('points', newPoints.toString());
 
         if (userId !== null) {
@@ -782,6 +716,13 @@ const App: React.FC = () => {
     </>
   );
 
+  const renderFriendsContent = () => (
+    <FriendsContent
+      username={username || 'Гость'}
+      userId={userId}
+    />
+  );
+
   return (
     <div className="min-h-screen flex justify-center items-center bg-gray-900">
       <ToastContainer />
@@ -807,7 +748,8 @@ const App: React.FC = () => {
               setIncomePerHour={setIncomePerHour}
             />
           )}
-          {currentPage === 'tasks' && renderTasksContent()} {/* Добавлено отображение TasksContent */}
+          {currentPage === 'tasks' && renderTasksContent()}
+          {currentPage === 'friends' && renderFriendsContent()}
           {isBoostMenuOpen && renderBoostContent()}
           {selectedUpgrade && renderUpgradeMenu()}
           <div className="absolute bottom-0 left-0 right-0 bg-gray-700 rounded-t-2xl flex justify-around items-center text-xs py-4 px-2 z-50">
@@ -856,9 +798,20 @@ const App: React.FC = () => {
                 <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-1 h-1 bg-yellow-400 rounded-full"></div>
               )}
             </button>
-            <button className="text-center text-gray-300 flex flex-col items-center">
+            <button
+              className={`text-center flex flex-col items-center relative ${
+                currentPage === 'friends' ? 'text-yellow-400' : 'text-gray-300'
+              }`}
+              onClick={() => {
+                setCurrentPage('friends');
+                setIsBoostMenuOpen(false);
+              }}
+            >
               <Friends className="w-6 h-6 mb-1" />
               Friends
+              {currentPage === 'friends' && (
+                <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-1 h-1 bg-yellow-400 rounded-full"></div>
+              )}
             </button>
           </div>
 
