@@ -3,45 +3,66 @@
 import React, { useEffect, useState } from 'react';
 import { FaTasks } from 'react-icons/fa';
 import './TasksContent.css';
+import { toast } from 'react-toastify';
 
 interface TasksContentProps {
   points: number;
   setPoints: React.Dispatch<React.SetStateAction<number>>;
   userId: number | null;
-  username: string | null; // Добавлено имя пользователя
+  username: string | null;
 }
 
-interface Task {
+interface Reward {
   day: number;
   reward: number;
   collected: boolean;
   canCollect: boolean;
 }
 
+interface Task {
+  id: number;
+  description: string;
+  reward: number;
+  collected: boolean;
+  canCollect: boolean;
+}
+
 const TasksContent: React.FC<TasksContentProps> = ({ setPoints, userId, username }) => {
+  const [dailyRewards, setDailyRewards] = useState<Reward[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [isMenuOpen, setIsMenuOpen] = useState<boolean>(false);
-  const [notification, setNotification] = useState<string | null>(null);
 
   useEffect(() => {
     if (userId !== null) {
+      // Получаем данные ежедневных наград
       fetch(`/tasks?userId=${userId}`)
         .then((response) => response.json())
         .then((data) => {
-          const initialTasks: Task[] = [];
+          const initialRewards: Reward[] = [];
           for (let i = 1; i <= 7; i++) {
-            initialTasks.push({
+            initialRewards.push({
               day: i,
               reward: getRewardByDay(i),
               collected: i < data.currentDay,
               canCollect: i === data.currentDay && data.canCollect,
             });
           }
-          setTasks(initialTasks);
+          setDailyRewards(initialRewards);
         })
         .catch((error) => {
-          console.error('Ошибка при загрузке задач:', error);
-          setNotification('Не удалось загрузить задачи. Попробуйте позже.');
+          console.error('Ошибка при загрузке ежедневных наград:', error);
+          toast.error('Не удалось загрузить ежедневные награды. Попробуйте позже.');
+        });
+
+      // Получаем данные заданий
+      fetch(`/user-tasks?userId=${userId}`)
+        .then((response) => response.json())
+        .then((data) => {
+          setTasks(data.tasks);
+        })
+        .catch((error) => {
+          console.error('Ошибка при загрузке заданий:', error);
+          toast.error('Не удалось загрузить задания. Попробуйте позже.');
         });
     }
   }, [userId]);
@@ -67,15 +88,43 @@ const TasksContent: React.FC<TasksContentProps> = ({ setPoints, userId, username
     }
   };
 
-  const handleCollect = (day: number) => {
+  const handleCollectReward = (day: number) => {
     if (userId === null) return;
 
     fetch('/collect-task', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ userId, day }),
+    })
+      .then((response) => response.json())
+      .then((data) => {
+        if (data.success) {
+          setPoints(data.newPoints);
+          setDailyRewards((prevRewards) =>
+            prevRewards.map((reward) =>
+              reward.day === day
+                ? { ...reward, collected: true, canCollect: false }
+                : reward
+            )
+          );
+          toast.success(`Награда за день ${day} успешно получена!`);
+        } else {
+          toast.error(data.error || 'Ошибка при сборе награды.');
+        }
+      })
+      .catch((error) => {
+        console.error('Ошибка при сборе награды:', error);
+        toast.error('Не удалось собрать награду. Попробуйте позже.');
+      });
+  };
+
+  const handleCollectTask = (taskId: number) => {
+    if (userId === null) return;
+
+    fetch('/collect-user-task', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId, taskId }),
     })
       .then((response) => response.json())
       .then((data) => {
@@ -83,70 +132,58 @@ const TasksContent: React.FC<TasksContentProps> = ({ setPoints, userId, username
           setPoints(data.newPoints);
           setTasks((prevTasks) =>
             prevTasks.map((task) =>
-              task.day === day
+              task.id === taskId
                 ? { ...task, collected: true, canCollect: false }
                 : task
             )
           );
-          setNotification(`Награда за день ${day} успешно забрана!`);
+          toast.success(`Награда за задание "${data.taskDescription}" успешно получена!`);
         } else {
-          setNotification(data.error || 'Ошибка при сборе награды.');
+          toast.error(data.error || 'Ошибка при сборе награды за задание.');
         }
       })
       .catch((error) => {
-        console.error('Ошибка при сборе награды:', error);
-        setNotification('Не удалось собрать награду. Попробуйте позже.');
+        console.error('Ошибка при сборе награды за задание:', error);
+        toast.error('Не удалось собрать награду. Попробуйте позже.');
       });
   };
 
-  const renderTasksList = () => (
+  const renderDailyRewardsList = () => (
     <div className="tasks-menu">
-      <h2 className="text-center text-2xl text-white mb-4">{username ? username : 'Гость'}</h2>
+      <h2 className="text-center text-2xl text-white mb-4">Ежедневные награды</h2>
       <div className="space-y-4">
-        {tasks.map((task) => (
-          <div key={task.day} className="flex justify-between items-center bg-gray-700 p-4 rounded-lg shadow-md">
+        {dailyRewards.map((reward) => (
+          <div
+            key={reward.day}
+            className="flex justify-between items-center bg-gray-700 p-4 rounded-lg shadow-md"
+          >
             <div>
-              <h3 className="text-lg text-yellow-400">День {task.day}</h3>
-              <p className="text-sm text-gray-300">Награда: {task.reward.toLocaleString()} монет</p>
+              <h3 className="text-lg text-yellow-400">День {reward.day}</h3>
+              <p className="text-sm text-gray-300">
+                Награда: {reward.reward.toLocaleString()} монет
+              </p>
             </div>
             <button
-              onClick={() => handleCollect(task.day)}
+              onClick={() => handleCollectReward(reward.day)}
               className={`px-4 py-2 rounded-lg font-semibold ${
-                task.canCollect
+                reward.canCollect
                   ? 'bg-yellow-500 text-gray-900 hover:bg-yellow-600'
-                  : task.collected
+                  : reward.collected
                   ? 'bg-gray-500 text-gray-300 cursor-not-allowed'
                   : 'bg-gray-500 text-gray-300 cursor-not-allowed'
               }`}
-              disabled={!task.canCollect}
+              disabled={!reward.canCollect}
             >
-              {task.collected ? 'Собрано' : 'Забрать'}
+              {reward.collected ? 'Собрано' : 'Забрать'}
             </button>
           </div>
         ))}
       </div>
-      {/* Заголовок "Задания" */}
-      <h2 className="text-center text-2xl text-white mt-8">Задания</h2>
-      {/* Текст ниже "Задания" */}
-      <p className="text-center text-gray-300 mt-2">
-        Тут будут задания за которые можно получить больше монет.
-      </p>
     </div>
   );
 
   return (
     <>
-      {notification && (
-        <div className="fixed top-4 left-1/2 transform -translate-x-1/2 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg">
-          {notification}
-          <button
-            className="absolute top-0 right-0 mt-1 mr-2 text-white"
-            onClick={() => setNotification(null)}
-          >
-            ✕
-          </button>
-        </div>
-      )}
       <div className="px-4 z-10 pt-4">
         <div className="flex items-center space-x-2">
           <div className="p-1 rounded-lg bg-gray-800">
@@ -158,18 +195,51 @@ const TasksContent: React.FC<TasksContentProps> = ({ setPoints, userId, username
         </div>
       </div>
       {/* Блок с ежедневными наградами */}
-      <div className="px-4 mt-4 flex justify-center">
+      <div className="px-4 mt-4">
         <div
-          className="w-full max-w-md p-6 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg shadow-xl cursor-pointer"
+          className="w-full bg-gradient-to-r from-yellow-500 to-yellow-600 p-6 rounded-lg shadow-lg cursor-pointer flex items-center"
           onClick={() => setIsMenuOpen(true)}
         >
-          <h2 className="text-2xl font-bold text-white text-center">Ежедневные награды</h2>
-          <p className="text-center text-gray-200 mt-2">
-            Заходи каждый день и получай награды!
-          </p>
+          <FaTasks size={48} className="text-white mr-4" />
+          <div>
+            <h2 className="text-2xl font-bold text-white">Ежедневные награды</h2>
+            <p className="text-white mt-1">Заходи каждый день и получай награды!</p>
+          </div>
         </div>
       </div>
-      {/* Меню с наградами */}
+      {/* Список заданий */}
+      <div className="px-4 mt-8">
+        <h2 className="text-2xl font-bold text-white mb-4">Задания</h2>
+        <div className="space-y-4">
+          {tasks.map((task) => (
+            <div
+              key={task.id}
+              className="flex justify-between items-center bg-gray-700 p-4 rounded-lg shadow-md"
+            >
+              <div>
+                <h3 className="text-lg text-yellow-400">{task.description}</h3>
+                <p className="text-sm text-gray-300">
+                  Награда: {task.reward.toLocaleString()} монет
+                </p>
+              </div>
+              <button
+                onClick={() => handleCollectTask(task.id)}
+                className={`px-4 py-2 rounded-lg font-semibold ${
+                  task.canCollect
+                    ? 'bg-yellow-500 text-gray-900 hover:bg-yellow-600'
+                    : task.collected
+                    ? 'bg-gray-500 text-gray-300 cursor-not-allowed'
+                    : 'bg-gray-500 text-gray-300 cursor-not-allowed'
+                }`}
+                disabled={!task.canCollect}
+              >
+                {task.collected ? 'Собрано' : 'Забрать'}
+              </button>
+            </div>
+          ))}
+        </div>
+      </div>
+      {/* Меню с ежедневными наградами */}
       {isMenuOpen && (
         <div
           className="fixed inset-0 bg-black bg-opacity-50 flex items-end justify-center z-50"
@@ -180,8 +250,7 @@ const TasksContent: React.FC<TasksContentProps> = ({ setPoints, userId, username
             onClick={(e) => e.stopPropagation()}
             style={{ maxHeight: '80vh' }}
           >
-            {renderTasksList()}
-            {/* Удалена кнопка "Закрыть" */}
+            {renderDailyRewardsList()}
           </div>
         </div>
       )}
