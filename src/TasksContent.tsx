@@ -1,7 +1,7 @@
 // src/TasksContent.tsx
 
 import React, { useEffect, useState } from 'react';
-import { FaTasks } from 'react-icons/fa';
+import { FaTasks, FaSync } from 'react-icons/fa';
 import './TasksContent.css';
 import { toast } from 'react-toastify';
 
@@ -172,13 +172,13 @@ const TasksContent: React.FC<TasksContentProps> = ({
   );
 
   return (
-    <>
+    <div className="flex flex-col h-full">
       <div className="px-4 z-10 pt-4">
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center">
           <div className="p-1 rounded-lg bg-gray-800">
             <FaTasks size={24} className="text-yellow-400" />
           </div>
-          <div>
+          <div className="ml-2">
             <p className="text-sm text-gray-300">{username ? username : 'Гость'}</p>
           </div>
           {/* Refresh Button */}
@@ -187,55 +187,59 @@ const TasksContent: React.FC<TasksContentProps> = ({
               fetchTasks();
               fetchDailyRewards();
             }}
-            className="ml-auto text-sm text-yellow-400 hover:text-yellow-500"
+            className="ml-auto text-yellow-400 hover:text-yellow-500"
           >
-            Обновить
+            <FaSync size={20} />
           </button>
         </div>
       </div>
-      {/* Блок с ежедневными наградами */}
-      <div className="px-4 mt-4">
-        <div
-          className="w-full bg-gradient-to-r from-yellow-500 to-yellow-600 p-6 rounded-lg shadow-lg cursor-pointer flex items-center"
-          onClick={() => setIsMenuOpen(true)}
-        >
-          <FaTasks size={48} className="text-white mr-4" />
-          <div>
-            <h2 className="text-2xl font-bold text-white">Ежедневные награды</h2>
-            <p className="text-white mt-1">Заходи каждый день и получай награды!</p>
+      <div className="flex-1 overflow-auto pb-20">
+        {/* Блок с ежедневными наградами */}
+        <div className="px-4 mt-4">
+          <div
+            className="w-full bg-gradient-to-r from-yellow-500 to-yellow-600 p-6 rounded-lg shadow-lg cursor-pointer flex items-center"
+            onClick={() => setIsMenuOpen(true)}
+          >
+            <FaTasks size={48} className="text-white mr-4" />
+            <div>
+              <h2 className="text-2xl font-bold text-white">Ежедневные награды</h2>
+              <p className="text-white mt-1">
+                Заходи каждый день и получай награды!
+              </p>
+            </div>
           </div>
         </div>
-      </div>
-      {/* Список заданий */}
-      <div className="px-4 mt-8">
-        <h2 className="text-2xl font-bold text-white mb-4">Задания</h2>
-        <div className="space-y-4 max-h-80 overflow-y-auto">
-          {tasks.map((task) => (
-            <div
-              key={task.id}
-              className="flex justify-between items-center bg-gray-700 p-3 rounded-lg shadow-md"
-            >
-              <div>
-                <h3 className="text-lg text-yellow-400">{task.description}</h3>
-                <p className="text-sm text-gray-300">
-                  Награда: {task.reward.toLocaleString()} монет
-                </p>
-              </div>
-              <button
-                onClick={() => handleCollectTask(task.id)}
-                className={`px-3 py-2 rounded-lg font-semibold text-sm ${
-                  task.canCollect
-                    ? 'bg-yellow-500 text-gray-900 hover:bg-yellow-600'
-                    : task.collected
-                    ? 'bg-gray-500 text-gray-300 cursor-not-allowed'
-                    : 'bg-gray-500 text-gray-300 cursor-not-allowed'
-                }`}
-                disabled={!task.canCollect}
+        {/* Список заданий */}
+        <div className="px-4 mt-8">
+          <h2 className="text-2xl font-bold text-white mb-4">Задания</h2>
+          <div className="space-y-4">
+            {tasks.map((task) => (
+              <div
+                key={task.id}
+                className="flex justify-between items-center bg-gray-700 p-4 rounded-lg shadow-md"
               >
-                {task.collected ? 'Собрано' : 'Забрать'}
-              </button>
-            </div>
-          ))}
+                <div>
+                  <h3 className="text-lg text-yellow-400">{task.description}</h3>
+                  <p className="text-sm text-gray-300">
+                    Награда: {task.reward.toLocaleString()} монет
+                  </p>
+                </div>
+                <button
+                  onClick={() => handleCollectTask(task.id)}
+                  className={`px-4 py-2 rounded-lg font-semibold ${
+                    task.canCollect
+                      ? 'bg-yellow-500 text-gray-900 hover:bg-yellow-600'
+                      : task.collected
+                      ? 'bg-gray-500 text-gray-300 cursor-not-allowed'
+                      : 'bg-gray-500 text-gray-300 cursor-not-allowed'
+                  }`}
+                  disabled={!task.canCollect}
+                >
+                  {task.collected ? 'Собрано' : 'Забрать'}
+                </button>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
       {/* Меню с ежедневными наградами */}
@@ -253,7 +257,7 @@ const TasksContent: React.FC<TasksContentProps> = ({
           </div>
         </div>
       )}
-    </>
+    </div>
   );
 };
 
