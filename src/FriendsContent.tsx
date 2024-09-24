@@ -1,22 +1,22 @@
 // src/FriendsContent.tsx
 
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import Hamster from './icons/Hamster';
 import { toast } from 'react-toastify';
 
 interface FriendsContentProps {
   username: string;
   userId: number | null;
+  friends: Friend[];
+  fetchFriends: () => void;
 }
 
 interface Friend {
   username: string;
 }
 
-const FriendsContent: React.FC<FriendsContentProps> = ({ username, userId }) => {
-  const [friends, setFriends] = useState<Friend[]>([]);
-
-  // Функция для копирования реферальной ссылки
+const FriendsContent: React.FC<FriendsContentProps> = ({ username, userId, friends, fetchFriends }) => {
+  // Function to copy the referral link
   const handleInviteClick = () => {
     const referralLink = `https://t.me/cryptocollect_bot?start=${userId}`;
     navigator.clipboard
@@ -31,23 +31,9 @@ const FriendsContent: React.FC<FriendsContentProps> = ({ username, userId }) => 
       });
   };
 
-  // Получение списка приглашенных друзей
-  useEffect(() => {
-    if (userId) {
-      fetch(`/invited-friends?userId=${userId}`)
-        .then((response) => response.json())
-        .then((data) => {
-          setFriends(data.friends);
-        })
-        .catch((error) => {
-          console.error('Ошибка при получении списка друзей:', error);
-        });
-    }
-  }, [userId]);
-
   return (
-    <div className="flex flex-col h-full bg-gray-800 pb-20"> {/* Добавлено pb-20 */}
-      {/* Информация о пользователе */}
+    <div className="flex flex-col h-full bg-gray-800 pb-20">
+      {/* User Info */}
       <div className="px-4 pt-4">
         <div className="flex items-center space-x-2">
           <div className="p-1 rounded-lg bg-gray-800">
@@ -56,12 +42,19 @@ const FriendsContent: React.FC<FriendsContentProps> = ({ username, userId }) => 
           <div>
             <p className="text-sm text-gray-300">{username}</p>
           </div>
+          {/* Refresh Button */}
+          <button
+            onClick={fetchFriends}
+            className="ml-auto text-sm text-yellow-400 hover:text-yellow-500"
+          >
+            Обновить
+          </button>
         </div>
       </div>
 
-      {/* Основной контент */}
+      {/* Main Content */}
       <div className="px-4 mt-4 flex-1 overflow-auto">
-        {/* Блок с описанием */}
+        {/* Description Block */}
         <div className="bg-gray-700 rounded-lg p-4 mb-4">
           <h2 className="text-xl text-yellow-400 mb-2">
             Получайте монеты за каждого приглашенного друга в нашу игру.
@@ -79,7 +72,7 @@ const FriendsContent: React.FC<FriendsContentProps> = ({ username, userId }) => 
           </ul>
         </div>
 
-        {/* Список приглашенных друзей */}
+        {/* Invited Friends List */}
         <h3 className="text-lg text-gray-300 mb-2">Приглашенные друзья</h3>
         <div className="bg-gray-700 rounded-lg p-4 flex-1 overflow-auto">
           {friends.length > 0 ? (
@@ -96,7 +89,7 @@ const FriendsContent: React.FC<FriendsContentProps> = ({ username, userId }) => 
         </div>
       </div>
 
-      {/* Кнопка "Пригласить друзей" */}
+      {/* "Invite Friends" Button */}
       <div className="px-4 pb-4">
         <button
           onClick={handleInviteClick}
