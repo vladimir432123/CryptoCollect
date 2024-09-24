@@ -75,7 +75,9 @@ const initializeDatabase = async () => {
           tasks_last_collected DATETIME NULL DEFAULT NULL,
           lastResetTime BIGINT DEFAULT 0, -- Для хранения времени последнего сброса таймера
           farmEntryTime TIMESTAMP NULL DEFAULT NULL, -- Время входа в Farm
-          farmExitTime TIMESTAMP NULL DEFAULT NULL  -- Время выхода из Farm
+          farmExitTime TIMESTAMP NULL DEFAULT NULL,  -- Время выхода из Farm
+          referrer_id BIGINT DEFAULT NULL, -- ID реферера
+          invite_count INT DEFAULT 0       -- Количество приглашенных
       )
     `);
     console.log('Таблица user проверена/создана');
@@ -86,7 +88,8 @@ const initializeDatabase = async () => {
     await addColumnIfNotExists('lastResetTime', 'BIGINT DEFAULT 0');
     await addColumnIfNotExists('farmEntryTime', 'TIMESTAMP NULL DEFAULT NULL');
     await addColumnIfNotExists('farmExitTime', 'TIMESTAMP NULL DEFAULT NULL');
-    // Предполагается, что поля entryTime и exitTime уже существуют для MineContent
+    await addColumnIfNotExists('referrer_id', 'BIGINT DEFAULT NULL');
+    await addColumnIfNotExists('invite_count', 'INT DEFAULT 0');
   } catch (err) {
     console.error('Ошибка при инициализации базы данных:', err);
   }
@@ -132,19 +135,61 @@ async function validateSessionToken(token) {
 bot.start(async (ctx) => {
   const telegramId = ctx.message.from.id;
   const username = ctx.message.from.username || `user_${telegramId}`;
+  const args = ctx.message.text.split(' ');
+
+  // Проверяем наличие реферального ID
+  let referrerId = null;
+  if (args.length > 1) {
+    referrerId = parseInt(args[1]); // Telegram ID реферера
+    if (referrerId === telegramId) {
+      referrerId = null; // Пользователь не может пригласить сам себя
+    }
+  }
 
   const sessionToken = generateSessionToken();
 
   try {
-    const [rows] = await pool.query('SELECT points FROM user WHERE telegram_id = ?', [telegramId]);
+    const [rows] = await pool.query('SELECT * FROM user WHERE telegram_id = ?', [telegramId]);
 
     if (rows.length > 0) {
+      // Пользователь уже существует
       await saveSessionToken(telegramId, sessionToken);
     } else {
+      // Новый пользователь
       await pool.query(
-        'INSERT INTO user (telegram_id, username, session_token, points, remainingClicks) VALUES (?, ?, ?, 10000, 1000)',
-        [telegramId, username, sessionToken]
+        'INSERT INTO user (telegram_id, username, session_token, points, remainingClicks, referrer_id) VALUES (?, ?, ?, 10000, 1000, ?)',
+        [telegramId, username, sessionToken, referrerId]
       );
+
+      // Начисляем бонусы за реферала
+      if (referrerId) {
+        // Новому пользователю
+        await pool.query('UPDATE user SET points = points + 20000 WHERE telegram_id = ?', [
+          telegramId,
+        ]);
+
+        // Рефереру
+        const [referrerRows] = await pool.query('SELECT * FROM user WHERE telegram_id = ?', [
+          referrerId,
+        ]);
+
+        if (referrerRows.length > 0) {
+          const referrerData = referrerRows[0];
+          const inviteCount = referrerData.invite_count || 0;
+          const bonusPoints = 20000 + inviteCount * 15000;
+
+          await pool.query(
+            'UPDATE user SET points = points + ?, invite_count = invite_count + 1 WHERE telegram_id = ?',
+            [bonusPoints, referrerId]
+          );
+
+          // Отправляем сообщение рефереру
+          bot.telegram.sendMessage(
+            referrerId,
+            `Ваш друг ${username} присоединился к игре! Вы получили ${bonusPoints} монет.`
+          );
+        }
+      }
     }
 
     const miniAppUrl = `https://t.me/cryptocollect_bot?startapp=${telegramId}&tgWebApp=true&token=${sessionToken}`;
@@ -156,6 +201,23 @@ bot.start(async (ctx) => {
   } catch (err) {
     console.error('Ошибка при обработке команды /start:', err);
     await ctx.reply('Произошла ошибка, попробуйте позже.');
+  }
+});
+
+// Получение списка приглашенных друзей
+app.get('/invited-friends', async (req, res) => {
+  const userId = req.query.userId;
+
+  if (!userId) {
+    return res.status(400).json({ error: 'User ID обязателен' });
+  }
+
+  try {
+    const [rows] = await pool.query('SELECT username FROM user WHERE referrer_id = ?', [userId]);
+    res.json({ friends: rows });
+  } catch (err) {
+    console.error('Ошибка при получении списка приглашенных друзей:', err);
+    res.status(500).json({ error: 'Ошибка сервера' });
   }
 });
 
@@ -464,9 +526,6 @@ app.post('/collect-task', async (req, res) => {
 
     const now = new Date();
     const lastCollected = tasks_last_collected ? new Date(userData.tasks_last_collected) : null;
-
-    // Определяем maxClicks на основе tapIncreaseLevel
-    const maxClicks = 1000 + (tapIncreaseLevel - 1) * 500; // Пример: каждый уровень увеличивает maxClicks на 500
 
     // Проверка, можно ли собрать награду
     if (day !== tasks_current_day) {
