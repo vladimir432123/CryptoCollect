@@ -94,8 +94,8 @@ const FriendsContent: React.FC<FriendsContentProps> = ({ username, userId, frien
       <div className="px-4 pb-4">
         <button
           onClick={handleInviteClick}
-          className="w-full py-3 bg-yellow-500 text-black rounded-lg font-bold mt-4 hover:bg-yellow-600"
-        >
+          className="w-full h-[70px] bg-yellow-500 text-black rounded-lg font-bold mt-4 hover:bg-yellow-600"
+          >
           Пригласить друзей
         </button>
       </div>
