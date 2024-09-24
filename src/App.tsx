@@ -8,7 +8,7 @@ import Mine from './icons/Mine';
 import Friends from './icons/Friends';
 import MineContent from './MineContent';
 import TasksContent from './TasksContent';
-import FriendsContent from './FriendsContent.tsx'; // Новый импорт
+import FriendsContent from './FriendsContent'; // Обновленный импорт
 import { FaTasks } from 'react-icons/fa';
 import WebApp from '@twa-dev/sdk';
 import LoadingScreen from './LoadingScreen';
@@ -46,6 +46,10 @@ const App: React.FC = () => {
   const [username, setUsername] = useState<string | null>(null);
   const [userId, setUserId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // Новые состояния для заданий и друзей
+  const [tasks, setTasks] = useState<any[]>([]);
+  const [friends, setFriends] = useState<any[]>([]);
 
   // Состояния для улучшений из MineContent
   const [upgrades, setUpgrades] = useState<{ [key: string]: number }>({
@@ -236,6 +240,9 @@ const App: React.FC = () => {
           upgrade8: data.upgrade8 || 1,
         });
         setFarmLevel(data.farmLevel || 1);
+
+        // Загружаем задания и друзей при запуске приложения
+        await Promise.all([fetchTasks(userIdFromTelegram), fetchFriends(userIdFromTelegram)]);
       } catch (error) {
         console.error('Ошибка при загрузке данных с сервера:', error);
       } finally {
@@ -245,6 +252,39 @@ const App: React.FC = () => {
 
     fetchData();
   }, [tapProfitLevels, tapIncreaseLevels]);
+
+  // Функции для загрузки заданий и друзей
+  const fetchTasks = useCallback(
+    async (userIdParam: number | null = null) => {
+      const uid = userIdParam || userId;
+      if (uid !== null) {
+        try {
+          const response = await fetch(`/user-tasks?userId=${uid}`);
+          const data = await response.json();
+          setTasks(data.tasks);
+        } catch (error) {
+          console.error('Ошибка при загрузке заданий:', error);
+        }
+      }
+    },
+    [userId]
+  );
+
+  const fetchFriends = useCallback(
+    async (userIdParam: number | null = null) => {
+      const uid = userIdParam || userId;
+      if (uid !== null) {
+        try {
+          const response = await fetch(`/invited-friends?userId=${uid}`);
+          const data = await response.json();
+          setFriends(data.friends);
+        } catch (error) {
+          console.error('Ошибка при загрузке списка друзей:', error);
+        }
+      }
+    },
+    [userId]
+  );
 
   useEffect(() => {
     const handleBeforeUnload = () => {
@@ -702,6 +742,17 @@ const App: React.FC = () => {
       setPoints={setPoints}
       userId={userId}
       username={username}
+      tasks={tasks}
+      fetchTasks={fetchTasks}
+    />
+  );
+
+  const renderFriendsContent = () => (
+    <FriendsContent
+      username={username || 'Гость'}
+      userId={userId}
+      friends={friends}
+      fetchFriends={fetchFriends}
     />
   );
 
@@ -714,13 +765,6 @@ const App: React.FC = () => {
         {renderUpgradeOption('tapIncrease')}
       </div>
     </>
-  );
-
-  const renderFriendsContent = () => (
-    <FriendsContent
-      username={username || 'Гость'}
-      userId={userId}
-    />
   );
 
   return (
