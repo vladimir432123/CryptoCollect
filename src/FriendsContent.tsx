@@ -54,7 +54,7 @@ const FriendsContent: React.FC<FriendsContentProps> = ({ username, userId, frien
       </div>
 
       {/* Main Content */}
-      <div className="px-4 mt-4 flex-1 overflow-auto pb-20">
+      <div className="flex-1 overflow-auto px-4 mt-4">
         {/* Description Block */}
         <div className="bg-gray-700 rounded-lg p-4 mb-4">
           <h2 className="text-xl text-yellow-400 mb-2">
@@ -75,7 +75,7 @@ const FriendsContent: React.FC<FriendsContentProps> = ({ username, userId, frien
 
         {/* Invited Friends List */}
         <h3 className="text-lg text-gray-300 mb-2">Приглашенные друзья</h3>
-        <div className="bg-gray-700 rounded-lg p-4 flex-1 overflow-auto">
+        <div className="bg-gray-700 rounded-lg p-4 mb-4">
           {friends && friends.length > 0 ? (
             <ul>
               {friends.map((friend, index) => (
@@ -91,11 +91,12 @@ const FriendsContent: React.FC<FriendsContentProps> = ({ username, userId, frien
       </div>
 
       {/* "Invite Friends" Button */}
-      <div className="px-4 pb-4">
+      <div className="px-4 pb-4" style={{ marginTop: 'auto' }}>
         <button
           onClick={handleInviteClick}
-          className="w-full h-[180px] bg-yellow-500 text-black rounded-lg font-bold mt-4 hover:bg-yellow-600"
-          >
+          className="w-full py-3 bg-yellow-500 text-black rounded-lg font-bold hover:bg-yellow-600"
+          style={{ marginBottom: '100px' }} // Подняли кнопку на 100 пикселей
+        >
           Пригласить друзей
         </button>
       </div>
