@@ -46,7 +46,7 @@ const FriendsContent: React.FC<FriendsContentProps> = ({ username, userId }) => 
   }, [userId]);
 
   return (
-    <div className="flex flex-col h-full bg-gray-800">
+    <div className="flex flex-col h-full bg-gray-800 pb-20"> {/* Добавлено pb-20 */}
       {/* Информация о пользователе */}
       <div className="px-4 pt-4">
         <div className="flex items-center space-x-2">
