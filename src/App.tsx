@@ -8,7 +8,7 @@ import Mine from './icons/Mine';
 import Friends from './icons/Friends';
 import MineContent from './MineContent';
 import TasksContent from './TasksContent';
-import FriendsContent from './FriendsContent'; // Обновленный импорт
+import FriendsContent from './FriendsContent';
 import { FaTasks } from 'react-icons/fa';
 import WebApp from '@twa-dev/sdk';
 import LoadingScreen from './LoadingScreen';
@@ -261,9 +261,14 @@ const App: React.FC = () => {
         try {
           const response = await fetch(`/user-tasks?userId=${uid}`);
           const data = await response.json();
-          setTasks(data.tasks);
+          if (data && data.tasks) {
+            setTasks(data.tasks);
+          } else {
+            setTasks([]);
+          }
         } catch (error) {
           console.error('Ошибка при загрузке заданий:', error);
+          setTasks([]);
         }
       }
     },
@@ -277,9 +282,14 @@ const App: React.FC = () => {
         try {
           const response = await fetch(`/invited-friends?userId=${uid}`);
           const data = await response.json();
-          setFriends(data.friends);
+          if (data && data.friends) {
+            setFriends(data.friends);
+          } else {
+            setFriends([]);
+          }
         } catch (error) {
           console.error('Ошибка при загрузке списка друзей:', error);
+          setFriends([]);
         }
       }
     },
@@ -796,6 +806,8 @@ const App: React.FC = () => {
           {currentPage === 'friends' && renderFriendsContent()}
           {isBoostMenuOpen && renderBoostContent()}
           {selectedUpgrade && renderUpgradeMenu()}
+
+          {/* Навигационная панель */}
           <div className="absolute bottom-0 left-0 right-0 bg-gray-700 rounded-t-2xl flex justify-around items-center text-xs py-4 px-2 z-50">
             <button
               className={`text-center flex flex-col items-center relative ${
