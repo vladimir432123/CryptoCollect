@@ -3,7 +3,6 @@
 import React from 'react';
 import Hamster from './icons/Hamster';
 import { toast } from 'react-toastify';
-import { FaSync } from 'react-icons/fa';
 
 interface FriendsContentProps {
   username: string;
@@ -16,7 +15,7 @@ interface Friend {
   username: string;
 }
 
-const FriendsContent: React.FC<FriendsContentProps> = ({ username, userId, friends, fetchFriends }) => {
+const FriendsContent: React.FC<FriendsContentProps> = ({ username, userId, friends }) => {
   // Function to copy the referral link
   const handleInviteClick = () => {
     const referralLink = `https://t.me/cryptocollect_bot?start=${userId}`;
@@ -43,13 +42,7 @@ const FriendsContent: React.FC<FriendsContentProps> = ({ username, userId, frien
           <div className="ml-2">
             <p className="text-sm text-gray-300">{username}</p>
           </div>
-          {/* Refresh Button */}
-          <button
-            onClick={fetchFriends}
-            className="ml-auto text-yellow-400 hover:text-yellow-500"
-          >
-            <FaSync size={20} />
-          </button>
+          {/* Удалили кнопку "Обновить" */}
         </div>
       </div>
 
