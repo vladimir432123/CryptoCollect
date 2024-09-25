@@ -40,16 +40,18 @@ const MineContent: React.FC<MineContentProps> = ({
   const [isUpgradesMenuOpen, setIsUpgradesMenuOpen] = useState(false);
   const [selectedMineUpgrade, setSelectedMineUpgrade] = useState<string | null>(null);
 
-  const [earnedCoins, setEarnedCoins] = useState<number>(0);
+  const [earnedCoins, setEarnedCoins] = useState<number>(() => {
+    const savedEarnedCoins = localStorage.getItem('earnedCoins');
+    return savedEarnedCoins ? parseFloat(savedEarnedCoins) : 0;
+  });
+
+  const farmLevelMultipliers = [1, 1.2, 1.4, 1.6, 1.8, 2.0];
   const [lastUpdateTime, setLastUpdateTime] = useState<number>(() => {
     const savedTime = localStorage.getItem('lastUpdateTime');
     return savedTime ? parseInt(savedTime) : Date.now();
   });
 
-  const maxAccumulationTime = 3 * 3600 * 1000; // 3 часа в миллисекундах
   const timerRef = useRef<number | null>(null);
-
-  const farmLevelMultipliers = [1, 1.2, 1.4, 1.6, 1.8, 2.0];
 
   const calculateTotalIncome = (upgrades: { [key: string]: number }, farmLevel: number): number => {
     let income = 0;
@@ -62,50 +64,89 @@ const MineContent: React.FC<MineContentProps> = ({
     return income * farmLevelMultipliers[farmLevel - 1];
   };
 
-  // Функция для обновления накопленных монет на основе прошедшего времени
+  // Обновляем доход при изменении улучшений или уровня фермы
+  useEffect(() => {
+    const totalIncome = calculateTotalIncome(upgrades, farmLevel);
+    setIncomePerHour(totalIncome);
+  }, [upgrades, farmLevel, setIncomePerHour]);
+
+  // Функция для обновления накопленных монет
   const updateEarnedCoins = () => {
     const now = Date.now();
-    const elapsed = now - lastUpdateTime;
-    const maxElapsed = Math.min(elapsed, maxAccumulationTime);
-
-    const newEarnedCoins = (incomePerHour / 3600) * (maxElapsed / 1000);
+    const elapsedSeconds = (now - lastUpdateTime) / 1000;
+    const potentialEarned = (incomePerHour / 3600) * elapsedSeconds;
+    const maxEarnedCoins = incomePerHour * 3; // Максимум за 3 часа
+    const newEarnedCoins = Math.min(earnedCoins + potentialEarned, maxEarnedCoins);
 
     setEarnedCoins(newEarnedCoins);
+    setLastUpdateTime(now);
+
+    // Сохраняем в localStorage
+    localStorage.setItem('earnedCoins', newEarnedCoins.toString());
+    localStorage.setItem('lastUpdateTime', now.toString());
   };
 
+  // При монтировании компонента обновляем накопленные монеты
   useEffect(() => {
-    // При монтировании компонента обновляем накопленные монеты
     updateEarnedCoins();
-    setLastUpdateTime(Date.now());
 
-    // Запускаем интервал для обновления накопленных монет каждую секунду
+    // Запускаем таймер для обновления монет каждую минуту
     timerRef.current = window.setInterval(() => {
-      setEarnedCoins((prevEarnedCoins) => {
-        if (prevEarnedCoins >= (incomePerHour * 3)) {
-          return incomePerHour * 3;
-        }
-        const now = Date.now();
-        const elapsed = now - lastUpdateTime;
-        const maxElapsed = Math.min(elapsed, maxAccumulationTime);
-        const totalEarned = (incomePerHour / 3600) * (maxElapsed / 1000);
-        return Math.min(totalEarned, incomePerHour * 3);
-      });
-    }, 1000);
+      updateEarnedCoins();
+    }, 60000); // Обновляем каждую минуту
 
     return () => {
       if (timerRef.current) {
         clearInterval(timerRef.current);
       }
-      // При размонтировании сохраняем время последнего обновления
-      localStorage.setItem('lastUpdateTime', Date.now().toString());
+      // Сохраняем время выхода
+      saveExitTime();
     };
-  }, [incomePerHour, lastUpdateTime]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [incomePerHour]);
 
+  // Сохраняем время выхода с MineContent
+  const saveExitTime = () => {
+    if (userId !== null) {
+      fetch('/save-entry-exit-time', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId,
+          action: 'exit_mine',
+          time: new Date().toISOString(),
+        }),
+      }).catch((error) => console.error('Ошибка при сохранении времени выхода из MineContent:', error));
+    }
+  };
+
+  // При заходе на страницу MineContent, сохраняем время входа
   useEffect(() => {
-    // Обновляем доход при изменении улучшений или уровня фермы
-    const totalIncome = calculateTotalIncome(upgrades, farmLevel);
-    setIncomePerHour(totalIncome);
-  }, [upgrades, farmLevel, setIncomePerHour]);
+    if (userId !== null) {
+      fetch('/save-entry-exit-time', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId,
+          action: 'enter_mine',
+          time: new Date().toISOString(),
+        }),
+      }).catch((error) => console.error('Ошибка при сохранении времени входа в MineContent:', error));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Предзагрузка изображений
+  useEffect(() => {
+    upgradesList.forEach((upgrade) => {
+      const img = new Image();
+      img.src = `/images/${upgrade}.png`;
+    });
+  }, []);
 
   const handleUpgradeClick = (upgrade: string) => {
     setSelectedMineUpgrade(upgrade);
@@ -207,7 +248,14 @@ const MineContent: React.FC<MineContentProps> = ({
       const newPoints = points + totalEarnedCoins;
       setPoints(newPoints);
       setEarnedCoins(0);
-      setLastUpdateTime(Date.now()); // Сбрасываем время последнего обновления
+
+      // Обновляем lastUpdateTime
+      const now = Date.now();
+      setLastUpdateTime(now);
+      localStorage.setItem('lastUpdateTime', now.toString());
+
+      // Сохраняем в localStorage
+      localStorage.setItem('earnedCoins', '0');
 
       // Сохранить обновленные данные на сервере
       await fetch('/save-data', {
@@ -234,13 +282,14 @@ const MineContent: React.FC<MineContentProps> = ({
     }
   };
 
-  // Предзагрузка изображений
-  useEffect(() => {
-    upgradesList.forEach((upgrade) => {
-      const img = new Image();
-      img.src = `/images/${upgrade}.png`;
-    });
-  }, []);
+  // Расчет оставшегося времени до максимального накопления
+  const remainingTime = () => {
+    const maxEarnedCoins = incomePerHour * 3;
+    const remainingCoins = maxEarnedCoins - earnedCoins;
+    const remainingSeconds = (remainingCoins / (incomePerHour / 3600));
+    const remainingHours = Math.ceil(remainingSeconds / 3600);
+    return Math.max(0, remainingHours);
+  };
 
   return (
     <>
@@ -429,7 +478,7 @@ const MineContent: React.FC<MineContentProps> = ({
                 />
               </svg>
               <span className="text-white text-lg font-semibold">
-                Осталось: {Math.max(0, 3 - Math.floor((Date.now() - lastUpdateTime) / (3600 * 1000)))} ч
+                Осталось: {remainingTime()} ч
               </span>
             </div>
           </div>
