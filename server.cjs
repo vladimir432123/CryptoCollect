@@ -57,6 +57,7 @@ const initializeDatabase = async () => {
           points INT DEFAULT 10000,
           tapProfitLevel INT DEFAULT 1,
           tapIncreaseLevel INT DEFAULT 1,
+          clickRecoveryLevel INT DEFAULT 1, -- Добавлено новое поле для Click Recovery
           remainingClicks INT DEFAULT 1000,
           last_logout TIMESTAMP NULL DEFAULT NULL,
           upgrade1 INT DEFAULT 1,
@@ -88,6 +89,7 @@ const initializeDatabase = async () => {
     console.log('Таблица user проверена/создана');
 
     // Добавляем недостающие столбцы, если они отсутствуют
+    await addColumnIfNotExists('clickRecoveryLevel', 'INT DEFAULT 1'); // Добавляем столбец для Click Recovery
     await addColumnIfNotExists('tasks_current_day', 'INT DEFAULT 1');
     await addColumnIfNotExists('tasks_last_collected', 'DATETIME NULL DEFAULT NULL');
     await addColumnIfNotExists('lastResetTime', 'BIGINT DEFAULT 0');
@@ -302,38 +304,55 @@ app.get('/app', async (req, res) => {
     const [rows] = await pool.query('SELECT * FROM user WHERE telegram_id = ?', [userId]);
     if (rows.length > 0) {
       const userData = rows[0];
-      let { remainingClicks, last_logout, tapIncreaseLevel, farmExitTime } = userData;
+      let {
+        remainingClicks,
+        last_logout,
+        tapIncreaseLevel,
+        clickRecoveryLevel, // Добавлено
+        farmExitTime,
+      } = userData;
 
       // Определяем maxClicks на основе tapIncreaseLevel
       const maxClicks = 1000 + (tapIncreaseLevel - 1) * 500; // Пример: каждый уровень увеличивает maxClicks на 500
 
       let restoredClicks = 0;
 
-      // Восстановление кликов на основе last_logout
-      if (last_logout) {
-        const lastLogoutTime = new Date(last_logout);
-        const now = new Date();
-        const diffSeconds = Math.floor((now - lastLogoutTime) / 1000); // Разница в секундах
+      // Определяем currentRecoveryAmount на основе clickRecoveryLevel
+      const clickRecoveryLevels = [
+        { level: 1, recoveryAmount: 1 },
+        { level: 2, recoveryAmount: 2 },
+        { level: 3, recoveryAmount: 3 },
+        { level: 4, recoveryAmount: 4 },
+        { level: 5, recoveryAmount: 5 },
+        { level: 6, recoveryAmount: 6 },
+        { level: 7, recoveryAmount: 7 },
+        { level: 8, recoveryAmount: 8 },
+        { level: 9, recoveryAmount: 9 },
+        { level: 10, recoveryAmount: 10 },
+      ];
 
-        restoredClicks += diffSeconds * 1; // 1 клик в секунду
-      }
+      const currentRecoveryAmount = clickRecoveryLevels[clickRecoveryLevel - 1]?.recoveryAmount || 1;
+
+      const BASE_RECOVERY_RATE = 1000; // 1 секунда
 
       // Восстановление кликов на основе farmExitTime
       if (farmExitTime) {
         const farmExit = new Date(farmExitTime);
         const now = new Date();
-        const diffSecondsFarm = Math.floor((now - farmExit) / 1000); // Разница в секундах
+        const diffMilliseconds = now - farmExit;
+        const recoveredClicks = Math.floor(diffMilliseconds / BASE_RECOVERY_RATE) * currentRecoveryAmount;
 
-        restoredClicks += diffSecondsFarm * 1; // 1 клик в секунду
+        restoredClicks += recoveredClicks;
       }
 
+      // Обновляем remainingClicks
       if (restoredClicks > 0) {
         remainingClicks = Math.min(remainingClicks + restoredClicks, maxClicks);
         console.log(`Восстановлено ${restoredClicks} кликов для пользователя с ID: ${userId}`);
 
-        // Обновляем remainingClicks и сбрасываем farmExitTime и last_logout
+        // Обновляем remainingClicks и сбрасываем farmExitTime
         await pool.query(
-          'UPDATE user SET remainingClicks = ?, farmExitTime = NULL, last_logout = NULL WHERE telegram_id = ?',
+          'UPDATE user SET remainingClicks = ?, farmExitTime = NULL WHERE telegram_id = ?',
           [remainingClicks, userId]
         );
       }
@@ -343,6 +362,7 @@ app.get('/app', async (req, res) => {
         points: userData.points,
         tapProfitLevel: userData.tapProfitLevel,
         tapIncreaseLevel: userData.tapIncreaseLevel,
+        clickRecoveryLevel: userData.clickRecoveryLevel, // Возвращаем clickRecoveryLevel
         remainingClicks: remainingClicks,
         lastLogout: userData.last_logout,
         upgrade1: userData.upgrade1,
@@ -386,6 +406,7 @@ app.post('/save-data', async (req, res) => {
     'points',
     'tapProfitLevel',
     'tapIncreaseLevel',
+    'clickRecoveryLevel', // Добавлено
     'remainingClicks',
     'upgrade1',
     'upgrade2',
@@ -732,7 +753,7 @@ app.post('/collect-user-task', async (req, res) => {
           canCollect = true;
           await pool.query(
             'UPDATE user SET points = points + ?, task4_collected = TRUE WHERE telegram_id = ?',
-            [reward, userId]
+              [reward, userId]
           );
         }
         break;
