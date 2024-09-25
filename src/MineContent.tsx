@@ -40,9 +40,13 @@ const MineContent: React.FC<MineContentProps> = ({
   const [isUpgradesMenuOpen, setIsUpgradesMenuOpen] = useState(false);
   const [selectedMineUpgrade, setSelectedMineUpgrade] = useState<string | null>(null);
 
-  // Состояния для заработанных монет
   const [earnedCoins, setEarnedCoins] = useState<number>(0);
+  const [lastUpdateTime, setLastUpdateTime] = useState<number>(() => {
+    const savedTime = localStorage.getItem('lastUpdateTime');
+    return savedTime ? parseInt(savedTime) : Date.now();
+  });
 
+  const maxAccumulationTime = 3 * 3600 * 1000; // 3 часа в миллисекундах
   const timerRef = useRef<number | null>(null);
 
   const farmLevelMultipliers = [1, 1.2, 1.4, 1.6, 1.8, 2.0];
@@ -58,20 +62,33 @@ const MineContent: React.FC<MineContentProps> = ({
     return income * farmLevelMultipliers[farmLevel - 1];
   };
 
-  useEffect(() => {
-    // Обновляем доход при изменении улучшений или уровня фермы
-    const totalIncome = calculateTotalIncome(upgrades, farmLevel);
-    setIncomePerHour(totalIncome);
-  }, [upgrades, farmLevel, setIncomePerHour]);
+  // Функция для обновления накопленных монет на основе прошедшего времени
+  const updateEarnedCoins = () => {
+    const now = Date.now();
+    const elapsed = now - lastUpdateTime;
+    const maxElapsed = Math.min(elapsed, maxAccumulationTime);
+
+    const newEarnedCoins = (incomePerHour / 3600) * (maxElapsed / 1000);
+
+    setEarnedCoins(newEarnedCoins);
+  };
 
   useEffect(() => {
-    // Таймер для накопления монет
+    // При монтировании компонента обновляем накопленные монеты
+    updateEarnedCoins();
+    setLastUpdateTime(Date.now());
+
+    // Запускаем интервал для обновления накопленных монет каждую секунду
     timerRef.current = window.setInterval(() => {
       setEarnedCoins((prevEarnedCoins) => {
-        if (prevEarnedCoins >= incomePerHour * 3) {
+        if (prevEarnedCoins >= (incomePerHour * 3)) {
           return incomePerHour * 3;
         }
-        return prevEarnedCoins + incomePerHour / 3600;
+        const now = Date.now();
+        const elapsed = now - lastUpdateTime;
+        const maxElapsed = Math.min(elapsed, maxAccumulationTime);
+        const totalEarned = (incomePerHour / 3600) * (maxElapsed / 1000);
+        return Math.min(totalEarned, incomePerHour * 3);
       });
     }, 1000);
 
@@ -79,8 +96,16 @@ const MineContent: React.FC<MineContentProps> = ({
       if (timerRef.current) {
         clearInterval(timerRef.current);
       }
+      // При размонтировании сохраняем время последнего обновления
+      localStorage.setItem('lastUpdateTime', Date.now().toString());
     };
-  }, [incomePerHour]);
+  }, [incomePerHour, lastUpdateTime]);
+
+  useEffect(() => {
+    // Обновляем доход при изменении улучшений или уровня фермы
+    const totalIncome = calculateTotalIncome(upgrades, farmLevel);
+    setIncomePerHour(totalIncome);
+  }, [upgrades, farmLevel, setIncomePerHour]);
 
   const handleUpgradeClick = (upgrade: string) => {
     setSelectedMineUpgrade(upgrade);
@@ -182,6 +207,7 @@ const MineContent: React.FC<MineContentProps> = ({
       const newPoints = points + totalEarnedCoins;
       setPoints(newPoints);
       setEarnedCoins(0);
+      setLastUpdateTime(Date.now()); // Сбрасываем время последнего обновления
 
       // Сохранить обновленные данные на сервере
       await fetch('/save-data', {
@@ -367,7 +393,7 @@ const MineContent: React.FC<MineContentProps> = ({
       )}
 
       {/* Новый дизайн нижней панели */}
-      <div className="px-4 mt-4 flex flex-col items-center">
+      <div className="px-4 mt-4 flex flex-col items-center" style={{ marginBottom: '100px' }}>
         <div className="w-full bg-gray-700 rounded-lg p-4 mb-4">
           <div className="flex justify-between items-center">
             <div className="flex items-center space-x-2">
@@ -403,7 +429,7 @@ const MineContent: React.FC<MineContentProps> = ({
                 />
               </svg>
               <span className="text-white text-lg font-semibold">
-                Осталось: {Math.max(0, 3 - Math.floor(earnedCoins / incomePerHour))} ч
+                Осталось: {Math.max(0, 3 - Math.floor((Date.now() - lastUpdateTime) / (3600 * 1000)))} ч
               </span>
             </div>
           </div>
