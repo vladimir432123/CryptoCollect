@@ -65,7 +65,7 @@ const MineContent: React.FC<MineContentProps> = ({
     return income * farmLevelMultipliers[farmLevel - 1];
   };
 
-  // Обновляем доход при изменении улучшений или уровня фермы
+  // Обновляем incomePerHour при изменении улучшений или уровня фермы
   useEffect(() => {
     const totalIncome = calculateTotalIncome(upgrades, farmLevel);
     setIncomePerHour(totalIncome);
@@ -249,15 +249,15 @@ const MineContent: React.FC<MineContentProps> = ({
       // Добавить заработанные монеты к points
       const newPoints = points + totalEarnedCoins;
       setPoints(newPoints);
+
+      // Сброс earnedCoins
       setEarnedCoins(0);
+      localStorage.setItem('earnedCoins', '0');
 
       // Обновляем lastUpdateTime
       const now = Date.now();
       setLastUpdateTime(now);
       localStorage.setItem('lastUpdateTime', now.toString());
-
-      // Сохраняем в localStorage
-      localStorage.setItem('earnedCoins', '0');
 
       // Сохранить обновленные данные на сервере
       await fetch('/save-data', {
@@ -289,7 +289,7 @@ const MineContent: React.FC<MineContentProps> = ({
     const remainingCoins = maxEarnedCoins - earnedCoins;
     const remainingSeconds = remainingCoins / (incomePerHour / 3600);
     const remainingHours = Math.ceil(remainingSeconds / 3600);
-    return Math.max(0, remainingHours);
+    return Math.min(3, Math.max(0, remainingHours));
   };
 
   return (
@@ -332,12 +332,7 @@ const MineContent: React.FC<MineContentProps> = ({
                 stroke="currentColor"
                 viewBox="0 0 24 24"
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M4 6h16M4 12h16M4 18h16"
-                />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
               </svg>
             </div>
             <span className="text-2xl font-bold text-white">Улучшения</span>
@@ -353,7 +348,7 @@ const MineContent: React.FC<MineContentProps> = ({
         </button>
       </div>
 
-      {/* Новое меню улучшений */}
+      {/* Меню улучшений */}
       {isUpgradesMenuOpen && (
         <div
           className="fixed inset-0 bg-black bg-opacity-50 flex items-end justify-center z-50"
@@ -362,7 +357,7 @@ const MineContent: React.FC<MineContentProps> = ({
           <div
             className="bg-gray-900 w-full max-w-md p-6 rounded-t-lg animate-slide-up flex flex-col"
             onClick={(e) => e.stopPropagation()}
-            style={{ maxHeight: '85%', marginBottom: '80px' }} // Увеличили высоту и добавили отступ снизу
+            style={{ maxHeight: '90%', marginBottom: '0' }} // Убираем нижний отступ
           >
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl text-white">Улучшения</h2>
@@ -397,7 +392,7 @@ const MineContent: React.FC<MineContentProps> = ({
           {selectedMineUpgrade && (
             <div
               className="bg-gray-900 w-full max-w-md p-6 rounded-t-lg animate-slide-up flex flex-col absolute bottom-0"
-              style={{ marginBottom: '70px' }} // Отступ снизу 70 пикселей
+              style={{ marginBottom: '80px' }} // Скорректируем нижний отступ
               onClick={(e) => e.stopPropagation()}
             >
               <h2 className="text-center text-xl text-white mb-2">{`Улучшение ${selectedMineUpgrade}`}</h2>
@@ -438,7 +433,10 @@ const MineContent: React.FC<MineContentProps> = ({
       )}
 
       {/* Новый дизайн нижней панели */}
-      <div className="fixed bottom-0 left-0 right-0 px-4 flex flex-col items-center" style={{ marginBottom: '80px' }}>
+      <div
+        className="fixed bottom-0 left-0 right-0 px-4 flex flex-col items-center"
+        style={{ marginBottom: '90px' }} // Подняли на 10 пикселей
+      >
         <div className="w-full bg-gray-700 rounded-lg p-4 mb-4">
           <div className="flex justify-between items-center">
             <div className="flex items-center space-x-2">
@@ -455,7 +453,7 @@ const MineContent: React.FC<MineContentProps> = ({
         </div>
         <button
           onClick={handleCollectCoins}
-          className={`w-full py-3 bg-yellow-500 text-black rounded-lg font-bold hover:bg-yellow-600 ${
+          className={`w-full py-3 mb-2 bg-yellow-500 text-black rounded-lg font-bold hover:bg-yellow-600 ${
             earnedCoins > 0 ? '' : 'opacity-50 cursor-not-allowed'
           }`}
           disabled={earnedCoins <= 0}
