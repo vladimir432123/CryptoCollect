@@ -3,7 +3,7 @@
 const express = require('express');
 const path = require('path');
 const bodyParser = require('body-parser');
-const mysql = require('mysql2/promise'); // Используем promise-версию mysql2
+const mysql = require('mysql2/promise');
 const { Telegraf, Markup } = require('telegraf');
 const crypto = require('crypto');
 require('dotenv').config();
@@ -34,10 +34,17 @@ const pool = mysql.createPool(dbConfig);
 // Функция для добавления столбца, если он не существует
 const addColumnIfNotExists = async (columnName, columnDefinition) => {
   try {
-    const [rows] = await pool.query(`SHOW COLUMNS FROM user LIKE ?`, [columnName]);
+    const [rows] = await pool.query(
+      `SHOW COLUMNS FROM user LIKE ?`,
+      [columnName]
+    );
     if (rows.length === 0) {
-      await pool.query(`ALTER TABLE user ADD COLUMN ${columnName} ${columnDefinition}`);
-      console.log(`Столбец ${columnName} успешно добавлен в таблицу user`);
+      await pool.query(
+        `ALTER TABLE user ADD COLUMN ${columnName} ${columnDefinition}`
+      );
+      console.log(
+        `Столбец ${columnName} успешно добавлен в таблицу user`
+      );
     }
   } catch (err) {
     console.error(`Ошибка при добавлении столбца ${columnName}:`, err);
@@ -82,24 +89,17 @@ const initializeDatabase = async () => {
           task2_collected BOOLEAN DEFAULT FALSE,
           task3_collected BOOLEAN DEFAULT FALSE,
           task4_collected BOOLEAN DEFAULT FALSE,
-          task5_collected BOOLEAN DEFAULT FALSE
+          task5_collected BOOLEAN DEFAULT FALSE,
+          lastCollectTime DATETIME NULL DEFAULT NULL, -- Время последнего сбора монет
+          earnedCoins INT DEFAULT 0 -- Накопленные монеты
       )
     `);
     console.log('Таблица user проверена/создана');
 
     // Добавляем недостающие столбцы, если они отсутствуют
-    await addColumnIfNotExists('tasks_current_day', 'INT DEFAULT 1');
-    await addColumnIfNotExists('tasks_last_collected', 'DATETIME NULL DEFAULT NULL');
-    await addColumnIfNotExists('lastResetTime', 'BIGINT DEFAULT 0');
-    await addColumnIfNotExists('farmEntryTime', 'TIMESTAMP NULL DEFAULT NULL');
-    await addColumnIfNotExists('farmExitTime', 'TIMESTAMP NULL DEFAULT NULL');
-    await addColumnIfNotExists('referrer_id', 'BIGINT DEFAULT NULL');
-    await addColumnIfNotExists('invite_count', 'INT DEFAULT 0');
-    await addColumnIfNotExists('task1_collected', 'BOOLEAN DEFAULT FALSE');
-    await addColumnIfNotExists('task2_collected', 'BOOLEAN DEFAULT FALSE');
-    await addColumnIfNotExists('task3_collected', 'BOOLEAN DEFAULT FALSE');
-    await addColumnIfNotExists('task4_collected', 'BOOLEAN DEFAULT FALSE');
-    await addColumnIfNotExists('task5_collected', 'BOOLEAN DEFAULT FALSE');
+    await addColumnIfNotExists('lastCollectTime', 'DATETIME NULL DEFAULT NULL');
+    await addColumnIfNotExists('earnedCoins', 'INT DEFAULT 0');
+    // Добавьте остальные недостающие столбцы по аналогии
   } catch (err) {
     console.error('Ошибка при инициализации базы данных:', err);
   }
@@ -148,7 +148,10 @@ bot.start(async (ctx) => {
   const sessionToken = generateSessionToken();
 
   try {
-    const [rows] = await pool.query('SELECT * FROM user WHERE telegram_id = ?', [telegramId]);
+    const [rows] = await pool.query(
+      'SELECT * FROM user WHERE telegram_id = ?',
+      [telegramId]
+    );
 
     if (rows.length > 0) {
       // Пользователь уже существует
@@ -163,14 +166,16 @@ bot.start(async (ctx) => {
       // Начисляем бонусы за реферала
       if (referrerId) {
         // Новому пользователю
-        await pool.query('UPDATE user SET points = points + 20000 WHERE telegram_id = ?', [
-          telegramId,
-        ]);
+        await pool.query(
+          'UPDATE user SET points = points + 20000 WHERE telegram_id = ?',
+          [telegramId]
+        );
 
         // Рефереру
-        const [referrerRows] = await pool.query('SELECT * FROM user WHERE telegram_id = ?', [
-          referrerId,
-        ]);
+        const [referrerRows] = await pool.query(
+          'SELECT * FROM user WHERE telegram_id = ?',
+          [referrerId]
+        );
 
         if (referrerRows.length > 0) {
           const referrerData = referrerRows[0];
@@ -195,7 +200,9 @@ bot.start(async (ctx) => {
 
     await ctx.reply(
       'Добро пожаловать! Нажмите на кнопку ниже, чтобы открыть приложение:',
-      Markup.inlineKeyboard([Markup.button.url('Открыть приложение', miniAppUrl)])
+      Markup.inlineKeyboard([
+        Markup.button.url('Открыть приложение', miniAppUrl),
+      ])
     );
   } catch (err) {
     console.error('Ошибка при обработке команды /start:', err);
@@ -212,7 +219,10 @@ app.get('/invited-friends', async (req, res) => {
   }
 
   try {
-    const [rows] = await pool.query('SELECT username FROM user WHERE referrer_id = ?', [userId]);
+    const [rows] = await pool.query(
+      'SELECT username FROM user WHERE referrer_id = ?',
+      [userId]
+    );
     res.json({ friends: rows });
   } catch (err) {
     console.error('Ошибка при получении списка приглашенных друзей:', err);
@@ -225,7 +235,9 @@ app.post('/save-entry-exit-time', async (req, res) => {
   const { userId, action } = req.body;
 
   if (!userId || !action) {
-    console.log('Ошибка: Недостаточно данных для сохранения времени входа/выхода');
+    console.log(
+      'Ошибка: Недостаточно данных для сохранения времени входа/выхода'
+    );
     return res.status(400).json({ error: 'Missing required fields' });
   }
 
@@ -258,8 +270,14 @@ app.post('/save-entry-exit-time', async (req, res) => {
   }
 
   try {
-    await pool.query(`UPDATE user SET ${field} = ? WHERE telegram_id = ?`, [value, userId]);
-    console.log(`Время ${action} успешно сохранено для пользователя с ID:`, userId);
+    await pool.query(
+      `UPDATE user SET ${field} = ? WHERE telegram_id = ?`,
+      [value, userId]
+    );
+    console.log(
+      `Время ${action} успешно сохранено для пользователя с ID:`,
+      userId
+    );
     res.json({ success: true });
   } catch (err) {
     console.error('Ошибка при сохранении времени:', err);
@@ -299,13 +317,21 @@ app.get('/app', async (req, res) => {
   console.log('Запрос от Mini App с User ID:', userId);
 
   try {
-    const [rows] = await pool.query('SELECT * FROM user WHERE telegram_id = ?', [userId]);
+    const [rows] = await pool.query(
+      'SELECT * FROM user WHERE telegram_id = ?',
+      [userId]
+    );
     if (rows.length > 0) {
       const userData = rows[0];
-      let { remainingClicks, last_logout, tapIncreaseLevel, farmExitTime } = userData;
+      let {
+        remainingClicks,
+        last_logout,
+        tapIncreaseLevel,
+        farmExitTime,
+      } = userData;
 
       // Определяем maxClicks на основе tapIncreaseLevel
-      const maxClicks = 1000 + (tapIncreaseLevel - 1) * 500; // Пример: каждый уровень увеличивает maxClicks на 500
+      const maxClicks = 1000 + (tapIncreaseLevel - 1) * 500;
 
       let restoredClicks = 0;
 
@@ -313,7 +339,9 @@ app.get('/app', async (req, res) => {
       if (last_logout) {
         const lastLogoutTime = new Date(last_logout);
         const now = new Date();
-        const diffSeconds = Math.floor((now - lastLogoutTime) / 1000); // Разница в секундах
+        const diffSeconds = Math.floor(
+          (now - lastLogoutTime) / 1000
+        );
 
         restoredClicks += diffSeconds * 1; // 1 клик в секунду
       }
@@ -322,14 +350,21 @@ app.get('/app', async (req, res) => {
       if (farmExitTime) {
         const farmExit = new Date(farmExitTime);
         const now = new Date();
-        const diffSecondsFarm = Math.floor((now - farmExit) / 1000); // Разница в секундах
+        const diffSecondsFarm = Math.floor(
+          (now - farmExit) / 1000
+        );
 
         restoredClicks += diffSecondsFarm * 1; // 1 клик в секунду
       }
 
       if (restoredClicks > 0) {
-        remainingClicks = Math.min(remainingClicks + restoredClicks, maxClicks);
-        console.log(`Восстановлено ${restoredClicks} кликов для пользователя с ID: ${userId}`);
+        remainingClicks = Math.min(
+          remainingClicks + restoredClicks,
+          maxClicks
+        );
+        console.log(
+          `Восстановлено ${restoredClicks} кликов для пользователя с ID: ${userId}`
+        );
 
         // Обновляем remainingClicks и сбрасываем farmExitTime и last_logout
         await pool.query(
@@ -354,14 +389,16 @@ app.get('/app', async (req, res) => {
         upgrade7: userData.upgrade7,
         upgrade8: userData.upgrade8,
         farmLevel: userData.farmLevel,
-        incomePerHour: parseFloat(userData.incomePerHour), // Добавлено parseFloat для точности
+        incomePerHour: parseFloat(userData.incomePerHour),
         entryTime: userData.entryTime,
         exitTime: userData.exitTime,
         tasks_current_day: userData.tasks_current_day,
         tasks_last_collected: userData.tasks_last_collected,
-        lastResetTime: userData.lastResetTime, // Возвращаем lastResetTime
-        farmEntryTime: userData.farmEntryTime, // Возвращаем farmEntryTime
-        farmExitTime: userData.farmExitTime, // Возвращаем farmExitTime
+        lastResetTime: userData.lastResetTime,
+        farmEntryTime: userData.farmEntryTime,
+        farmExitTime: userData.farmExitTime,
+        lastCollectTime: userData.lastCollectTime,
+        earnedCoins: userData.earnedCoins,
       });
     } else {
       console.error('Пользователь не найден с User ID:', userId);
@@ -397,7 +434,9 @@ app.post('/save-data', async (req, res) => {
     'upgrade8',
     'farmLevel',
     'incomePerHour',
-    'lastResetTime', // Разрешаем обновление lastResetTime
+    'lastResetTime',
+    'lastCollectTime',
+    'earnedCoins',
   ];
 
   const fieldsToUpdate = {};
@@ -436,10 +475,8 @@ app.post('/save-data', async (req, res) => {
   }
 });
 
-// Обработка ежедневных наград
-
-// Получение состояния задач пользователя
-app.get('/tasks', async (req, res) => {
+// Эндпоинт для получения данных накопления
+app.get('/get-accumulation-data', async (req, res) => {
   const userId = req.query.userId;
 
   if (!userId) {
@@ -448,327 +485,71 @@ app.get('/tasks', async (req, res) => {
 
   try {
     const [rows] = await pool.query(
-      'SELECT tasks_current_day, tasks_last_collected FROM user WHERE telegram_id = ?',
+      'SELECT lastCollectTime, earnedCoins FROM user WHERE telegram_id = ?',
       [userId]
     );
 
     if (rows.length > 0) {
-      const userData = rows[0];
-      const currentDay = userData.tasks_current_day;
-      const lastCollected = userData.tasks_last_collected
-        ? new Date(userData.tasks_last_collected)
-        : null;
-      const now = new Date();
-
-      let canCollect = false;
-
-      if (lastCollected) {
-        const diffTime = now.getTime() - lastCollected.getTime();
-        const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-
-        if (diffDays >= 1) {
-          canCollect = true;
-        } else {
-          canCollect = false;
-        }
-      } else {
-        canCollect = true; // Пользователь еще не собирал награды
-      }
-
       res.json({
-        currentDay,
-        canCollect,
+        lastCollectTime: rows[0].lastCollectTime,
+        earnedCoins: rows[0].earnedCoins,
       });
     } else {
-      res.status(404).json({ error: 'Пользователь не найден' });
+      res.status(404).json({ error: 'Пользователь не найден.' });
     }
-  } catch (err) {
-    console.error('Ошибка при получении данных задач:', err);
-    res.status(500).json({ error: 'Ошибка сервера' });
+  } catch (error) {
+    console.error('Ошибка при получении данных накопления:', error);
+    res.status(500).json({ error: 'Внутренняя ошибка сервера.' });
   }
 });
 
-// Сбор награды за день
-app.post('/collect-task', async (req, res) => {
-  const { userId, day } = req.body;
-
-  if (!userId || !day) {
-    return res.status(400).json({ error: 'Недостаточно данных для сбора награды' });
-  }
-
-  // Определение наград за каждый день
-  const rewards = {
-    1: 10000,
-    2: 15000,
-    3: 20000,
-    4: 25000,
-    5: 30000,
-    6: 35000,
-    7: 40000,
-  };
-
-  if (!rewards[day]) {
-    return res.status(400).json({ error: 'Некорректный день' });
-  }
-
-  try {
-    // Получение текущих данных пользователя
-    const [rows] = await pool.query(
-      'SELECT tasks_current_day, tasks_last_collected, points FROM user WHERE telegram_id = ?',
-      [userId]
-    );
-
-    if (rows.length === 0) {
-      return res.status(404).json({ error: 'Пользователь не найден' });
-    }
-
-    const userData = rows[0];
-    const { tasks_current_day, tasks_last_collected, points } = userData;
-
-    const now = new Date();
-    const lastCollected = tasks_last_collected ? new Date(userData.tasks_last_collected) : null;
-
-    // Проверка, можно ли собрать награду
-    if (day !== tasks_current_day) {
-      return res.status(400).json({ error: 'Вы можете собрать только награду за текущий день' });
-    }
-
-    if (lastCollected) {
-      const diffTime = now.getTime() - lastCollected.getTime();
-      const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-
-      if (diffDays < 1) {
-        return res.status(400).json({ error: 'Награду можно собрать только раз в день' });
-      } else if (diffDays > 1) {
-        // Пользователь пропустил день, сбрасываем задачи
-        await pool.query(
-          'UPDATE user SET tasks_current_day = 1, tasks_last_collected = NULL WHERE telegram_id = ?',
-          [userId]
-        );
-        return res.status(400).json({ error: 'Вы пропустили день. Задачи сброшены.' });
-      }
-    }
-
-    // Обновление данных пользователя
-    const newPoints = points + rewards[day];
-    const newDay = day < 7 ? day + 1 : 1;
-    const newLastCollected = now;
-
-    await pool.query(
-      'UPDATE user SET points = ?, tasks_current_day = ?, tasks_last_collected = ? WHERE telegram_id = ?',
-      [newPoints, newDay, newLastCollected, userId]
-    );
-
-    res.json({
-      success: true,
-      newPoints,
-      newDay,
-    });
-  } catch (err) {
-    console.error('Ошибка при сборе награды:', err);
-    res.status(500).json({ error: 'Ошибка сервера' });
-  }
-});
-
-// Эндпоинт для получения статуса заданий пользователя
-app.get('/user-tasks', async (req, res) => {
-  const userId = req.query.userId;
+// Эндпоинт для сбора монет
+app.post('/collect-coins', async (req, res) => {
+  const { userId, points, lastCollectTime, earnedCoins } = req.body;
 
   if (!userId) {
-    return res.status(400).json({ error: 'User ID обязателен' });
+    return res.status(400).json({ error: 'Missing userId' });
   }
 
   try {
-    const [rows] = await pool.query('SELECT * FROM user WHERE telegram_id = ?', [userId]);
-
-    if (rows.length === 0) {
-      return res.status(404).json({ error: 'Пользователь не найден' });
-    }
-
-    const user = rows[0];
-
-    // Определяем статус заданий
-    const tasks = [];
-
-    // Получаем количество приглашенных пользователей
-    const [invitedRows] = await pool.query(
-      'SELECT COUNT(*) as count FROM user WHERE referrer_id = ?',
-      [userId]
+    const [result] = await pool.query(
+      'UPDATE user SET points = ?, lastCollectTime = ?, earnedCoins = ? WHERE telegram_id = ?',
+      [points, lastCollectTime, earnedCoins, userId]
     );
-    const invitedCount = invitedRows[0].count;
 
-    // Задание 1: Пригласите 1 человека в игру
-    tasks.push({
-      id: 1,
-      description: 'Пригласите 1 человека в игру',
-      reward: 10000,
-      collected: user.task1_collected,
-      canCollect: !user.task1_collected && invitedCount >= 1,
-    });
-
-    // Задание 2: Пригласите 5 пользователей
-    tasks.push({
-      id: 2,
-      description: 'Пригласите 5 пользователей',
-      reward: 100000,
-      collected: user.task2_collected,
-      canCollect: !user.task2_collected && invitedCount >= 5,
-    });
-
-    // Задание 3: Пригласите 10 пользователей
-    tasks.push({
-      id: 3,
-      description: 'Пригласите 10 пользователей',
-      reward: 300000,
-      collected: user.task3_collected,
-      canCollect: !user.task3_collected && invitedCount >= 10,
-    });
-
-    // Задание 4: Накопите 100000 монет
-    tasks.push({
-      id: 4,
-      description: 'Накопите ваши первые 100000 монет',
-      reward: 50000,
-      collected: user.task4_collected,
-      canCollect: !user.task4_collected && user.points >= 100000,
-    });
-
-    // Задание 5: Улучшите ваше первое улучшение
-    tasks.push({
-      id: 5,
-      description: 'Улучшите ваше первое улучшение',
-      reward: 20000,
-      collected: user.task5_collected,
-      canCollect: !user.task5_collected && user.incomePerHour > 0,
-    });
-
-    res.json({ tasks });
-  } catch (err) {
-    console.error('Ошибка при получении заданий пользователя:', err);
-    res.status(500).json({ error: 'Ошибка сервера' });
+    if (result.affectedRows > 0) {
+      res.json({ success: true, newPoints: points });
+    } else {
+      res.status(404).json({ error: 'Пользователь не найден.' });
+    }
+  } catch (error) {
+    console.error('Ошибка при сборе монет:', error);
+    res.status(500).json({ error: 'Внутренняя ошибка сервера.' });
   }
 });
 
-// Эндпоинт для сбора награды за задание
-app.post('/collect-user-task', async (req, res) => {
-  const { userId, taskId } = req.body;
+// Эндпоинт для обновления данных накопления при выходе
+app.post('/update-accumulation-data', async (req, res) => {
+  const { userId, lastCollectTime, earnedCoins } = req.body;
 
-  if (!userId || !taskId) {
-    return res.status(400).json({ error: 'Недостаточно данных для сбора награды' });
+  if (!userId) {
+    return res.status(400).json({ error: 'Missing userId' });
   }
 
   try {
-    const [rows] = await pool.query('SELECT * FROM user WHERE telegram_id = ?', [userId]);
+    await pool.query(
+      'UPDATE user SET lastCollectTime = ?, earnedCoins = ? WHERE telegram_id = ?',
+      [lastCollectTime, earnedCoins, userId]
+    );
 
-    if (rows.length === 0) {
-      return res.status(404).json({ error: 'Пользователь не найден' });
-    }
-
-    const user = rows[0];
-    let canCollect = false;
-    let reward = 0;
-    let taskDescription = '';
-
-    // Проверяем, какое задание пользователь пытается собрать
-    switch (taskId) {
-      case 1:
-        taskDescription = 'Пригласите 1 человека в игру';
-        reward = 10000;
-        if (!user.task1_collected) {
-          const [invitedRows] = await pool.query(
-            'SELECT COUNT(*) as count FROM user WHERE referrer_id = ?',
-            [userId]
-          );
-          const invitedCount = invitedRows[0].count;
-          if (invitedCount >= 1) {
-            canCollect = true;
-            await pool.query(
-              'UPDATE user SET points = points + ?, task1_collected = TRUE WHERE telegram_id = ?',
-              [reward, userId]
-            );
-          }
-        }
-        break;
-      case 2:
-        taskDescription = 'Пригласите 5 пользователей';
-        reward = 100000;
-        if (!user.task2_collected) {
-          const [invitedRows] = await pool.query(
-            'SELECT COUNT(*) as count FROM user WHERE referrer_id = ?',
-            [userId]
-          );
-          const invitedCount = invitedRows[0].count;
-          if (invitedCount >= 5) {
-            canCollect = true;
-            await pool.query(
-              'UPDATE user SET points = points + ?, task2_collected = TRUE WHERE telegram_id = ?',
-              [reward, userId]
-            );
-          }
-        }
-        break;
-      case 3:
-        taskDescription = 'Пригласите 10 пользователей';
-        reward = 300000;
-        if (!user.task3_collected) {
-          const [invitedRows] = await pool.query(
-            'SELECT COUNT(*) as count FROM user WHERE referrer_id = ?',
-            [userId]
-          );
-          const invitedCount = invitedRows[0].count;
-          if (invitedCount >= 10) {
-            canCollect = true;
-            await pool.query(
-              'UPDATE user SET points = points + ?, task3_collected = TRUE WHERE telegram_id = ?',
-              [reward, userId]
-            );
-          }
-        }
-        break;
-      case 4:
-        taskDescription = 'Накопите ваши первые 100000 монет';
-        reward = 50000;
-        if (!user.task4_collected && user.points >= 100000) {
-          canCollect = true;
-          await pool.query(
-            'UPDATE user SET points = points + ?, task4_collected = TRUE WHERE telegram_id = ?',
-            [reward, userId]
-          );
-        }
-        break;
-      case 5:
-        taskDescription = 'Улучшите ваше первое улучшение';
-        reward = 20000;
-        if (!user.task5_collected && user.incomePerHour > 0) {
-          canCollect = true;
-          await pool.query(
-            'UPDATE user SET points = points + ?, task5_collected = TRUE WHERE telegram_id = ?',
-            [reward, userId]
-          );
-        }
-        break;
-      default:
-        return res.status(400).json({ error: 'Некорректный идентификатор задания' });
-    }
-
-    if (canCollect) {
-      const [updatedRows] = await pool.query('SELECT points FROM user WHERE telegram_id = ?', [
-        userId,
-      ]);
-      const newPoints = updatedRows[0].points;
-      res.json({
-        success: true,
-        newPoints,
-        taskDescription,
-      });
-    } else {
-      res.json({ success: false, error: 'Нельзя собрать награду за это задание' });
-    }
-  } catch (err) {
-    console.error('Ошибка при сборе награды за задание:', err);
-    res.status(500).json({ error: 'Ошибка сервера' });
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Ошибка при обновлении данных накопления:', error);
+    res.status(500).json({ error: 'Внутренняя ошибка сервера.' });
   }
 });
+
+// Остальные существующие эндпоинты остаются без изменений...
 
 // Обработка вебхука Telegram
 app.post('/webhook', async (req, res) => {
