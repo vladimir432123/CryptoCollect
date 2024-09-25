@@ -46,6 +46,7 @@ const MineContent: React.FC<MineContentProps> = ({
   });
 
   const farmLevelMultipliers = [1, 1.2, 1.4, 1.6, 1.8, 2.0];
+  const [maxEarnedCoins, setMaxEarnedCoins] = useState<number>(incomePerHour * 3);
   const [lastUpdateTime, setLastUpdateTime] = useState<number>(() => {
     const savedTime = localStorage.getItem('lastUpdateTime');
     return savedTime ? parseInt(savedTime) : Date.now();
@@ -68,16 +69,14 @@ const MineContent: React.FC<MineContentProps> = ({
   useEffect(() => {
     const totalIncome = calculateTotalIncome(upgrades, farmLevel);
     setIncomePerHour(totalIncome);
+    setMaxEarnedCoins(totalIncome * 3);
   }, [upgrades, farmLevel, setIncomePerHour]);
 
   // Функция для обновления накопленных монет
   const updateEarnedCoins = () => {
     const now = Date.now();
     const elapsedSeconds = (now - lastUpdateTime) / 1000;
-    if (elapsedSeconds <= 0) return;
-
     const potentialEarned = (incomePerHour / 3600) * elapsedSeconds;
-    const maxEarnedCoins = incomePerHour * 3; // Максимум за 3 часа
     const newEarnedCoins = Math.min(earnedCoins + potentialEarned, maxEarnedCoins);
 
     setEarnedCoins(newEarnedCoins);
@@ -152,8 +151,7 @@ const MineContent: React.FC<MineContentProps> = ({
 
   const handleUpgradeClick = (upgrade: string) => {
     setSelectedMineUpgrade(upgrade);
-    // Убираем закрытие меню улучшений
-    // setIsUpgradesMenuOpen(false);
+    // Не закрываем основное меню улучшений
   };
 
   const closeUpgradeMenu = () => {
@@ -186,6 +184,7 @@ const MineContent: React.FC<MineContentProps> = ({
           // Обновляем incomePerHour
           const totalIncome = calculateTotalIncome(newUpgrades, farmLevel);
           setIncomePerHour(totalIncome);
+          setMaxEarnedCoins(totalIncome * 3);
 
           // Сохранение данных на сервере
           fetch('/save-data', {
@@ -287,7 +286,6 @@ const MineContent: React.FC<MineContentProps> = ({
 
   // Расчет оставшегося времени до максимального накопления
   const remainingTime = () => {
-    const maxEarnedCoins = incomePerHour * 3;
     const remainingCoins = maxEarnedCoins - earnedCoins;
     const remainingSeconds = remainingCoins / (incomePerHour / 3600);
     const remainingHours = Math.ceil(remainingSeconds / 3600);
@@ -364,7 +362,7 @@ const MineContent: React.FC<MineContentProps> = ({
           <div
             className="bg-gray-900 w-full max-w-md p-6 rounded-t-lg animate-slide-up flex flex-col"
             onClick={(e) => e.stopPropagation()}
-            style={{ maxHeight: 'calc(90% + 20px)', paddingBottom: '90px' }} // Увеличили высоту и добавили отступ снизу
+            style={{ maxHeight: '85%', marginBottom: '80px' }} // Увеличили высоту и добавили отступ снизу
           >
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl text-white">Улучшения</h2>
@@ -395,80 +393,60 @@ const MineContent: React.FC<MineContentProps> = ({
               ))}
             </div>
           </div>
-
           {/* Меню отдельного улучшения */}
           {selectedMineUpgrade && (
             <div
-              className="fixed inset-0 bg-black bg-opacity-50 flex items-end justify-center z-50"
-              onClick={closeUpgradeMenu}
+              className="bg-gray-900 w-full max-w-md p-6 rounded-t-lg animate-slide-up flex flex-col absolute bottom-0"
+              style={{ marginBottom: '70px' }} // Отступ снизу 70 пикселей
+              onClick={(e) => e.stopPropagation()}
             >
-              <div
-                className="bg-gray-900 w-full max-w-md p-6 rounded-t-lg animate-slide-up"
-                onClick={(e) => e.stopPropagation()}
-                style={{ marginBottom: '70px' }} // Отступ снизу
+              <h2 className="text-center text-xl text-white mb-2">{`Улучшение ${selectedMineUpgrade}`}</h2>
+              <p className="text-center text-gray-300 mb-4">
+                Уровень: {upgrades[selectedMineUpgrade] || 1}
+              </p>
+              <p className="text-center text-gray-400 mb-4">
+                {/* Здесь можно добавить индивидуальное описание для каждого улучшения */}
+                Это улучшение увеличивает ваш пассивный доход, позволяя быстрее накапливать монеты.
+              </p>
+              {upgrades[selectedMineUpgrade] === 10 ? (
+                <p className="text-center text-yellow-400 mb-4">Максимальный уровень</p>
+              ) : (
+                <>
+                  <button
+                    className="w-full py-3 bg-yellow-500 text-black rounded-lg"
+                    onClick={handleUpgrade}
+                  >
+                    Улучшить (
+                    {
+                      upgradeLevels[selectedMineUpgrade as keyof typeof upgradeLevels][
+                        upgrades[selectedMineUpgrade]
+                      ].cost
+                    }{' '}
+                    монет)
+                  </button>
+                </>
+              )}
+              <button
+                className="w-full py-2 mt-2 bg-gray-700 text-white rounded-lg"
+                onClick={closeUpgradeMenu}
               >
-                <h2 className="text-center text-xl text-white mb-2">{`Улучшение ${selectedMineUpgrade}`}</h2>
-                <p className="text-center text-gray-300 mb-4">
-                  Уровень: {upgrades[selectedMineUpgrade] || 1}
-                </p>
-                <p className="text-center text-gray-400 mb-4">
-                  {/* Здесь можно добавить индивидуальное описание для каждого улучшения */}
-                  Это улучшение увеличивает ваш пассивный доход, позволяя быстрее накапливать монеты.
-                </p>
-                {upgrades[selectedMineUpgrade] === 10 ? (
-                  <p className="text-center text-yellow-400 mb-4">Максимальный уровень</p>
-                ) : (
-                  <>
-                    <button
-                      className="w-full py-3 bg-yellow-500 text-black rounded-lg"
-                      onClick={handleUpgrade}
-                    >
-                      Улучшить (
-                      {
-                        upgradeLevels[selectedMineUpgrade as keyof typeof upgradeLevels][
-                          upgrades[selectedMineUpgrade]
-                        ].cost
-                      }{' '}
-                      монет)
-                    </button>
-                  </>
-                )}
-                <button
-                  className="w-full py-2 mt-2 bg-gray-700 text-white rounded-lg"
-                  onClick={closeUpgradeMenu}
-                >
-                  Закрыть
-                </button>
-              </div>
+                Закрыть
+              </button>
             </div>
           )}
         </div>
       )}
 
       {/* Новый дизайн нижней панели */}
-      <div className="fixed left-0 right-0 px-4 z-40" style={{ bottom: '70px' }}>
+      <div className="fixed bottom-0 left-0 right-0 px-4 flex flex-col items-center" style={{ marginBottom: '80px' }}>
         <div className="w-full bg-gray-700 rounded-lg p-4 mb-4">
           <div className="flex justify-between items-center">
-            <div className="flex items-center">
-              {/* Убрали иконку */}
+            <div className="flex items-center space-x-2">
               <span className="text-white text-lg font-semibold">
                 {Math.floor(earnedCoins).toLocaleString()} монет
               </span>
             </div>
             <div className="flex items-center space-x-2">
-              <svg
-                className="w-6 h-6 text-yellow-400"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M8 7V3m8 4V3M3 11h18M5 11v10h14V11"
-                />
-              </svg>
               <span className="text-white text-lg font-semibold">
                 Осталось: {remainingTime()} ч
               </span>
