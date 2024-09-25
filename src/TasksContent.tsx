@@ -172,7 +172,7 @@ const TasksContent: React.FC<TasksContentProps> = ({
   );
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full pb-16">
       <div className="px-4 z-10 pt-4">
         <div className="flex items-center">
           <div className="p-1 rounded-lg bg-gray-800">
@@ -181,16 +181,6 @@ const TasksContent: React.FC<TasksContentProps> = ({
           <div className="ml-2">
             <p className="text-sm text-gray-300">{username ? username : 'Гость'}</p>
           </div>
-          {/* Refresh Button */}
-          <button
-            onClick={() => {
-              fetchTasks();
-              fetchDailyRewards();
-            }}
-            className="ml-auto text-yellow-400 hover:text-yellow-500"
-          >
-            <FaSync size={20} />
-          </button>
         </div>
       </div>
       <div className="flex-1 overflow-auto pb-20">
@@ -203,15 +193,25 @@ const TasksContent: React.FC<TasksContentProps> = ({
             <FaTasks size={48} className="text-white mr-4" />
             <div>
               <h2 className="text-2xl font-bold text-white">Ежедневные награды</h2>
-              <p className="text-white mt-1">
-                Заходи каждый день и получай награды!
-              </p>
+              <p className="text-white mt-1">Заходи каждый день и получай награды!</p>
             </div>
           </div>
         </div>
         {/* Список заданий */}
         <div className="px-4 mt-8">
-          <h2 className="text-2xl font-bold text-white mb-4">Задания</h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-2xl font-bold text-white">Задания</h2>
+            {/* Кнопка "Обновить" */}
+            <button
+              onClick={() => {
+                fetchTasks();
+                fetchDailyRewards();
+              }}
+              className="text-yellow-400 hover:text-yellow-500"
+            >
+              <FaSync size={24} />
+            </button>
+          </div>
           <div className="space-y-4">
             {tasks.map((task) => (
               <div
