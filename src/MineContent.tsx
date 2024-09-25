@@ -77,14 +77,14 @@ const MineContent: React.FC<MineContentProps> = ({
     const now = Date.now();
     const elapsedSeconds = (now - lastUpdateTime) / 1000;
     const potentialEarned = (incomePerHour / 3600) * elapsedSeconds;
-    const newEarnedCoins = Math.min(earnedCoins + potentialEarned, maxEarnedCoins);
+    const newEarnedCoins = Math.min(potentialEarned, maxEarnedCoins);
 
     setEarnedCoins(newEarnedCoins);
-    setLastUpdateTime(now);
+    // Не обновляем lastUpdateTime здесь, чтобы сохранить правильный elapsedSeconds
 
     // Сохраняем в localStorage
     localStorage.setItem('earnedCoins', newEarnedCoins.toString());
-    localStorage.setItem('lastUpdateTime', now.toString());
+    // localStorage.setItem('lastUpdateTime', now.toString()); // Убираем это
   };
 
   // При монтировании компонента обновляем накопленные монеты
@@ -250,14 +250,11 @@ const MineContent: React.FC<MineContentProps> = ({
       const newPoints = points + totalEarnedCoins;
       setPoints(newPoints);
 
-      // Сброс earnedCoins
+      // Сброс earnedCoins и lastUpdateTime
       setEarnedCoins(0);
+      setLastUpdateTime(Date.now());
       localStorage.setItem('earnedCoins', '0');
-
-      // Обновляем lastUpdateTime
-      const now = Date.now();
-      setLastUpdateTime(now);
-      localStorage.setItem('lastUpdateTime', now.toString());
+      localStorage.setItem('lastUpdateTime', Date.now().toString());
 
       // Сохранить обновленные данные на сервере
       await fetch('/save-data', {
@@ -357,7 +354,7 @@ const MineContent: React.FC<MineContentProps> = ({
           <div
             className="bg-gray-900 w-full max-w-md p-6 rounded-t-lg animate-slide-up flex flex-col"
             onClick={(e) => e.stopPropagation()}
-            style={{ maxHeight: '90%', marginBottom: '0' }} // Убираем нижний отступ
+            style={{ maxHeight: '95%' }} // Увеличили высоту меню
           >
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl text-white">Улучшения</h2>
@@ -387,55 +384,55 @@ const MineContent: React.FC<MineContentProps> = ({
                 </button>
               ))}
             </div>
-          </div>
-          {/* Меню отдельного улучшения */}
-          {selectedMineUpgrade && (
-            <div
-              className="bg-gray-900 w-full max-w-md p-6 rounded-t-lg animate-slide-up flex flex-col absolute bottom-0"
-              style={{ marginBottom: '80px' }} // Скорректируем нижний отступ
-              onClick={(e) => e.stopPropagation()}
-            >
-              <h2 className="text-center text-xl text-white mb-2">{`Улучшение ${selectedMineUpgrade}`}</h2>
-              <p className="text-center text-gray-300 mb-4">
-                Уровень: {upgrades[selectedMineUpgrade] || 1}
-              </p>
-              <p className="text-center text-gray-400 mb-4">
-                {/* Здесь можно добавить индивидуальное описание для каждого улучшения */}
-                Это улучшение увеличивает ваш пассивный доход, позволяя быстрее накапливать монеты.
-              </p>
-              {upgrades[selectedMineUpgrade] === 10 ? (
-                <p className="text-center text-yellow-400 mb-4">Максимальный уровень</p>
-              ) : (
-                <>
-                  <button
-                    className="w-full py-3 bg-yellow-500 text-black rounded-lg"
-                    onClick={handleUpgrade}
-                  >
-                    Улучшить (
-                    {
-                      upgradeLevels[selectedMineUpgrade as keyof typeof upgradeLevels][
-                        upgrades[selectedMineUpgrade]
-                      ].cost
-                    }{' '}
-                    монет)
-                  </button>
-                </>
-              )}
-              <button
-                className="w-full py-2 mt-2 bg-gray-700 text-white rounded-lg"
-                onClick={closeUpgradeMenu}
+            {/* Меню отдельного улучшения */}
+            {selectedMineUpgrade && (
+              <div
+                className="bg-gray-800 w-full p-4 rounded-lg absolute bottom-0 left-0"
+                style={{ marginBottom: '80px' }} // Подняли меню деталей улучшения
+                onClick={(e) => e.stopPropagation()}
               >
-                Закрыть
-              </button>
-            </div>
-          )}
+                <h2 className="text-center text-xl text-white mb-2">{`Улучшение ${selectedMineUpgrade}`}</h2>
+                <p className="text-center text-gray-300 mb-4">
+                  Уровень: {upgrades[selectedMineUpgrade] || 1}
+                </p>
+                <p className="text-center text-gray-400 mb-4">
+                  {/* Здесь можно добавить индивидуальное описание для каждого улучшения */}
+                  Это улучшение увеличивает ваш пассивный доход, позволяя быстрее накапливать монеты.
+                </p>
+                {upgrades[selectedMineUpgrade] === 10 ? (
+                  <p className="text-center text-yellow-400 mb-4">Максимальный уровень</p>
+                ) : (
+                  <>
+                    <button
+                      className="w-full py-3 bg-yellow-500 text-black rounded-lg"
+                      onClick={handleUpgrade}
+                    >
+                      Улучшить (
+                      {
+                        upgradeLevels[selectedMineUpgrade as keyof typeof upgradeLevels][
+                          upgrades[selectedMineUpgrade]
+                        ].cost
+                      }{' '}
+                      монет)
+                    </button>
+                  </>
+                )}
+                <button
+                  className="w-full py-2 mt-2 bg-gray-700 text-white rounded-lg"
+                  onClick={closeUpgradeMenu}
+                >
+                  Закрыть
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       )}
 
       {/* Новый дизайн нижней панели */}
       <div
         className="fixed bottom-0 left-0 right-0 px-4 flex flex-col items-center"
-        style={{ marginBottom: '90px' }} // Подняли на 10 пикселей
+        style={{ marginBottom: '100px' }} // Подняли на 10 пикселей
       >
         <div className="w-full bg-gray-700 rounded-lg p-4 mb-4">
           <div className="flex justify-between items-center">
