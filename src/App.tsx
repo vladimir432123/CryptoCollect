@@ -39,6 +39,7 @@ const App: React.FC = () => {
     return savedLevel ? parseInt(savedLevel) : 1;
   });
   const [remainingClicks, setRemainingClicks] = useState<number>(maxClicks);
+  const lastClickUpdateTimeRef = useRef<number>(Date.now());
   const [points, setPoints] = useState<number>(() => {
     const savedPoints = localStorage.getItem('points');
     return savedPoints ? parseInt(savedPoints) : 0;
@@ -128,10 +129,11 @@ const App: React.FC = () => {
 
   const [levelIndex, setLevelIndex] = useState(0);
 
-  // Объявление updateRemainingClicks до использования
+  // Функция для обновления remainingClicks на сервере
   const updateRemainingClicks = useCallback(
     async (newRemainingClicks: number) => {
       setRemainingClicks(newRemainingClicks);
+
       if (userId !== null) {
         try {
           const response = await fetch('/save-data', {
@@ -163,20 +165,7 @@ const App: React.FC = () => {
     [userId]
   );
 
-  useEffect(() => {
-    const recoveryInterval = setInterval(() => {
-      setRemainingClicks((prevClicks: number) => {
-        const newClicks = Math.min(prevClicks + RECOVERY_AMOUNT, maxClicks);
-        if (newClicks !== prevClicks) {
-          updateRemainingClicks(newClicks);
-        }
-        return newClicks;
-      });
-    }, RECOVERY_RATE);
-
-    return () => clearInterval(recoveryInterval);
-  }, [maxClicks, updateRemainingClicks]);
-
+  // При загрузке приложения
   useEffect(() => {
     const initData = WebApp.initDataUnsafe;
     const userIdFromTelegram = initData?.user?.id;
@@ -222,7 +211,26 @@ const App: React.FC = () => {
           localStorage.setItem('maxClicks', tapIncreaseLevels[data.tapIncreaseLevel - 1].taps.toString());
         }
         if (data.remainingClicks !== undefined) {
-          setRemainingClicks(data.remainingClicks);
+          // Получаем farmExitTime с сервера и рассчитываем восстановленные клики
+          if (data.farmExitTime) {
+            const farmExitTime = new Date(data.farmExitTime).getTime();
+            const now = Date.now();
+            const elapsedTime = now - farmExitTime;
+
+            const recoveredClicks = Math.floor(elapsedTime / RECOVERY_RATE) * RECOVERY_AMOUNT;
+            const newRemainingClicks = Math.min(data.remainingClicks + recoveredClicks, maxClicks);
+
+            setRemainingClicks(newRemainingClicks);
+
+            // Обновляем время последнего обновления кликов
+            lastClickUpdateTimeRef.current = now;
+
+            // Обновляем remainingClicks на сервере
+            await updateRemainingClicks(newRemainingClicks);
+          } else {
+            // Если farmExitTime отсутствует, просто используем remainingClicks из данных
+            setRemainingClicks(data.remainingClicks);
+          }
         }
         if (data.incomePerHour !== undefined) {
           setIncomePerHour(data.incomePerHour);
@@ -251,7 +259,134 @@ const App: React.FC = () => {
     };
 
     fetchData();
-  }, [tapProfitLevels, tapIncreaseLevels]);
+  }, [tapProfitLevels, tapIncreaseLevels, updateRemainingClicks, maxClicks]);
+
+  // Обновление remainingClicks каждую секунду
+  useEffect(() => {
+    const recoveryInterval = setInterval(() => {
+      setRemainingClicks((prevClicks: number) => {
+        const newClicks = Math.min(prevClicks + RECOVERY_AMOUNT, maxClicks);
+        if (newClicks !== prevClicks) {
+          lastClickUpdateTimeRef.current = Date.now();
+
+          // Сохраняем новое значение на сервере
+          updateRemainingClicks(newClicks);
+        }
+        return newClicks;
+      });
+    }, RECOVERY_RATE);
+
+    return () => clearInterval(recoveryInterval);
+  }, [maxClicks, updateRemainingClicks]);
+
+  // Обновляем farmExitTime на сервере при выходе из "Farm"
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      if (userId !== null && currentPage === 'farm') {
+        const exitTime = new Date().toISOString();
+        navigator.sendBeacon('/save-entry-exit-time', JSON.stringify({
+          userId,
+          action: 'exit_farm',
+          time: exitTime,
+        }));
+      }
+      if (userId !== null) {
+        fetch('/logout', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            userId,
+            remainingClicks,
+            points,
+            lastLogout: new Date().toISOString(),
+          }),
+        }).catch((error) => console.error('Ошибка при отправке времени выхода:', error));
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    return () => {
+      if (userId !== null && currentPage === 'farm') {
+        const exitTime = new Date().toISOString();
+        fetch('/save-entry-exit-time', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            userId,
+            action: 'exit_farm',
+            time: exitTime,
+          }),
+        }).catch((error) => console.error('Ошибка при сохранении времени выхода из farm:', error));
+      }
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [userId, remainingClicks, points, currentPage]);
+
+  const previousPageRef = useRef<string>(currentPage);
+
+  useEffect(() => {
+    if (userId !== null) {
+      if (currentPage === 'mine' && previousPageRef.current !== 'mine') {
+        fetch('/save-entry-exit-time', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            userId,
+            action: 'enter_mine',
+            time: new Date().toISOString(),
+          }),
+        }).catch((error) => console.error('Ошибка при сохранении времени входа в mine:', error));
+      } else if (currentPage !== 'mine' && previousPageRef.current === 'mine') {
+        fetch('/save-entry-exit-time', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            userId,
+            action: 'exit_mine',
+            time: new Date().toISOString(),
+          }),
+        }).catch((error) => console.error('Ошибка при сохранении времени выхода из mine:', error));
+      }
+
+      if (currentPage === 'farm' && previousPageRef.current !== 'farm') {
+        fetch('/save-entry-exit-time', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            userId,
+            action: 'enter_farm',
+            time: new Date().toISOString(),
+          }),
+        }).catch((error) => console.error('Ошибка при сохранении времени входа в farm:', error));
+      } else if (currentPage !== 'farm' && previousPageRef.current === 'farm') {
+        const exitTime = new Date().toISOString();
+        fetch('/save-entry-exit-time', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            userId,
+            action: 'exit_farm',
+            time: exitTime,
+          }),
+        }).catch((error) => console.error('Ошибка при сохранении времени выхода из farm:', error));
+      }
+
+      previousPageRef.current = currentPage;
+    }
+  }, [currentPage, userId]);
 
   // Функции для загрузки заданий и друзей
   const fetchTasks = useCallback(
@@ -296,105 +431,15 @@ const App: React.FC = () => {
     [userId]
   );
 
-  useEffect(() => {
-    const handleBeforeUnload = () => {
-      if (userId !== null) {
-        if (currentPage === 'farm') {
-          navigator.sendBeacon('/save-entry-exit-time', JSON.stringify({
-            userId,
-            action: 'exit_farm',
-          }));
-        }
-        if (currentPage === 'mine') {
-          navigator.sendBeacon('/save-entry-exit-time', JSON.stringify({
-            userId,
-            action: 'exit_mine',
-          }));
-        }
-        fetch('/logout', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            userId,
-            remainingClicks,
-            points,
-            lastLogout: new Date().toISOString(),
-          }),
-        }).catch((error) => console.error('Ошибка при отправке времени выхода:', error));
-      }
-    };
-
-    window.addEventListener('beforeunload', handleBeforeUnload);
-
-    return () => {
-      window.removeEventListener('beforeunload', handleBeforeUnload);
-    };
-  }, [userId, remainingClicks, points, currentPage]);
-
-  const previousPageRef = useRef<string>(currentPage);
-
-  useEffect(() => {
-    if (userId !== null) {
-      if (currentPage === 'mine' && previousPageRef.current !== 'mine') {
-        fetch('/save-entry-exit-time', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            userId,
-            action: 'enter_mine',
-          }),
-        }).catch((error) => console.error('Ошибка при сохранении времени входа в mine:', error));
-      } else if (currentPage !== 'mine' && previousPageRef.current === 'mine') {
-        fetch('/save-entry-exit-time', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            userId,
-            action: 'exit_mine',
-          }),
-        }).catch((error) => console.error('Ошибка при сохранении времени выхода из mine:', error));
-      }
-
-      if (currentPage === 'farm' && previousPageRef.current !== 'farm') {
-        fetch('/save-entry-exit-time', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            userId,
-            action: 'enter_farm',
-          }),
-        }).catch((error) => console.error('Ошибка при сохранении времени входа в farm:', error));
-      } else if (currentPage !== 'farm' && previousPageRef.current === 'farm') {
-        fetch('/save-entry-exit-time', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            userId,
-            action: 'exit_farm',
-          }),
-        }).catch((error) => console.error('Ошибка при сохранении времени выхода из farm:', error));
-      }
-
-      previousPageRef.current = currentPage;
-    }
-  }, [currentPage, userId]);
-
   const handleMainButtonClick = useCallback(
     async (e: React.TouchEvent<HTMLDivElement>) => {
       const touches = e.touches;
       if (remainingClicks > 0 && touches.length <= 5) {
         const newRemainingClicks = remainingClicks - touches.length;
         updateRemainingClicks(newRemainingClicks);
+
+        // Обновляем время последнего обновления кликов
+        lastClickUpdateTimeRef.current = Date.now();
 
         const newPoints = points + tapProfit * touches.length;
         setPoints(newPoints);
