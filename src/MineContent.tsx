@@ -46,6 +46,7 @@ const MineContent: React.FC<MineContentProps> = ({
   });
 
   const farmLevelMultipliers = [1, 1.2, 1.4, 1.6, 1.8, 2.0];
+  const maxEarnedCoins = incomePerHour * 3; // Максимум за 3 часа
   const [lastUpdateTime, setLastUpdateTime] = useState<number>(() => {
     const savedTime = localStorage.getItem('lastUpdateTime');
     return savedTime ? parseInt(savedTime) : Date.now();
@@ -75,7 +76,6 @@ const MineContent: React.FC<MineContentProps> = ({
     const now = Date.now();
     const elapsedSeconds = (now - lastUpdateTime) / 1000;
     const potentialEarned = (incomePerHour / 3600) * elapsedSeconds;
-    const maxEarnedCoins = incomePerHour * 3; // Максимум за 3 часа
     const newEarnedCoins = Math.min(earnedCoins + potentialEarned, maxEarnedCoins);
 
     setEarnedCoins(newEarnedCoins);
@@ -90,10 +90,10 @@ const MineContent: React.FC<MineContentProps> = ({
   useEffect(() => {
     updateEarnedCoins();
 
-    // Запускаем таймер для обновления монет каждую минуту
+    // Запускаем таймер для обновления монет каждую секунду
     timerRef.current = window.setInterval(() => {
       updateEarnedCoins();
-    }, 60000); // Обновляем каждую минуту
+    }, 1000); // Обновляем каждую секунду
 
     return () => {
       if (timerRef.current) {
@@ -284,9 +284,8 @@ const MineContent: React.FC<MineContentProps> = ({
 
   // Расчет оставшегося времени до максимального накопления
   const remainingTime = () => {
-    const maxEarnedCoins = incomePerHour * 3;
     const remainingCoins = maxEarnedCoins - earnedCoins;
-    const remainingSeconds = (remainingCoins / (incomePerHour / 3600));
+    const remainingSeconds = remainingCoins / (incomePerHour / 3600);
     const remainingHours = Math.ceil(remainingSeconds / 3600);
     return Math.max(0, remainingHours);
   };
