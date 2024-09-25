@@ -574,7 +574,7 @@ const App: React.FC = () => {
     const currentLevel = isMultitap ? tapProfitLevel : tapIncreaseLevel;
 
     const description = isMultitap
-      ? 'Увеличивает прибыль за каждый тап, позволяя вам быстрее накапливать монеты.'
+      ? 'Увеличивает прибыль за каждый тап, позволяя быстрее копить монеты.'
       : 'Увеличивает максимальное количество доступных кликов.';
 
     return (
