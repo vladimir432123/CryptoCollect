@@ -47,10 +47,15 @@ const MineContent: React.FC<MineContentProps> = ({
 
   const farmLevelMultipliers = [1, 1.2, 1.4, 1.6, 1.8, 2.0];
   const [maxEarnedCoins, setMaxEarnedCoins] = useState<number>(incomePerHour * 3);
-  const [lastUpdateTime, setLastUpdateTime] = useState<number>(() => {
+  const lastUpdateTimeRef = useRef<number>(Date.now());
+
+  // Инициализируем lastUpdateTime из localStorage при монтировании
+  useEffect(() => {
     const savedTime = localStorage.getItem('lastUpdateTime');
-    return savedTime ? parseInt(savedTime) : Date.now();
-  });
+    if (savedTime) {
+      lastUpdateTimeRef.current = parseInt(savedTime);
+    }
+  }, []);
 
   const timerRef = useRef<number | null>(null);
 
@@ -75,16 +80,14 @@ const MineContent: React.FC<MineContentProps> = ({
   // Функция для обновления накопленных монет
   const updateEarnedCoins = () => {
     const now = Date.now();
-    const elapsedSeconds = (now - lastUpdateTime) / 1000;
+    const elapsedSeconds = (now - lastUpdateTimeRef.current) / 1000;
     const potentialEarned = (incomePerHour / 3600) * elapsedSeconds;
     const newEarnedCoins = Math.min(potentialEarned, maxEarnedCoins);
 
     setEarnedCoins(newEarnedCoins);
-    // Не обновляем lastUpdateTime здесь, чтобы сохранить правильный elapsedSeconds
 
     // Сохраняем в localStorage
     localStorage.setItem('earnedCoins', newEarnedCoins.toString());
-    // localStorage.setItem('lastUpdateTime', now.toString()); // Убираем это
   };
 
   // При монтировании компонента обновляем накопленные монеты
@@ -252,9 +255,9 @@ const MineContent: React.FC<MineContentProps> = ({
 
       // Сброс earnedCoins и lastUpdateTime
       setEarnedCoins(0);
-      setLastUpdateTime(Date.now());
+      lastUpdateTimeRef.current = Date.now();
       localStorage.setItem('earnedCoins', '0');
-      localStorage.setItem('lastUpdateTime', Date.now().toString());
+      localStorage.setItem('lastUpdateTime', lastUpdateTimeRef.current.toString());
 
       // Сохранить обновленные данные на сервере
       await fetch('/save-data', {
