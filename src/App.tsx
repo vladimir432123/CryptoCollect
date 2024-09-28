@@ -1,5 +1,3 @@
-// src/App.tsx
-
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import './App.css';
 import Hamster from './icons/Hamster';
@@ -21,8 +19,9 @@ const Farm: React.FC<{ className?: string }> = ({ className }) => (
   </svg>
 );
 
-const RECOVERY_RATE = 1000; // Время восстановления одного клика (в миллисекундах)
-const RECOVERY_AMOUNT = 1;  // Количество восстанавливаемых кликов за интервал
+// Базовое время восстановления одного клика (в миллисекундах)
+const BASE_RECOVERY_RATE = 1000; 
+// Базовое количество восстанавливаемых кликов за интервал
 
 const App: React.FC = () => {
   const [tapProfit, setTapProfit] = useState(1);
@@ -38,6 +37,10 @@ const App: React.FC = () => {
     const savedLevel = localStorage.getItem('tapIncreaseLevel');
     return savedLevel ? parseInt(savedLevel) : 1;
   });
+  const [clickRecoveryLevel, setClickRecoveryLevel] = useState<number>(() => {
+    const savedLevel = localStorage.getItem('clickRecoveryLevel');
+    return savedLevel ? parseInt(savedLevel) : 1;
+  });
   const [remainingClicks, setRemainingClicks] = useState<number>(maxClicks);
   const lastClickUpdateTimeRef = useRef<number>(Date.now());
   const [points, setPoints] = useState<number>(() => {
@@ -45,6 +48,7 @@ const App: React.FC = () => {
     return savedPoints ? parseInt(savedPoints) : 0;
   });
   const [username, setUsername] = useState<string | null>(null);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null); // Новое состояние для аватарки
   const [userId, setUserId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -102,6 +106,23 @@ const App: React.FC = () => {
       { level: 8, taps: 4500, cost: 170000 },
       { level: 9, taps: 5000, cost: 210000 },
       { level: 10, taps: 5500, cost: 270000 },
+    ],
+    []
+  );
+
+  // Новые уровни для Click Recovery
+  const clickRecoveryLevels = useMemo(
+    () => [
+      { level: 1, recoveryAmount: 1, cost: 10000 },
+      { level: 2, recoveryAmount: 2, cost: 20000 },
+      { level: 3, recoveryAmount: 3, cost: 30000 },
+      { level: 4, recoveryAmount: 4, cost: 40000 },
+      { level: 5, recoveryAmount: 5, cost: 50000 },
+      { level: 6, recoveryAmount: 6, cost: 60000 },
+      { level: 7, recoveryAmount: 7, cost: 70000 },
+      { level: 8, recoveryAmount: 8, cost: 80000 },
+      { level: 9, recoveryAmount: 9, cost: 90000 },
+      { level: 10, recoveryAmount: 10, cost: 100000 },
     ],
     []
   );
@@ -177,6 +198,15 @@ const App: React.FC = () => {
 
     setUserId(userIdFromTelegram);
 
+    // Получаем имя и аватарку пользователя из Telegram Web App
+    const firstName = initData.user?.first_name || '';
+    const lastName = initData.user?.last_name || '';
+    const fullName = `${firstName} ${lastName}`.trim();
+    setUsername(fullName);
+
+    const photoUrl = initData.user?.photo_url || null;
+    setAvatarUrl(photoUrl);
+
     const fetchData = async () => {
       try {
         const response = await fetch(`/app?userId=${userIdFromTelegram}`, {
@@ -192,9 +222,10 @@ const App: React.FC = () => {
 
         const data = await response.json();
 
-        if (data.username) {
-          setUsername(data.username);
-        }
+        // Убираем установку username из данных сервера
+        // if (data.username) {
+        //   setUsername(data.username);
+        // }
         if (data.points !== undefined) {
           setPoints(data.points);
           localStorage.setItem('points', data.points.toString());
@@ -210,6 +241,10 @@ const App: React.FC = () => {
           localStorage.setItem('tapIncreaseLevel', data.tapIncreaseLevel.toString());
           localStorage.setItem('maxClicks', tapIncreaseLevels[data.tapIncreaseLevel - 1].taps.toString());
         }
+        if (data.clickRecoveryLevel !== undefined) {
+          setClickRecoveryLevel(data.clickRecoveryLevel);
+          localStorage.setItem('clickRecoveryLevel', data.clickRecoveryLevel.toString());
+        }
         if (data.remainingClicks !== undefined) {
           // Получаем farmExitTime с сервера и рассчитываем восстановленные клики
           if (data.farmExitTime) {
@@ -217,7 +252,9 @@ const App: React.FC = () => {
             const now = Date.now();
             const elapsedTime = now - farmExitTime;
 
-            const recoveredClicks = Math.floor(elapsedTime / RECOVERY_RATE) * RECOVERY_AMOUNT;
+            // Используем текущий уровень восстановления
+            const currentRecoveryAmount = clickRecoveryLevels[clickRecoveryLevel - 1].recoveryAmount;
+            const recoveredClicks = Math.floor(elapsedTime / BASE_RECOVERY_RATE) * currentRecoveryAmount;
             const newRemainingClicks = Math.min(data.remainingClicks + recoveredClicks, maxClicks);
 
             setRemainingClicks(newRemainingClicks);
@@ -259,13 +296,14 @@ const App: React.FC = () => {
     };
 
     fetchData();
-  }, [tapProfitLevels, tapIncreaseLevels, updateRemainingClicks, maxClicks]);
+  }, [tapProfitLevels, tapIncreaseLevels, updateRemainingClicks, maxClicks, clickRecoveryLevel, clickRecoveryLevels]);
 
   // Обновление remainingClicks каждую секунду
   useEffect(() => {
     const recoveryInterval = setInterval(() => {
       setRemainingClicks((prevClicks: number) => {
-        const newClicks = Math.min(prevClicks + RECOVERY_AMOUNT, maxClicks);
+        const currentRecoveryAmount = clickRecoveryLevels[clickRecoveryLevel - 1].recoveryAmount;
+        const newClicks = Math.min(prevClicks + currentRecoveryAmount, maxClicks);
         if (newClicks !== prevClicks) {
           lastClickUpdateTimeRef.current = Date.now();
 
@@ -274,10 +312,10 @@ const App: React.FC = () => {
         }
         return newClicks;
       });
-    }, RECOVERY_RATE);
+    }, BASE_RECOVERY_RATE);
 
     return () => clearInterval(recoveryInterval);
-  }, [maxClicks, updateRemainingClicks]);
+  }, [maxClicks, updateRemainingClicks, clickRecoveryLevel, clickRecoveryLevels]);
 
   // Обновляем farmExitTime на сервере при выходе из "Farm"
   useEffect(() => {
@@ -458,6 +496,7 @@ const App: React.FC = () => {
                 points: newPoints,
                 tapProfitLevel,
                 tapIncreaseLevel,
+                clickRecoveryLevel,
                 remainingClicks: newRemainingClicks,
                 ...upgrades,
                 farmLevel,
@@ -498,15 +537,17 @@ const App: React.FC = () => {
       userId,
       tapProfitLevel,
       tapIncreaseLevel,
+      clickRecoveryLevel,
       upgrades,
       farmLevel,
       updateRemainingClicks,
       incomePerHour,
     ]
   );
+  const buttonImageUrl = 'PLACEHOLDER_IMAGE_URL'; // Замените на URL вашего изображения
 
   const saveUpgradeData = useCallback(
-    async (newTapProfitLevel: number, newTapIncreaseLevel: number) => {
+    async (newTapProfitLevel: number, newTapIncreaseLevel: number, newClickRecoveryLevel: number) => {
       if (userId !== null) {
         try {
           const response = await fetch('/save-data', {
@@ -519,6 +560,7 @@ const App: React.FC = () => {
               points,
               tapProfitLevel: newTapProfitLevel,
               tapIncreaseLevel: newTapIncreaseLevel,
+              clickRecoveryLevel: newClickRecoveryLevel,
               remainingClicks,
               ...upgrades,
               farmLevel,
@@ -535,10 +577,12 @@ const App: React.FC = () => {
             console.log('Данные успешно сохранены на сервере.');
             setTapProfitLevel(result.tapProfitLevel);
             setTapIncreaseLevel(result.tapIncreaseLevel);
+            setClickRecoveryLevel(result.clickRecoveryLevel);
 
             // Сохранение в localStorage
             localStorage.setItem('tapProfitLevel', result.tapProfitLevel.toString());
             localStorage.setItem('tapIncreaseLevel', result.tapIncreaseLevel.toString());
+            localStorage.setItem('clickRecoveryLevel', result.clickRecoveryLevel.toString());
             setMaxClicks(tapIncreaseLevels[result.tapIncreaseLevel - 1].taps);
             localStorage.setItem(
               'maxClicks',
@@ -567,7 +611,7 @@ const App: React.FC = () => {
       setTapProfit(tapProfitLevels[newLevel - 1].profit);
       localStorage.setItem('tapProfitLevel', newLevel.toString());
 
-      await saveUpgradeData(newLevel, tapIncreaseLevel);
+      await saveUpgradeData(newLevel, tapIncreaseLevel, clickRecoveryLevel);
     } else {
       toast.error('Недостаточно монет для улучшения.');
     }
@@ -584,7 +628,22 @@ const App: React.FC = () => {
       localStorage.setItem('tapIncreaseLevel', newLevel.toString());
       localStorage.setItem('maxClicks', tapIncreaseLevels[newLevel - 1].taps.toString());
 
-      await saveUpgradeData(tapProfitLevel, newLevel);
+      await saveUpgradeData(tapProfitLevel, newLevel, clickRecoveryLevel);
+    } else {
+      toast.error('Недостаточно монет для улучшения.');
+    }
+  };
+
+  const upgradeClickRecovery = async () => {
+    const nextLevelData = clickRecoveryLevels[clickRecoveryLevel];
+    if (nextLevelData && points >= nextLevelData.cost) {
+      const newLevel = clickRecoveryLevel + 1;
+
+      setPoints((prevPoints) => prevPoints - nextLevelData.cost);
+      setClickRecoveryLevel(newLevel);
+      localStorage.setItem('clickRecoveryLevel', newLevel.toString());
+
+      await saveUpgradeData(tapProfitLevel, tapIncreaseLevel, newLevel);
     } else {
       toast.error('Недостаточно монет для улучшения.');
     }
@@ -614,13 +673,26 @@ const App: React.FC = () => {
     setIsBoostMenuOpen(!isBoostMenuOpen);
   };
 
-  const renderUpgradeOption = (type: 'multitap' | 'tapIncrease') => {
+  const renderUpgradeOption = (type: 'multitap' | 'tapIncrease' | 'clickRecovery') => {
     const isMultitap = type === 'multitap';
-    const currentLevel = isMultitap ? tapProfitLevel : tapIncreaseLevel;
-
+    const isTapIncrease = type === 'tapIncrease';
+    const isClickRecovery = type === 'clickRecovery';
+  
+    const currentLevel = isMultitap
+      ? tapProfitLevel
+      : isTapIncrease
+      ? tapIncreaseLevel
+      : isClickRecovery
+      ? clickRecoveryLevel
+      : 1;
+  
     const description = isMultitap
       ? 'Увеличивает прибыль за каждый тап, позволяя быстрее копить монеты.'
-      : 'Увеличивает максимальное количество доступных кликов.';
+      : isTapIncrease
+      ? 'Увеличивает максимальное количество доступных кликов.'
+      : isClickRecovery
+      ? 'Увеличивает скорость восстановления кликов, позволяя быстрее восстанавливать энергию.'
+      : '';
 
     return (
       <button
@@ -632,7 +704,7 @@ const App: React.FC = () => {
         <div className="flex flex-col justify-between h-full p-4">
           <div className="flex justify-between items-start">
             <span className="text-lg font-semibold text-gray-300">
-              {isMultitap ? 'Multitap' : 'Tap increase'}
+              {isMultitap ? 'Multitap' : isTapIncrease ? 'Tap Increase' : 'Click Recovery'}
             </span>
             <span className="text-xs font-medium text-yellow-400 bg-gray-800 px-2 py-1 rounded-full">
               Level {currentLevel}
@@ -655,72 +727,92 @@ const App: React.FC = () => {
     );
   };
 
-  const renderUpgradeMenu = () => (
-    <div
-      className="fixed inset-0 bg-black bg-opacity-50 flex items-end justify-center z-50"
-      onClick={() => setSelectedUpgrade(null)}
-    >
+  const renderUpgradeMenu = () => {
+    const isMultitap = selectedUpgrade === 'multitap';
+    const isTapIncrease = selectedUpgrade === 'tapIncrease';
+    const isClickRecovery = selectedUpgrade === 'clickRecovery';
+
+    const currentLevel = isMultitap
+    ? tapProfitLevel
+    : isTapIncrease
+    ? tapIncreaseLevel
+    : isClickRecovery
+    ? clickRecoveryLevel
+    : 1;
+
+    const maxLevel = 10;
+
+    const description = isMultitap
+      ? 'Увеличивает прибыль за каждый тап, позволяя вам быстрее накапливать монеты. Это улучшение поможет вам быстрее достигать новых уровней и зарабатывать больше очков.'
+      : isTapIncrease
+      ? 'Увеличивает максимальное количество доступных кликов. Это улучшение позволит вам играть дольше без необходимости ждать восстановления кликов.'
+      : 'Увеличивает скорость восстановления кликов, позволяя вам быстрее восстанавливать энергию и продолжать игру без задержек.';
+
+    const upgradeFunction = isMultitap
+      ? upgradeTapProfit
+      : isTapIncrease
+      ? upgradeTapIncrease
+      : upgradeClickRecovery;
+
+    const levelsData = isMultitap
+      ? tapProfitLevels
+      : isTapIncrease
+      ? tapIncreaseLevels
+      : clickRecoveryLevels;
+
+    const nextLevelData = levelsData[currentLevel];
+
+    return (
       <div
-        className="bg-gray-800 w-full max-w-md p-6 rounded-t-lg animate-slide-up"
-        onClick={(e) => e.stopPropagation()}
+        className="fixed inset-0 bg-black bg-opacity-50 flex items-end justify-center z-50"
+        onClick={() => setSelectedUpgrade(null)}
       >
-        <h2 className="text-center text-xl text-white mb-4">
-          {selectedUpgrade === 'multitap' ? 'Multitap' : 'Tap Increase'}
-        </h2>
-        <p className="text-center text-gray-400 mb-4">
-          {selectedUpgrade === 'multitap'
-            ? 'Увеличивает прибыль за каждый тап, позволяя вам быстрее накапливать монеты. Это улучшение поможет вам быстрее достигать новых уровней и зарабатывать больше очков.'
-            : 'Увеличивает максимальное количество доступных кликов. Это улучшение позволит вам играть дольше без необходимости ждать восстановления кликов.'}
-        </p>
-        <p className="text-center text-gray-300 mb-4">
-          Текущий уровень: {selectedUpgrade === 'multitap' ? tapProfitLevel : tapIncreaseLevel}
-        </p>
-        {selectedUpgrade === 'multitap' && tapProfitLevel < 10 && (
-          <button
-            onClick={upgradeTapProfit}
-            disabled={points < tapProfitLevels[tapProfitLevel].cost}
-            className={`w-full py-3 bg-yellow-500 text-black rounded-lg ${
-              points >= tapProfitLevels[tapProfitLevel].cost
-                ? 'hover:bg-yellow-600'
-                : 'opacity-50 cursor-not-allowed'
-            }`}
-          >
-            Улучшить за {tapProfitLevels[tapProfitLevel].cost} монет
-          </button>
-        )}
-        {selectedUpgrade === 'tapIncrease' && tapIncreaseLevel < 10 && (
-          <button
-            onClick={upgradeTapIncrease}
-            disabled={points < tapIncreaseLevels[tapIncreaseLevel].cost}
-            className={`w-full py-3 bg-yellow-500 text-black rounded-lg ${
-              points >= tapIncreaseLevels[tapIncreaseLevel].cost
-                ? 'hover:bg-yellow-600'
-                : 'opacity-50 cursor-not-allowed'
-            }`}
-          >
-            Улучшить за {tapIncreaseLevels[tapIncreaseLevel].cost} монет
-          </button>
-        )}
-        {(selectedUpgrade === 'multitap' && tapProfitLevel >= 10) ||
-        (selectedUpgrade === 'tapIncrease' && tapIncreaseLevel >= 10) ? (
-          <p className="text-center text-yellow-400 mt-4">Максимальный уровень достигнут</p>
-        ) : null}
-        <button
-          className="w-full py-2 mt-4 bg-gray-700 text-white rounded-lg"
-          onClick={() => setSelectedUpgrade(null)}
+        <div
+          className="bg-gray-800 w-full max-w-md p-6 rounded-t-lg animate-slide-up"
+          onClick={(e) => e.stopPropagation()}
         >
-          Закрыть
-        </button>
+          <h2 className="text-center text-xl text-white mb-4">
+            {isMultitap ? 'Multitap' : isTapIncrease ? 'Tap Increase' : 'Click Recovery'}
+          </h2>
+          <p className="text-center text-gray-400 mb-4">{description}</p>
+          <p className="text-center text-gray-300 mb-4">Текущий уровень: {currentLevel}</p>
+          {currentLevel < maxLevel && (
+            <button
+              onClick={upgradeFunction}
+              disabled={points < nextLevelData.cost}
+              className={`w-full py-3 bg-yellow-500 text-black rounded-lg ${
+                points >= nextLevelData.cost
+                  ? 'hover:bg-yellow-600'
+                  : 'opacity-50 cursor-not-allowed'
+              }`}
+            >
+              Улучшить за {nextLevelData.cost} монет
+            </button>
+          )}
+          {currentLevel >= maxLevel && (
+            <p className="text-center text-yellow-400 mt-4">Максимальный уровень достигнут</p>
+          )}
+          <button
+            className="w-full py-2 mt-4 bg-gray-700 text-white rounded-lg"
+            onClick={() => setSelectedUpgrade(null)}
+          >
+            Закрыть
+          </button>
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   const renderUserInfo = () => (
     <div className="px-4 z-10 pt-4">
       <div className="flex items-center space-x-2">
-        <div className="p-1 rounded-lg bg-gray-800">
-          <Hamster size={24} className="text-yellow-400" />
-        </div>
+        {avatarUrl ? (
+          <img src={avatarUrl} alt="Avatar" className="w-8 h-8 rounded-full" />
+        ) : (
+          <div className="p-1 rounded-lg bg-gray-800">
+            <Hamster size={24} className="text-yellow-400" />
+          </div>
+        )}
         <div>
           <p className="text-sm text-gray-300">{username ? username : 'Гость'}</p>
         </div>
@@ -763,7 +855,9 @@ const App: React.FC = () => {
             className="w-80 h-80 p-4 rounded-full bg-gray-700 shadow-lg main-button"
             onTouchStart={handleMainButtonClick}
           >
-            <div className="w-full h-full rounded-full bg-gray-600 flex items-center justify-center"></div>
+            <div className="w-full h-full rounded-full bg-gray-600 flex items-center justify-center">
+              <img src={buttonImageUrl} alt="Button Image" className="w-1/2 h-1/2" />
+            </div>
           </div>
         </div>
       </div>
@@ -818,6 +912,7 @@ const App: React.FC = () => {
         <div className="h-px bg-gray-600 my-4"></div>
         {renderUpgradeOption('multitap')}
         {renderUpgradeOption('tapIncrease')}
+        {renderUpgradeOption('clickRecovery')}
       </div>
     </>
   );
