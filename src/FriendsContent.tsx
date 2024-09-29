@@ -1,7 +1,6 @@
 // src/FriendsContent.tsx
 
 import React from 'react';
-import Hamster from './icons/Hamster';
 import { toast } from 'react-toastify';
 
 interface FriendsContentProps {
@@ -15,7 +14,7 @@ interface Friend {
   username: string;
 }
 
-const FriendsContent: React.FC<FriendsContentProps> = ({ username, userId, friends }) => {
+const FriendsContent: React.FC<FriendsContentProps> = ({ userId, friends }) => {
   // Function to copy the referral link
   const handleInviteClick = () => {
     const referralLink = `https://t.me/cryptocollect_bot?start=${userId}`;
@@ -33,18 +32,7 @@ const FriendsContent: React.FC<FriendsContentProps> = ({ username, userId, frien
 
   return (
     <div className="flex flex-col h-full bg-gray-800">
-      {/* User Info */}
-      <div className="px-4 pt-4">
-        <div className="flex items-center">
-          <div className="p-1 rounded-lg bg-gray-800">
-            <Hamster size={24} className="text-yellow-400" />
-          </div>
-          <div className="ml-2">
-            <p className="text-sm text-gray-300">{username}</p>
-          </div>
-          {/* Удалили кнопку "Обновить" */}
-        </div>
-      </div>
+      {/* Убрали блок с именем пользователя */}
 
       {/* Main Content */}
       <div className="flex-1 overflow-auto px-4 mt-4">
