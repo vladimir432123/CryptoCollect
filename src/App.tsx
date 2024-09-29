@@ -1,3 +1,5 @@
+// src/App.tsx
+
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import './App.css';
 import Hamster from './icons/Hamster';
@@ -149,6 +151,9 @@ const App: React.FC = () => {
   );
 
   const [levelIndex, setLevelIndex] = useState(0);
+
+  // Добавляем состояние для анимации кнопки
+  const [isButtonAnimating, setIsButtonAnimating] = useState(false);
 
   // Функция для обновления remainingClicks на сервере
   const updateRemainingClicks = useCallback(
@@ -523,11 +528,11 @@ const App: React.FC = () => {
           );
         }, 1000);
 
-        const button = e.currentTarget;
-        button.classList.add('clicked');
+        // Запускаем анимацию
+        setIsButtonAnimating(true);
         setTimeout(() => {
-          button.classList.remove('clicked');
-        }, 200);
+          setIsButtonAnimating(false);
+        }, 200); // 0.2 секунды
       }
     },
     [
@@ -544,7 +549,9 @@ const App: React.FC = () => {
       incomePerHour,
     ]
   );
-  const buttonImageUrl = 'PLACEHOLDER_IMAGE_URL'; // Замените на URL вашего изображения
+  
+  // Обновите путь к изображению
+  const buttonImageUrl = '/images/capybarking2.png'; // Убедитесь, что изображение находится в public/images/
 
   const saveUpgradeData = useCallback(
     async (newTapProfitLevel: number, newTapIncreaseLevel: number, newClickRecoveryLevel: number) => {
@@ -768,8 +775,9 @@ const App: React.FC = () => {
         onClick={() => setSelectedUpgrade(null)}
       >
         <div
-          className="bg-gray-800 w-full max-w-md p-6 rounded-t-lg animate-slide-up"
+          className="bg-gray-800 w-full max-w-md p-6 rounded-t-lg animate-slide-up overflow-y-auto"
           onClick={(e) => e.stopPropagation()}
+          style={{ maxHeight: '90vh' }} // Ограничиваем высоту для прокрутки
         >
           <h2 className="text-center text-xl text-white mb-4">
             {isMultitap ? 'Multitap' : isTapIncrease ? 'Tap Increase' : 'Click Recovery'}
@@ -829,7 +837,7 @@ const App: React.FC = () => {
             <div className="flex items-center mt-1 border-2 border-gray-600 rounded-full">
               <div className="w-full h-2 bg-gray-700 rounded-full">
                 <div
-                  className="h-2 rounded-full bg-yellow-400"
+                  className="h-2 rounded-full bg-yellow-400 transition-all duration-200 ease-linear"
                   style={{ width: `${calculateProgress}%` }}
                 ></div>
               </div>
@@ -852,11 +860,15 @@ const App: React.FC = () => {
         </div>
         <div className="px-4 mt-4 flex justify-center">
           <div
-            className="w-80 h-80 p-4 rounded-full bg-gray-700 shadow-lg main-button"
+            className={`w-80 h-80 p-4 rounded-full bg-gray-700 shadow-lg main-button ${isButtonAnimating ? 'animating' : ''}`}
             onTouchStart={handleMainButtonClick}
           >
             <div className="w-full h-full rounded-full bg-gray-600 flex items-center justify-center">
-              <img src={buttonImageUrl} alt="Button Image" className="w-1/2 h-1/2" />
+              <img 
+                src={buttonImageUrl} 
+                alt="Button Image" 
+                className={`w-1/2 h-1/2 button-image ${isButtonAnimating ? 'animating-image' : ''}`} 
+              />
             </div>
           </div>
         </div>
