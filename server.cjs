@@ -14,10 +14,7 @@ const port = process.env.PORT || 8080;
 // Используем body-parser для обработки JSON-запросов
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
-
-// Обслуживаем статические файлы из папки 'dist' и 'public/images'
 app.use(express.static(path.join(__dirname, 'dist')));
-app.use('/images', express.static(path.join(__dirname, 'public/images'))); // Добавлено для изображений
 
 // Конфигурация базы данных
 const dbConfig = {
@@ -86,8 +83,7 @@ const initializeDatabase = async () => {
           task2_collected BOOLEAN DEFAULT FALSE,
           task3_collected BOOLEAN DEFAULT FALSE,
           task4_collected BOOLEAN DEFAULT FALSE,
-          task5_collected BOOLEAN DEFAULT FALSE,
-          avatar_file_id VARCHAR(255) DEFAULT NULL -- Добавлено поле для хранения file_id аватарки
+          task5_collected BOOLEAN DEFAULT FALSE
       )
     `);
     console.log('Таблица user проверена/создана');
@@ -106,7 +102,6 @@ const initializeDatabase = async () => {
     await addColumnIfNotExists('task3_collected', 'BOOLEAN DEFAULT FALSE');
     await addColumnIfNotExists('task4_collected', 'BOOLEAN DEFAULT FALSE');
     await addColumnIfNotExists('task5_collected', 'BOOLEAN DEFAULT FALSE');
-    await addColumnIfNotExists('avatar_file_id', 'VARCHAR(255) DEFAULT NULL'); // Добавлено для avatar_file_id
   } catch (err) {
     console.error('Ошибка при инициализации базы данных:', err);
   }
@@ -198,19 +193,6 @@ bot.start(async (ctx) => {
       }
     }
 
-    // Получение аватарки пользователя
-    try {
-      const photos = await ctx.telegram.getUserProfilePhotos(telegramId, 0, 1);
-      if (photos.total_count > 0 && photos.photos.length > 0) {
-        const photo = photos.photos[0][0]; // Берем самую маленькую версию
-        const fileId = photo.file_id;
-        // Сохраняем fileId в базе данных
-        await pool.query('UPDATE user SET avatar_file_id = ? WHERE telegram_id = ?', [fileId, telegramId]);
-      }
-    } catch (err) {
-      console.error('Ошибка при получении аватарки пользователя:', err);
-    }
-
     const miniAppUrl = `https://t.me/cryptocollect_bot?startapp=${telegramId}&tgWebApp=true&token=${sessionToken}`;
 
     await ctx.reply(
@@ -222,41 +204,6 @@ bot.start(async (ctx) => {
     await ctx.reply('Произошла ошибка, попробуйте позже.');
   }
 });
-
-// Получение аватарки пользователя
-app.get('/user-avatar', async (req, res) => {
-  const userId = req.query.userId;
-
-  if (!userId) {
-    return res.status(400).json({ error: 'User ID обязателен' });
-  }
-
-  try {
-    const [rows] = await pool.query('SELECT avatar_file_id FROM user WHERE telegram_id = ?', [userId]);
-
-    if (rows.length === 0) {
-      return res.status(404).json({ error: 'Пользователь не найден' });
-    }
-
-    const avatarFileId = rows[0].avatar_file_id;
-
-    if (!avatarFileId) {
-      return res.status(404).json({ error: 'Аватарка не найдена' });
-    }
-
-    // Получаем путь к файлу аватарки
-    const file = await bot.telegram.getFile(avatarFileId);
-    const fileUrl = `https://api.telegram.org/file/bot${process.env.TELEGRAM_BOT_TOKEN}/${file.file_path}`;
-
-    // Перенаправляем на URL файла
-    res.redirect(fileUrl);
-  } catch (err) {
-    console.error('Ошибка при получении аватарки пользователя:', err);
-    res.status(500).json({ error: 'Ошибка сервера' });
-  }
-});
-
-// Остальные маршруты и обработчики...
 
 // Получение списка приглашенных друзей
 app.get('/invited-friends', async (req, res) => {
@@ -806,7 +753,7 @@ app.post('/collect-user-task', async (req, res) => {
           canCollect = true;
           await pool.query(
             'UPDATE user SET points = points + ?, task4_collected = TRUE WHERE telegram_id = ?',
-            [reward, userId]
+              [reward, userId]
           );
         }
         break;
