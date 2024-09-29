@@ -867,7 +867,7 @@ const App: React.FC = () => {
               <img 
                 src={buttonImageUrl} 
                 alt="Button Image" 
-                className={`w-1/2 h-1/2 button-image ${isButtonAnimating ? 'animating-image' : ''}`} 
+                className={`w-full h-full button-image ${isButtonAnimating ? 'animating-image' : ''}`} 
               />
             </div>
           </div>
