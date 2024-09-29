@@ -254,8 +254,6 @@ app.get('/user-avatar', async (req, res) => {
   }
 });
 
-// Остальные маршруты и обработчики...
-
 // Получение списка приглашенных друзей
 app.get('/invited-friends', async (req, res) => {
   const userId = req.query.userId;
@@ -509,7 +507,233 @@ app.post('/save-data', async (req, res) => {
   }
 });
 
-// Остальные маршруты для обработки ежедневных наград, задач и т.д.
+// Обработка маршрута /tasks для получения ежедневных наград
+app.get('/tasks', async (req, res) => {
+  const userId = req.query.userId;
+
+  if (!userId) {
+    console.error('User ID не передан в запросе');
+    return res.status(400).json({ error: 'User ID обязателен' });
+  }
+
+  try {
+    const [rows] = await pool.query('SELECT tasks_current_day, tasks_last_collected FROM user WHERE telegram_id = ?', [userId]);
+
+    if (rows.length === 0) {
+      return res.status(404).json({ error: 'Пользователь не найден' });
+    }
+
+    const user = rows[0];
+    let { tasks_current_day, tasks_last_collected } = user;
+
+    const now = new Date();
+    let canCollect = false;
+
+    if (!tasks_last_collected) {
+      canCollect = true;
+    } else {
+      const lastCollected = new Date(tasks_last_collected);
+      const nextDay = new Date(lastCollected);
+      nextDay.setDate(nextDay.getDate() + 1);
+
+      if (now >= nextDay) {
+        canCollect = true;
+        tasks_current_day += 1;
+        if (tasks_current_day > 7) {
+          tasks_current_day = 1; // Сброс после 7 дней
+        }
+
+        // Обновляем данные пользователя
+        await pool.query(
+          'UPDATE user SET tasks_current_day = ?, tasks_last_collected = NULL WHERE telegram_id = ?',
+          [tasks_current_day, userId]
+        );
+      }
+    }
+
+    res.json({
+      currentDay: tasks_current_day,
+      canCollect: canCollect,
+    });
+  } catch (err) {
+    console.error('Ошибка при получении ежедневных наград:', err);
+    res.status(500).json({ error: 'Ошибка сервера' });
+  }
+});
+
+// Обработка маршрута /collect-task для сбора ежедневной награды
+app.post('/collect-task', async (req, res) => {
+  const { userId, day } = req.body;
+
+  if (!userId || !day) {
+    console.error('Ошибка: Недостаточно данных для сбора награды');
+    return res.status(400).json({ error: 'Missing required fields' });
+  }
+
+  try {
+    // Проверяем текущий день пользователя
+    const [rows] = await pool.query('SELECT tasks_current_day, tasks_last_collected, points FROM user WHERE telegram_id = ?', [userId]);
+
+    if (rows.length === 0) {
+      return res.status(404).json({ error: 'Пользователь не найден' });
+    }
+
+    const user = rows[0];
+    const { tasks_current_day, tasks_last_collected, points } = user;
+
+    if (day !== tasks_current_day) {
+      return res.status(400).json({ error: 'Неправильный день для сбора награды' });
+    }
+
+    // Проверяем, может ли пользователь собрать награду
+    let canCollect = false;
+
+    if (!tasks_last_collected) {
+      canCollect = true;
+    } else {
+      const lastCollected = new Date(tasks_last_collected);
+      const nextDay = new Date(lastCollected);
+      nextDay.setDate(nextDay.getDate() + 1);
+
+      if (new Date() >= nextDay) {
+        canCollect = true;
+      }
+    }
+
+    if (!canCollect) {
+      return res.status(400).json({ error: 'Награда уже собрана или еще не наступил следующий день' });
+    }
+
+    // Получаем награду за день
+    const reward = getRewardByDay(day);
+
+    // Обновляем данные пользователя
+    const newPoints = points + reward;
+    await pool.query(
+      'UPDATE user SET points = ?, tasks_last_collected = NOW() WHERE telegram_id = ?',
+      [newPoints, userId]
+    );
+
+    res.json({
+      success: true,
+      newPoints: newPoints,
+    });
+  } catch (err) {
+    console.error('Ошибка при сборе награды:', err);
+    res.status(500).json({ error: 'Ошибка сервера' });
+  }
+});
+
+// Обработка маршрута /collect-user-task для сбора награды за задание
+app.post('/collect-user-task', async (req, res) => {
+  const { userId, taskId } = req.body;
+
+  if (!userId || !taskId) {
+    console.error('Ошибка: Недостаточно данных для сбора награды за задание');
+    return res.status(400).json({ error: 'Missing required fields' });
+  }
+
+  try {
+    // Предположим, что задания хранятся в отдельной таблице tasks_user или аналогичной
+    // Для простоты примера обновим соответствующее поле в таблице user
+
+    // Получаем информацию о задании
+    let taskField;
+    switch (taskId) {
+      case 1:
+        taskField = 'task1_collected';
+        break;
+      case 2:
+        taskField = 'task2_collected';
+        break;
+      case 3:
+        taskField = 'task3_collected';
+        break;
+      case 4:
+        taskField = 'task4_collected';
+        break;
+      case 5:
+        taskField = 'task5_collected';
+        break;
+      default:
+        return res.status(400).json({ error: 'Invalid task ID' });
+    }
+
+    // Проверяем, собрана ли награда уже
+    const [rows] = await pool.query(`SELECT ${taskField}, points FROM user WHERE telegram_id = ?`, [userId]);
+
+    if (rows.length === 0) {
+      return res.status(404).json({ error: 'Пользователь не найден' });
+    }
+
+    const user = rows[0];
+    const { points } = user;
+
+    if (user[taskField]) {
+      return res.status(400).json({ error: 'Награда за это задание уже собрана' });
+    }
+
+    // Получаем награду за задание (предположим, что награда фиксирована)
+    const reward = getRewardByTaskId(taskId);
+
+    // Обновляем данные пользователя
+    const newPoints = points + reward;
+    await pool.query(
+      `UPDATE user SET points = ?, ${taskField} = TRUE WHERE telegram_id = ?`,
+      [newPoints, userId]
+    );
+
+    res.json({
+      success: true,
+      newPoints: newPoints,
+    });
+  } catch (err) {
+    console.error('Ошибка при сборе награды за задание:', err);
+    res.status(500).json({ error: 'Ошибка сервера' });
+  }
+});
+
+// Функция для получения награды за день
+const getRewardByDay = (day) => {
+  switch (day) {
+    case 1:
+      return 10000;
+    case 2:
+      return 15000;
+    case 3:
+      return 20000;
+    case 4:
+      return 25000;
+    case 5:
+      return 30000;
+    case 6:
+      return 35000;
+    case 7:
+      return 40000;
+    default:
+      return 0;
+  }
+};
+
+// Функция для получения награды за задание
+const getRewardByTaskId = (taskId) => {
+  switch (taskId) {
+    case 1:
+      return 5000;
+    case 2:
+      return 10000;
+    case 3:
+      return 15000;
+    case 4:
+      return 20000;
+    case 5:
+      return 25000;
+    default:
+      return 0;
+  }
+};
+
+// Остальные маршруты и обработчики...
 
 // Обработка вебхука Telegram
 app.post('/webhook', async (req, res) => {
