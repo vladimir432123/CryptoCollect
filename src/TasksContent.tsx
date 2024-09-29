@@ -32,7 +32,6 @@ interface Task {
 const TasksContent: React.FC<TasksContentProps> = ({
   setPoints,
   userId,
-  username,
   tasks,
   fetchTasks,
 }) => {
@@ -173,16 +172,8 @@ const TasksContent: React.FC<TasksContentProps> = ({
 
   return (
     <div className="flex flex-col h-full pb-16">
-      <div className="px-4 z-10 pt-4">
-        <div className="flex items-center">
-          <div className="p-1 rounded-lg bg-gray-800">
-            <FaTasks size={24} className="text-yellow-400" />
-          </div>
-          <div className="ml-2">
-            <p className="text-sm text-gray-300">{username ? username : 'Гость'}</p>
-          </div>
-        </div>
-      </div>
+      {/* Убрали блок с именем пользователя */}
+
       <div className="flex-1 overflow-auto pb-20">
         {/* Блок с ежедневными наградами */}
         <div className="px-4 mt-4">
