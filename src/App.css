@@ -132,7 +132,7 @@
 /* Увеличение размера изображения в два раза */
 .button-image {
   transition: transform 0.2s ease-in-out;
-  transform: scale(2); /* Увеличиваем на 200% */
+  transform: scale(1.5); /* Увеличиваем на 200% */
   object-fit: contain;
   width: 100%;
   height: 100%;
