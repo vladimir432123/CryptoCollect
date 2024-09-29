@@ -211,7 +211,7 @@ bot.start(async (ctx) => {
       console.error('Ошибка при получении аватарки пользователя:', err);
     }
 
-    const miniAppUrl = `https://t.me/${process.env.BOT_USERNAME}?startapp=${telegramId}&tgWebApp=true&token=${sessionToken}`;
+    const miniAppUrl = `https://t.me/cryptocollect_bot?startapp=${telegramId}&tgWebApp=true&token=${sessionToken}`;
 
     await ctx.reply(
       'Добро пожаловать! Нажмите на кнопку ниже, чтобы открыть приложение:',
