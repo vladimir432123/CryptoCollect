@@ -1,3 +1,5 @@
+// src/App.tsx
+
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import './App.css';
 import Hamster from './icons/Hamster';
@@ -20,8 +22,7 @@ const Farm: React.FC<{ className?: string }> = ({ className }) => (
 );
 
 // Базовое время восстановления одного клика (в миллисекундах)
-const BASE_RECOVERY_RATE = 1000; 
-// Базовое количество восстанавливаемых кликов за интервал
+const BASE_RECOVERY_RATE = 1000;
 
 const App: React.FC = () => {
   const [tapProfit, setTapProfit] = useState(1);
@@ -48,7 +49,7 @@ const App: React.FC = () => {
     return savedPoints ? parseInt(savedPoints) : 0;
   });
   const [username, setUsername] = useState<string | null>(null);
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null); // Новое состояние для аватарки
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [userId, setUserId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -198,14 +199,14 @@ const App: React.FC = () => {
 
     setUserId(userIdFromTelegram);
 
-    // Получаем имя и аватарку пользователя из Telegram Web App
+    // Получаем имя пользователя из Telegram Web App
     const firstName = initData.user?.first_name || '';
     const lastName = initData.user?.last_name || '';
     const fullName = `${firstName} ${lastName}`.trim();
     setUsername(fullName);
 
-    const photoUrl = initData.user?.photo_url || null;
-    setAvatarUrl(photoUrl);
+    // Устанавливаем URL для аватарки
+    setAvatarUrl(`/user-avatar?userId=${userIdFromTelegram}`);
 
     const fetchData = async () => {
       try {
@@ -222,10 +223,6 @@ const App: React.FC = () => {
 
         const data = await response.json();
 
-        // Убираем установку username из данных сервера
-        // if (data.username) {
-        //   setUsername(data.username);
-        // }
         if (data.points !== undefined) {
           setPoints(data.points);
           localStorage.setItem('points', data.points.toString());
@@ -253,7 +250,7 @@ const App: React.FC = () => {
             const elapsedTime = now - farmExitTime;
 
             // Используем текущий уровень восстановления
-            const currentRecoveryAmount = clickRecoveryLevels[clickRecoveryLevel - 1].recoveryAmount;
+            const currentRecoveryAmount = clickRecoveryLevels[data.clickRecoveryLevel - 1].recoveryAmount;
             const recoveredClicks = Math.floor(elapsedTime / BASE_RECOVERY_RATE) * currentRecoveryAmount;
             const newRemainingClicks = Math.min(data.remainingClicks + recoveredClicks, maxClicks);
 
@@ -296,7 +293,14 @@ const App: React.FC = () => {
     };
 
     fetchData();
-  }, [tapProfitLevels, tapIncreaseLevels, updateRemainingClicks, maxClicks, clickRecoveryLevel, clickRecoveryLevels]);
+  }, [
+    tapProfitLevels,
+    tapIncreaseLevels,
+    updateRemainingClicks,
+    maxClicks,
+    clickRecoveryLevel,
+    clickRecoveryLevels,
+  ]);
 
   // Обновление remainingClicks каждую секунду
   useEffect(() => {
@@ -544,7 +548,9 @@ const App: React.FC = () => {
       incomePerHour,
     ]
   );
-  const buttonImageUrl = 'PLACEHOLDER_IMAGE_URL'; // Замените на URL вашего изображения
+
+  // Замените 'PLACEHOLDER_IMAGE_URL' на URL вашего изображения
+  const buttonImageUrl = 'PLACEHOLDER_IMAGE_URL';
 
   const saveUpgradeData = useCallback(
     async (newTapProfitLevel: number, newTapIncreaseLevel: number, newClickRecoveryLevel: number) => {
@@ -677,7 +683,7 @@ const App: React.FC = () => {
     const isMultitap = type === 'multitap';
     const isTapIncrease = type === 'tapIncrease';
     const isClickRecovery = type === 'clickRecovery';
-  
+
     const currentLevel = isMultitap
       ? tapProfitLevel
       : isTapIncrease
@@ -685,7 +691,7 @@ const App: React.FC = () => {
       : isClickRecovery
       ? clickRecoveryLevel
       : 1;
-  
+
     const description = isMultitap
       ? 'Увеличивает прибыль за каждый тап, позволяя быстрее копить монеты.'
       : isTapIncrease
@@ -733,12 +739,12 @@ const App: React.FC = () => {
     const isClickRecovery = selectedUpgrade === 'clickRecovery';
 
     const currentLevel = isMultitap
-    ? tapProfitLevel
-    : isTapIncrease
-    ? tapIncreaseLevel
-    : isClickRecovery
-    ? clickRecoveryLevel
-    : 1;
+      ? tapProfitLevel
+      : isTapIncrease
+      ? tapIncreaseLevel
+      : isClickRecovery
+      ? clickRecoveryLevel
+      : 1;
 
     const maxLevel = 10;
 
@@ -807,7 +813,7 @@ const App: React.FC = () => {
     <div className="px-4 z-10 pt-4">
       <div className="flex items-center space-x-2">
         {avatarUrl ? (
-          <img src={avatarUrl} alt="Avatar" className="w-8 h-8 rounded-full" />
+          <img src={avatarUrl} alt="Avatar" className="w-8 h-8 rounded-full object-cover" />
         ) : (
           <div className="p-1 rounded-lg bg-gray-800">
             <Hamster size={24} className="text-yellow-400" />
@@ -856,7 +862,7 @@ const App: React.FC = () => {
             onTouchStart={handleMainButtonClick}
           >
             <div className="w-full h-full rounded-full bg-gray-600 flex items-center justify-center">
-              <img src={buttonImageUrl} alt="Button Image" className="w-1/2 h-1/2" />
+              <img src={buttonImageUrl} alt="Button Image" className="w-1/2 h-1/2 button-image" />
             </div>
           </div>
         </div>
