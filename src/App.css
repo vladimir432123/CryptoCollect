@@ -115,39 +115,51 @@
 }
 
 .main-button {
-  transition: transform 0.2s ease;
+  transition: transform 0.4s ease;
 }
 
 .main-button.animating {
-  transform: scale(0.8);
+  transform: scale(0.9); /* Уменьшаем на 10% */
 }
 
-/* Увеличение размера изображения на 30% */
+/* Увеличение размера изображения в два раза */
 .button-image {
   transition: transform 0.2s ease;
-  transform: scale(1.3);
-}
-
-/* Дополнительные стили для анимации изображения при нажатии */
-.main-button.animating .button-image {
-  transform: scale(1.3) scale(0.8); /* Уменьшаем на 20%, общий масштаб: 1.3 * 0.8 = 1.04 (~4% увеличение) */
+  width: 200%; /* Увеличиваем ширину на 200% */
+  height: 200%; /* Увеличиваем высоту на 200% */
 }
 
 /* Опционально: можно добавить ключевые кадры для более плавной анимации */
-@keyframes buttonPress {
-  0% {
-    transform: scale(1);
-  }
-  50% {
-    transform: scale(0.8);
-  }
-  100% {
-    transform: scale(1);
-  }
+/* Убрано, так как используется transition */
+
+/* Стили для навигационной панели при скрытии */
+.opacity-0 {
+  opacity: 0;
 }
 
-.main-button.animating {
-  animation: buttonPress 0.2s forwards;
+.opacity-100 {
+  opacity: 1;
+}
+
+
+
+/* Дополнительные стили для улучшения визуального вида */
+.main-button {
+  position: relative;
+  overflow: hidden;
+}
+
+
+
+@keyframes fadeOut {
+  0% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
 }
 /* Стили для отображения чисел при клике */
 .clicked-number {
