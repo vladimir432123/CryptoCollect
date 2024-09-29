@@ -1,3 +1,6 @@
+/* src/App.css */
+
+/* Стили для прогресс-бара и других элементов */
 .progress-gradient {
   background: linear-gradient(to right, #90ef89, #d692dd, #726edd);
 }
@@ -114,8 +117,12 @@
   }
 }
 
+/* Основные стили для главной кнопки */
 .main-button {
-  transition: transform 0.4s ease;
+  transition: transform 0.2s ease;
+  position: relative;
+  overflow: hidden;
+  transform-origin: center;
 }
 
 .main-button.animating {
@@ -125,12 +132,9 @@
 /* Увеличение размера изображения в два раза */
 .button-image {
   transition: transform 0.2s ease;
-  width: 200%; /* Увеличиваем ширину на 200% */
-  height: 200%; /* Увеличиваем высоту на 200% */
+  max-width: 80%; /* Увеличиваем до 80% ширины контейнера */
+  height: auto; /* Сохраняем пропорции */
 }
-
-/* Опционально: можно добавить ключевые кадры для более плавной анимации */
-/* Убрано, так как используется transition */
 
 /* Стили для навигационной панели при скрытии */
 .opacity-0 {
@@ -141,15 +145,11 @@
   opacity: 1;
 }
 
-
-
 /* Дополнительные стили для улучшения визуального вида */
 .main-button {
   position: relative;
   overflow: hidden;
 }
-
-
 
 @keyframes fadeOut {
   0% {
@@ -171,3 +171,28 @@
   pointer-events: none;
 }
 
+
+/* Опционально: добавить анимацию для чисел при клике */
+@keyframes moveUp {
+  0% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+}
+
+/* Стили для плавного перехода навигационной панели */
+.nav-bar {
+  transition: opacity 0.2s ease-in-out;
+}
+
+.nav-bar.hidden {
+  opacity: 0;
+}
+
+.nav-bar.visible {
+  opacity: 1;
+}
