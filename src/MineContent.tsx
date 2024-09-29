@@ -25,7 +25,6 @@ interface MineContentProps {
 const MineContent: React.FC<MineContentProps> = ({
   points,
   setPoints,
-  username,
   userId,
   tapProfitLevel,
   tapIncreaseLevel,
@@ -109,7 +108,7 @@ const MineContent: React.FC<MineContentProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [incomePerHour]);
 
-  // Сохраняем время выхода с MineContent
+  // Сохранение времени выхода с MineContent
   const saveExitTime = () => {
     if (userId !== null) {
       fetch('/save-entry-exit-time', {
@@ -295,14 +294,8 @@ const MineContent: React.FC<MineContentProps> = ({
   return (
     <>
       {notificationMessage && <UpgradeNotification message={notificationMessage} />}
-      <div className="px-4 z-10 pt-4">
-        <div className="flex items-center space-x-2">
-          <div className="p-1 rounded-lg bg-gray-800"></div>
-          <div>
-            <p className="text-sm text-gray-300">{username ? username : 'Гость'}</p>
-          </div>
-        </div>
-      </div>
+      {/* Убрали блок с именем пользователя */}
+      
       {/* Блок с монетами и доходом в час */}
       <div className="px-4 mt-4">
         <div className="h-[50px] bg-gray-700 rounded-lg flex">
@@ -317,6 +310,7 @@ const MineContent: React.FC<MineContentProps> = ({
           </div>
         </div>
       </div>
+      
       {/* Кнопка "Улучшения" */}
       <div className="px-4 mt-4">
         <button
@@ -357,7 +351,7 @@ const MineContent: React.FC<MineContentProps> = ({
           <div
             className="bg-gray-900 w-full max-w-md p-6 rounded-t-lg animate-slide-up flex flex-col"
             onClick={(e) => e.stopPropagation()}
-            style={{ maxHeight: '95%' }} // Увеличили высоту меню
+            style={{ maxHeight: '90vh' }} // Ограничиваем высоту для прокрутки
           >
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl text-white">Улучшения</h2>
@@ -435,7 +429,7 @@ const MineContent: React.FC<MineContentProps> = ({
       {/* Новый дизайн нижней панели */}
       <div
         className="fixed bottom-0 left-0 right-0 px-4 flex flex-col items-center"
-        style={{ marginBottom: '100px' }} // Подняли на 10 пикселей
+        style={{ marginBottom: '100px' }} // Подняли на 100 пикселей
       >
         <div className="w-full bg-gray-700 rounded-lg p-4 mb-4">
           <div className="flex justify-between items-center">
