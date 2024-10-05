@@ -125,8 +125,12 @@
   transform-origin: center;
 }
 
+.main-button {
+  transition: transform 0.2s ease-in-out;
+}
+
 .main-button.animating {
-  transform: scale(0.9); /* Уменьшаем на 10% */
+  transform: scale(0.95);
 }
 
 /* Увеличение размера изображения в два раза */
@@ -138,14 +142,7 @@
   height: 100%;
 }
 
-/* Стили для навигационной панели при скрытии */
-.opacity-0 {
-  opacity: 0;
-}
 
-.opacity-100 {
-  opacity: 1;
-}
 
 /* Дополнительные стили для улучшения визуального вида */
 .main-button {
@@ -186,15 +183,4 @@
   }
 }
 
-/* Стили для плавного перехода навигационной панели */
-.nav-bar {
-  transition: opacity 0.2s ease-in-out;
-}
 
-.nav-bar.hidden {
-  opacity: 0;
-}
-
-.nav-bar.visible {
-  opacity: 1;
-}
