@@ -953,7 +953,7 @@ const App: React.FC = () => {
           {selectedUpgrade && renderUpgradeMenu()}
 
           {/* Навигационная панель */}
-          <div className="absolute bottom-0 left-0 right-0 bg-gray-700 rounded-t-2xl flex justify-around items-center text-xs py-4 px-2 z-50">
+          <div className="absolute bottom-0 left-0 right-0 bg-gray-700 rounded-t-2xl flex justify-around items-center text-xs py-4 px-2 z-60">
             <button
               className={`text-center flex flex-col items-center relative ${
                 currentPage === 'farm' ? 'text-yellow-400' : 'text-gray-300'
