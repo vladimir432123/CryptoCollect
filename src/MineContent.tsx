@@ -8,7 +8,7 @@ import { toast } from 'react-toastify';
 
 interface MineContentProps {
   points: number;
-  setPoints: (points: number | ((prevPoints: number) => number)) => void;
+  setPoints: React.Dispatch<React.SetStateAction<number>>;
   username: string | null;
   userId: number | null;
   tapProfitLevel: number;
@@ -56,9 +56,12 @@ const MineContent: React.FC<MineContentProps> = ({
   const calculateTotalIncome = (upgrades: { [key: string]: number }, farmLevel: number): number => {
     let income = 0;
     for (const [key, level] of Object.entries(upgrades)) {
-      const upgradeLevel = upgradeLevels[key as keyof typeof upgradeLevels][level - 1];
-      if ('profit' in upgradeLevel) {
-        income += upgradeLevel.profit;
+      const upgradeData = upgradeLevels[key as keyof typeof upgradeLevels];
+      if (upgradeData && upgradeData[level - 1]) {
+        const upgradeLevel = upgradeData[level - 1];
+        if ('profit' in upgradeLevel) {
+          income += upgradeLevel.profit;
+        }
       }
     }
     return income * farmLevelMultipliers[farmLevel - 1];
@@ -69,12 +72,23 @@ const MineContent: React.FC<MineContentProps> = ({
     const totalIncome = calculateTotalIncome(upgrades, farmLevel);
     setIncomePerHour(totalIncome);
     setMaxEarnedCoins(totalIncome * 3);
-  }, [upgrades, farmLevel, setIncomePerHour]);
+
+    console.log('Updated incomePerHour:', totalIncome);
+    console.log('Updated maxEarnedCoins:', totalIncome * 3);
+  }, [upgrades, farmLevel]);
 
   // Function to update earned coins
   const updateEarnedCoins = () => {
     const now = Date.now();
-    const elapsedSeconds = (now - lastUpdateTimeRef.current) / 1000;
+    let elapsedSeconds = (now - lastUpdateTimeRef.current) / 1000;
+
+    // Prevent negative elapsed time
+    if (elapsedSeconds < 0) {
+      console.warn('Negative elapsed time detected. Resetting lastUpdateTimeRef.');
+      elapsedSeconds = 0;
+      lastUpdateTimeRef.current = now;
+    }
+
     const potentialEarned = (incomePerHour / 3600) * elapsedSeconds;
     const newEarnedCoins = Math.min(potentialEarned, maxEarnedCoins);
 
@@ -86,6 +100,10 @@ const MineContent: React.FC<MineContentProps> = ({
 
     // Update lastUpdateTimeRef
     lastUpdateTimeRef.current = now;
+
+    console.log('Earned coins updated:', newEarnedCoins);
+    console.log('Elapsed seconds:', elapsedSeconds);
+    console.log('Income per hour:', incomePerHour);
   };
 
   // On component mount, start updating earned coins
@@ -104,8 +122,9 @@ const MineContent: React.FC<MineContentProps> = ({
       // Save exit time
       saveExitTime();
     };
+    // Добавляем все зависимости, используемые внутри эффекта
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [incomePerHour]);
+  }, [incomePerHour, maxEarnedCoins]);
 
   // Save exit time when leaving MineContent
   const saveExitTime = () => {
@@ -170,7 +189,7 @@ const MineContent: React.FC<MineContentProps> = ({
         const nextLevel = currentLevel + 1;
         const upgradeData = upgradeLevels[selectedMineUpgrade as keyof typeof upgradeLevels][nextLevel - 1];
 
-        if (points >= upgradeData.cost) {
+        if (upgradeData && points >= upgradeData.cost) {
           const newPoints = points - upgradeData.cost;
           setPoints(newPoints);
 
@@ -347,7 +366,7 @@ const MineContent: React.FC<MineContentProps> = ({
           <div
             className="bg-gray-900 w-full max-w-md p-6 rounded-t-lg animate-slide-up flex flex-col"
             onClick={(e) => e.stopPropagation()}
-            style={{ maxHeight: '90vh' }} // Limit height for scrolling
+            style={{ maxHeight: '90vh' }}
           >
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl text-white">Улучшения</h2>
@@ -381,7 +400,7 @@ const MineContent: React.FC<MineContentProps> = ({
             {selectedMineUpgrade && (
               <div
                 className="bg-gray-800 w-full p-4 rounded-lg absolute bottom-0 left-0"
-                style={{ marginBottom: '80px' }} // Raise the upgrade detail menu
+                style={{ marginBottom: '80px' }}
                 onClick={(e) => e.stopPropagation()}
               >
                 <h2 className="text-center text-xl text-white mb-2">{`Улучшение ${selectedMineUpgrade}`}</h2>
@@ -422,10 +441,10 @@ const MineContent: React.FC<MineContentProps> = ({
         </div>
       )}
 
-      {/* New design for the bottom panel */}
+      {/* Bottom panel */}
       <div
         className="fixed bottom-0 left-0 right-0 px-4 flex flex-col items-center"
-        style={{ marginBottom: '100px' }} // Raised by 100 pixels
+        style={{ marginBottom: '100px' }}
       >
         <div className="w-full bg-gray-700 rounded-lg p-4 mb-4">
           <div className="flex justify-between items-center">
