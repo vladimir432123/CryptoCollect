@@ -551,7 +551,6 @@ const App: React.FC = () => {
   );
   
   // Обновите путь к изображению
-  const buttonImageUrl = '/images/capybarking2.png'; // Убедитесь, что изображение находится в public/images/
 
   const saveUpgradeData = useCallback(
     async (newTapProfitLevel: number, newTapIncreaseLevel: number, newClickRecoveryLevel: number) => {
@@ -863,13 +862,7 @@ const App: React.FC = () => {
             className={`w-80 h-80 p-4 rounded-full bg-gray-700 shadow-lg main-button ${isButtonAnimating ? 'animating' : ''}`}
             onTouchStart={handleMainButtonClick}
           >
-            <div className="w-full h-full rounded-full bg-gray-600 flex items-center justify-center">
-              <img 
-                src={buttonImageUrl} 
-                alt="Button Image" 
-                className="button-image" 
-              />
-            </div>
+
           </div>
         </div>
       </div>
