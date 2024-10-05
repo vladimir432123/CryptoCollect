@@ -193,11 +193,14 @@ bot.start(async (ctx) => {
       }
     }
 
-    const miniAppUrl = `https://t.me/cryptocollect_bot?startapp=${telegramId}&tgWebApp=true&token=${sessionToken}`;
+    // Заменяем кнопку с ссылкой на кнопку web_app
+    const webAppUrl = `https://app-21c4d0cd-2996-4394-bf8a-a453b9f7e396.cleverapps.io/?userId=${telegramId}&token=${sessionToken}`;
 
     await ctx.reply(
       'Добро пожаловать! Нажмите на кнопку ниже, чтобы открыть приложение:',
-      Markup.inlineKeyboard([Markup.button.url('Открыть приложение', miniAppUrl)])
+      Markup.inlineKeyboard([
+        Markup.button.webApp('Открыть приложение', webAppUrl),
+      ])
     );
   } catch (err) {
     console.error('Ошибка при обработке команды /start:', err);
