@@ -116,27 +116,45 @@
     margin-top: 50px;
   }
 }
-@media screen and (max-width: 375px) {
-  .main-button-container {
-    margin-top: -30px; /* Поднимаем кнопку на 30 пикселей */
-  }
-}
 
-/* Основные стили для главной кнопки */
-.main-button {
-  transition: transform 0.2s ease;
-  position: relative;
-  overflow: hidden;
-  transform-origin: center;
-}
 
 .main-button {
+  width: 320px;
+  height: 320px;
+  padding: 16px;
+  border-radius: 9999px;
+  background-color: #4B5563; /* bg-gray-700 */
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
   transition: transform 0.2s ease-in-out;
 }
 
-.main-button.animating {
-  transform: scale(0.95);
+
+@media screen and (max-width: 375px) {
+  .main-button {
+    width: 288px; /* Уменьшаем на 10% */
+    height: 288px;
+  }
+  .main-button-container {
+    margin-top: -60px; /* Поднимаем кнопку на 60 пикселей */
+  }
 }
+
+@keyframes button-press {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(0.95);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.main-button.animating {
+  animation: button-press 0.2s ease-in-out;
+}
+
 
 /* Увеличение размера изображения в два раза */
 .button-image {
