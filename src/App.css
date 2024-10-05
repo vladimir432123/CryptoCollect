@@ -116,6 +116,11 @@
     margin-top: 50px;
   }
 }
+@media screen and (max-width: 375px) {
+  .main-button-container {
+    margin-top: -30px; /* Поднимаем кнопку на 30 пикселей */
+  }
+}
 
 /* Основные стили для главной кнопки */
 .main-button {
