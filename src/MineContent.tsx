@@ -46,15 +46,10 @@ const MineContent: React.FC<MineContentProps> = ({
 
   const farmLevelMultipliers = [1, 1.2, 1.4, 1.6, 1.8, 2.0];
   const [maxEarnedCoins, setMaxEarnedCoins] = useState<number>(incomePerHour * 3);
-  const lastUpdateTimeRef = useRef<number>(Date.now());
 
-  // Инициализируем lastUpdateTime из localStorage при монтировании
-  useEffect(() => {
-    const savedTime = localStorage.getItem('lastUpdateTime');
-    if (savedTime) {
-      lastUpdateTimeRef.current = parseInt(savedTime);
-    }
-  }, []);
+  // Initialize lastUpdateTimeRef.current from localStorage
+  const savedTime = localStorage.getItem('lastUpdateTime');
+  const lastUpdateTimeRef = useRef<number>(savedTime ? parseInt(savedTime) : Date.now());
 
   const timerRef = useRef<number | null>(null);
 
@@ -69,14 +64,14 @@ const MineContent: React.FC<MineContentProps> = ({
     return income * farmLevelMultipliers[farmLevel - 1];
   };
 
-  // Обновляем incomePerHour при изменении улучшений или уровня фермы
+  // Update incomePerHour when upgrades or farmLevel change
   useEffect(() => {
     const totalIncome = calculateTotalIncome(upgrades, farmLevel);
     setIncomePerHour(totalIncome);
     setMaxEarnedCoins(totalIncome * 3);
   }, [upgrades, farmLevel, setIncomePerHour]);
 
-  // Функция для обновления накопленных монет
+  // Function to update earned coins
   const updateEarnedCoins = () => {
     const now = Date.now();
     const elapsedSeconds = (now - lastUpdateTimeRef.current) / 1000;
@@ -85,30 +80,34 @@ const MineContent: React.FC<MineContentProps> = ({
 
     setEarnedCoins(newEarnedCoins);
 
-    // Сохраняем в localStorage
+    // Save to localStorage
     localStorage.setItem('earnedCoins', newEarnedCoins.toString());
+    localStorage.setItem('lastUpdateTime', now.toString());
+
+    // Update lastUpdateTimeRef
+    lastUpdateTimeRef.current = now;
   };
 
-  // При монтировании компонента обновляем накопленные монеты
+  // On component mount, start updating earned coins
   useEffect(() => {
     updateEarnedCoins();
 
-    // Запускаем таймер для обновления монет каждую секунду
+    // Start timer to update coins every second
     timerRef.current = window.setInterval(() => {
       updateEarnedCoins();
-    }, 1000); // Обновляем каждую секунду
+    }, 1000); // Update every second
 
     return () => {
       if (timerRef.current) {
         clearInterval(timerRef.current);
       }
-      // Сохраняем время выхода
+      // Save exit time
       saveExitTime();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [incomePerHour]);
 
-  // Сохранение времени выхода с MineContent
+  // Save exit time when leaving MineContent
   const saveExitTime = () => {
     if (userId !== null) {
       fetch('/save-entry-exit-time', {
@@ -125,7 +124,7 @@ const MineContent: React.FC<MineContentProps> = ({
     }
   };
 
-  // При заходе на страницу MineContent, сохраняем время входа
+  // Save entry time when entering MineContent
   useEffect(() => {
     if (userId !== null) {
       fetch('/save-entry-exit-time', {
@@ -143,7 +142,7 @@ const MineContent: React.FC<MineContentProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Предзагрузка изображений
+  // Preload images
   useEffect(() => {
     upgradesList.forEach((upgrade) => {
       const img = new Image();
@@ -153,7 +152,6 @@ const MineContent: React.FC<MineContentProps> = ({
 
   const handleUpgradeClick = (upgrade: string) => {
     setSelectedMineUpgrade(upgrade);
-    // Не закрываем основное меню улучшений
   };
 
   const closeUpgradeMenu = () => {
@@ -183,12 +181,12 @@ const MineContent: React.FC<MineContentProps> = ({
           setUpgrades(newUpgrades);
           setNotificationMessage(`Улучшено ${selectedMineUpgrade} до уровня ${nextLevel}`);
 
-          // Обновляем incomePerHour
+          // Update incomePerHour
           const totalIncome = calculateTotalIncome(newUpgrades, farmLevel);
           setIncomePerHour(totalIncome);
           setMaxEarnedCoins(totalIncome * 3);
 
-          // Сохранение данных на сервере
+          // Save data to server
           fetch('/save-data', {
             method: 'POST',
             headers: {
@@ -229,7 +227,7 @@ const MineContent: React.FC<MineContentProps> = ({
     }
   };
 
-  // Список улучшений
+  // List of upgrades
   const upgradesList = [
     'upgrade1',
     'upgrade2',
@@ -239,26 +237,26 @@ const MineContent: React.FC<MineContentProps> = ({
     'upgrade6',
     'upgrade7',
     'upgrade8',
-    // Добавьте больше улучшений при необходимости
+    // Add more upgrades if needed
   ];
 
-  // Функция для обработки нажатия кнопки "Забрать"
+  // Handle collecting coins
   const handleCollectCoins = async () => {
     const totalEarnedCoins = Math.floor(earnedCoins);
     if (totalEarnedCoins <= 0) return;
 
     try {
-      // Добавить заработанные монеты к points
+      // Add earned coins to points
       const newPoints = points + totalEarnedCoins;
       setPoints(newPoints);
 
-      // Сброс earnedCoins и lastUpdateTime
+      // Reset earnedCoins and lastUpdateTime
       setEarnedCoins(0);
       lastUpdateTimeRef.current = Date.now();
       localStorage.setItem('earnedCoins', '0');
       localStorage.setItem('lastUpdateTime', lastUpdateTimeRef.current.toString());
 
-      // Сохранить обновленные данные на сервере
+      // Save updated data to server
       await fetch('/save-data', {
         method: 'POST',
         headers: {
@@ -283,7 +281,7 @@ const MineContent: React.FC<MineContentProps> = ({
     }
   };
 
-  // Расчет оставшегося времени до максимального накопления
+  // Calculate remaining time until max coins are accumulated
   const remainingTime = () => {
     const remainingCoins = maxEarnedCoins - earnedCoins;
     const remainingSeconds = remainingCoins / (incomePerHour / 3600);
@@ -294,9 +292,7 @@ const MineContent: React.FC<MineContentProps> = ({
   return (
     <>
       {notificationMessage && <UpgradeNotification message={notificationMessage} />}
-      {/* Убрали блок с именем пользователя */}
-      
-      {/* Блок с монетами и доходом в час */}
+      {/* User info block */}
       <div className="px-4 mt-4">
         <div className="h-[50px] bg-gray-700 rounded-lg flex">
           <div className="flex-1 flex items-center justify-center border-r border-gray-600">
@@ -310,8 +306,8 @@ const MineContent: React.FC<MineContentProps> = ({
           </div>
         </div>
       </div>
-      
-      {/* Кнопка "Улучшения" */}
+
+      {/* "Upgrades" button */}
       <div className="px-4 mt-4">
         <button
           className="w-full h-20 bg-gradient-to-r from-green-500 to-blue-500 rounded-lg shadow-lg overflow-hidden relative flex items-center justify-between px-4"
@@ -319,7 +315,7 @@ const MineContent: React.FC<MineContentProps> = ({
         >
           <div className="flex items-center space-x-4">
             <div className="p-2 bg-white bg-opacity-20 rounded-full">
-              {/* Иконка улучшений */}
+              {/* Upgrades icon */}
               <svg
                 className="w-8 h-8 text-white"
                 fill="none"
@@ -342,7 +338,7 @@ const MineContent: React.FC<MineContentProps> = ({
         </button>
       </div>
 
-      {/* Меню улучшений */}
+      {/* Upgrades menu */}
       {isUpgradesMenuOpen && (
         <div
           className="fixed inset-0 bg-black bg-opacity-50 flex items-end justify-center z-50"
@@ -351,7 +347,7 @@ const MineContent: React.FC<MineContentProps> = ({
           <div
             className="bg-gray-900 w-full max-w-md p-6 rounded-t-lg animate-slide-up flex flex-col"
             onClick={(e) => e.stopPropagation()}
-            style={{ maxHeight: '90vh' }} // Ограничиваем высоту для прокрутки
+            style={{ maxHeight: '90vh' }} // Limit height for scrolling
           >
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl text-white">Улучшения</h2>
@@ -359,7 +355,7 @@ const MineContent: React.FC<MineContentProps> = ({
                 ✕
               </button>
             </div>
-            {/* Список улучшений со скроллингом */}
+            {/* Upgrades list with scrolling */}
             <div className="grid grid-cols-2 gap-4 overflow-y-auto flex-grow">
               {upgradesList.map((upgrade, index) => (
                 <button
@@ -381,11 +377,11 @@ const MineContent: React.FC<MineContentProps> = ({
                 </button>
               ))}
             </div>
-            {/* Меню отдельного улучшения */}
+            {/* Individual upgrade menu */}
             {selectedMineUpgrade && (
               <div
                 className="bg-gray-800 w-full p-4 rounded-lg absolute bottom-0 left-0"
-                style={{ marginBottom: '80px' }} // Подняли меню деталей улучшения
+                style={{ marginBottom: '80px' }} // Raise the upgrade detail menu
                 onClick={(e) => e.stopPropagation()}
               >
                 <h2 className="text-center text-xl text-white mb-2">{`Улучшение ${selectedMineUpgrade}`}</h2>
@@ -393,7 +389,7 @@ const MineContent: React.FC<MineContentProps> = ({
                   Уровень: {upgrades[selectedMineUpgrade] || 1}
                 </p>
                 <p className="text-center text-gray-400 mb-4">
-                  {/* Здесь можно добавить индивидуальное описание для каждого улучшения */}
+                  {/* Add individual descriptions for each upgrade here */}
                   Это улучшение увеличивает ваш пассивный доход, позволяя быстрее накапливать монеты.
                 </p>
                 {upgrades[selectedMineUpgrade] === 10 ? (
@@ -426,10 +422,10 @@ const MineContent: React.FC<MineContentProps> = ({
         </div>
       )}
 
-      {/* Новый дизайн нижней панели */}
+      {/* New design for the bottom panel */}
       <div
         className="fixed bottom-0 left-0 right-0 px-4 flex flex-col items-center"
-        style={{ marginBottom: '100px' }} // Подняли на 100 пикселей
+        style={{ marginBottom: '100px' }} // Raised by 100 pixels
       >
         <div className="w-full bg-gray-700 rounded-lg p-4 mb-4">
           <div className="flex justify-between items-center">
